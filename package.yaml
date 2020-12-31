@@ -1,0 +1,40 @@
+name:                english-programming-language
+version:             0.1.0.0
+license:             MIT
+author:              "Alejandro De Cicco"
+maintainer:          "alejandrodecicco99@gmail.com"
+
+extra-source-files:
+- README.md
+
+dependencies:
+- base >= 4.7 && < 5
+- megaparsec
+- transformers
+- tasty
+- tasty-hunit
+
+library:
+  source-dirs: src
+
+executables:
+  english-programming-language-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - english-programming-language
+
+tests:
+  english-programming-language-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - english-programming-language
