@@ -11,7 +11,7 @@ data MatchablePart = IntP Integer | LiteralP String | WordP String | PossessiveP
 data Value =
     ValueM [MatchablePart]
     | IntV Integer | BoolV Bool | StringV String
-    | StructV Name [(Name, Value)] | ListV [Value]
+    | StructV Name [(Name, Value)] | ListV Type [Value]
     | VarV Name | PossessiveV Value Name
     | OperatorCall Title [Value]
     deriving (Eq, Show)

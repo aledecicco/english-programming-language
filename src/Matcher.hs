@@ -5,6 +5,8 @@ import Control.Monad.Trans.State ( get, gets, put, modify, liftCatch, runStateT,
 import Control.Monad.Trans.Except ( throwE, catchE, runExcept, Except )
 import Control.Monad.Trans.Class ( lift )
 import Data.List ( find )
+import Data.Maybe ( fromJust )
+import Data.Char ( toLower )
 
 import Types
 import PreludeDefs
@@ -18,8 +20,8 @@ type Error = String
 
 type FunEnv = [Function]
 type VarEnv = [(Name, Type)]
-type RecEnv = [(Name, [(Name, Type)])]
-type Env = (FunEnv, VarEnv, RecEnv)
+type StructEnv = [(Name, Name, [(Name, Type)])]
+type Env = (FunEnv, VarEnv, StructEnv)
 
 type MatcherState a = StateT Env (Except Error) a
 
@@ -29,8 +31,14 @@ initialEnv = (operators ++ procedures, [], [])
 getVarEnv :: MatcherState VarEnv
 getVarEnv = gets (\(_, vE, _) -> vE)
 
+getFunEnv :: MatcherState FunEnv
+getFunEnv = gets (\(fE, _, _) -> fE)
+
+getStructEnv :: MatcherState StructEnv
+getStructEnv = gets (\(_, _, sE) -> sE)
+
 setVarEnv :: VarEnv -> MatcherState ()
-setVarEnv vE = modify (\(fE, _, rE) -> (fE, vE, rE))
+setVarEnv vE = modify (\(fE, _, sE) -> (fE, vE, sE))
 
 getVarType :: Name -> MatcherState (Maybe Type)
 getVarType vn = do
@@ -43,7 +51,34 @@ setVarType vn t' = do
     r <- getVarType vn
     case r of
         Just t -> when (t /= t') $ missmatchingTypeAssign vn t t'
-        Nothing -> modify (\(fE, vE, rE) -> (fE, (vn, t'):vE, rE))
+        Nothing -> modify (\(fE, vE, sE) -> (fE, (vn, t'):vE, sE))
+
+getOperatorType :: Title -> [Value] -> MatcherState (Maybe Type)
+getOperatorType t vs = do
+    fE <- getFunEnv
+    case find funFinder fE of
+        Just (Operator _ tF) -> do
+            vTs <- mapM getValueType vs
+            return $ Just (tF vTs)
+        Nothing -> return Nothing
+    where
+        funFinder (Operator t' _) = t == t'
+        funFinder (Procedure _) = False
+
+getStructFields :: Name -> MatcherState (Maybe [(Name, Type)])
+getStructFields n = do
+    sE <- getStructEnv
+    let r = find (\(n', _, fs) -> n == n') sE
+    case r of
+        Just (_, _, fs) -> return $ Just fs
+        Nothing -> return Nothing
+
+getStructFieldType :: Name -> Name -> MatcherState (Maybe Type)
+getStructFieldType sn fn = do
+    fs <- getStructFields sn
+    case fs of
+        Just fs -> return $ snd <$> find (\(fn', t) -> fn == fn') fs
+        Nothing -> return Nothing
 
 varIsDefined :: Name -> MatcherState Bool
 varIsDefined vn = do
@@ -89,19 +124,19 @@ unmatchable ps = customError $ "\"" ++ show ps ++ "\" couldn't be matched"
 
 -- Auxiliary
 
+-- Adds the parameters in a title to the variables environment
 registerTitleParameters :: Title -> MatcherState ()
 registerTitleParameters [] = return ()
-registerTitleParameters (t:ts) = do
-    case t of (TitleParam n t) -> registerParameter n t
+registerTitleParameters (TitleWords _:ts) = registerTitleParameters ts
+registerTitleParameters (TitleParam n t:ts) = do
+    r <- varIsDefined n
+    if r then alreadyDefinedArgument n else setVarType n t
     registerTitleParameters ts
-    where
-        registerParameter :: Name -> Type -> MatcherState ()
-        registerParameter n t = do
-            r <- varIsDefined n
-            if r then alreadyDefinedArgument n else setVarType n t
 
 commitSentence :: Sentence -> MatcherState ()
-commitSentence (VarDef ns v) = return ()
+commitSentence (VarDef ns v) = do
+    t <- getValueType v
+    mapM_ (`setVarType` t) ns
 commitSentence (If v s) = return ()
 commitSentence (IfElse v sTrue sFalse) = return ()
 commitSentence (For n vFrom vTo ss) = return ()
@@ -111,16 +146,90 @@ commitSentence (While v ss) = return ()
 commitSentence (Result t v) = return ()
 commitSentence (ProcedureCall t vs) = return ()
 
+getValueType :: Value -> MatcherState Type
+getValueType (IntV _) = return IntT
+getValueType (BoolV _) = return BoolT
+getValueType (StringV _) = return StringT
+getValueType (StructV n _) = return $ StructT n
+getValueType (ListV t _) = return $ ListT t
+getValueType (VarV n) = fromJust <$> getVarType n
+getValueType (PossessiveV (StructV n _) f) = fromJust <$> getStructFieldType n f
+getValueType (OperatorCall t vs) = fromJust <$> getOperatorType t vs
+
 --
 
 
 -- Matchers
 
+matchAsName :: [MatchablePart] -> MatcherState (Maybe Name)
+matchAsName [WordP s] = return $ Just [s]
+matchAsName (WordP s : ps) = do
+    ns <- matchAsName ps
+    case ns of
+        Just ns -> return $ Just (s:ns)
+        Nothing -> return Nothing
+matchAsName _ = return Nothing
+
 matchAsProcedureCall :: [MatchablePart] -> MatcherState [Sentence]
 matchAsProcedureCall ps = return []
 
+matchAsInt :: [MatchablePart] -> MatcherState [Value]
+matchAsInt [IntP n] = return [IntV n]
+matchAsInt _ = return []
+
+matchAsBool :: [MatchablePart] -> MatcherState [Value]
+matchAsBool [WordP s] = do
+    let s' = map toLower s
+    case s' of
+        "true" -> return [BoolV True]
+        "false" -> return [BoolV False]
+        _ -> return []
+matchAsBool _ = return []
+
+matchAsString :: [MatchablePart] -> MatcherState [Value]
+matchAsString [LiteralP n] = return [StringV n]
+matchAsString _ = return []
+
+matchAsStruct :: [MatchablePart] -> MatcherState [Value]
+matchAsStruct _ = return []
+
+matchAsList :: [MatchablePart] -> MatcherState [Value]
+matchAsList _ = return []
+
+matchAsVar :: [MatchablePart] -> MatcherState [Value]
+matchAsVar ps = do
+    n <- matchAsName ps
+    case n of
+        Just n -> do
+            r <- varIsDefined n
+            return [VarV n | r]
+        Nothing -> return []
+
+matchAsPossessive :: [MatchablePart] -> MatcherState [Value]
+matchAsPossessive _ = return []
+
+matchAsOperatorCall :: [MatchablePart] -> MatcherState [Value]
+matchAsOperatorCall _ = return []
+
+matchValue :: Value -> MatcherState [Value]
+matchValue (ValueM ps) = do
+    asInt <- matchAsInt ps
+    asBool <- matchAsBool ps
+    asString <- matchAsString ps
+    asStruct <- matchAsStruct ps
+    asList <- matchAsList ps
+    asVar <- matchAsVar ps
+    asPossessive <- matchAsPossessive ps
+    asOperatorCall <- matchAsOperatorCall ps
+    return $ asInt ++ asBool ++ asString ++ asStruct ++ asList ++ asVar ++ asPossessive ++ asOperatorCall
+matchValue v = return [v]
+
 matchSentence :: Sentence -> MatcherState [Sentence]
 matchSentence (SentenceM ps) = matchAsProcedureCall ps
+matchSentence (If (ValueM ps) ss) = do
+    vs <- matchAsBool ps
+    ssCombinations <- sequence <$> mapM matchSentence ss
+    return $ concatMap (\v -> map (If v) ssCombinations) vs
 matchSentence s = return [s]
 
 matchSentences :: [Sentence] -> MatcherState [Sentence]
@@ -149,8 +258,6 @@ matchBlocks (b:bs) = do
     resetVariables
     bs' <- matchBlocks bs
     return $ b':bs'
-
-
 
 --
 
