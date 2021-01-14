@@ -53,6 +53,13 @@ setVarType vn t' = do
         Just t -> when (t /= t') $ missmatchingTypeAssign vn t t'
         Nothing -> modify (\(fE, vE, sE) -> (fE, (vn, t'):vE, sE))
 
+removeVarType :: Name -> MatcherState ()
+removeVarType vn = do
+    vE <- getVarEnv
+    let vE' = filter ((vn /=) . fst) vE
+    setVarEnv vE'
+
+
 getOperatorType :: Title -> [Value] -> MatcherState (Maybe Type)
 getOperatorType t vs = do
     fE <- getFunEnv
@@ -111,9 +118,17 @@ customError = lift . throwE
 missmatchingTypeAssign :: Name -> Type -> Type -> MatcherState a
 missmatchingTypeAssign vn t t' = customError $ "Can't assign value of type " ++ show t' ++ " to variable " ++ concat vn ++ " with type " ++ show t
 
--- Error that occurs when a variable has a value of a given type and is assigned a value of a different type
-alreadyDefinedArgument :: Name -> MatcherState a
-alreadyDefinedArgument vn = customError $ "Argument name " ++ concat vn ++ " can't be used more than once"
+-- Error that occurs when two parameters with the same name are used in a title
+alreadyDefinedParameter :: Name -> MatcherState a
+alreadyDefinedParameter vn = customError $ "Parameter name " ++ concat vn ++ " can't be used more than once"
+
+-- Error that occurs when a loop uses an iterator with the same name as an already defined variable
+alreadyDefinedIterator :: Name -> MatcherState a
+alreadyDefinedIterator vn = customError $ "Variable " ++ concat vn ++ " is already in use"
+
+-- Error that occurs when a value of the wrong type is used in a sentence
+wrongTypeValue :: Value -> Type -> MatcherState a
+wrongTypeValue v t = customError $ "Value " ++ show v ++ " should be of type " ++ show t
 
 -- Error that occurs when a matchable can't be matched
 unmatchable :: [MatchablePart] -> MatcherState a
@@ -130,21 +145,36 @@ registerTitleParameters [] = return ()
 registerTitleParameters (TitleWords _:ts) = registerTitleParameters ts
 registerTitleParameters (TitleParam n t:ts) = do
     r <- varIsDefined n
-    if r then alreadyDefinedArgument n else setVarType n t
+    if r then alreadyDefinedParameter n else setVarType n t
     registerTitleParameters ts
 
+-- Validates a sentence and persists its changes to the state, assuming that its arguments are correctly typed.
 commitSentence :: Sentence -> MatcherState ()
 commitSentence (VarDef ns v) = do
     t <- getValueType v
     mapM_ (`setVarType` t) ns
-commitSentence (If v s) = return ()
-commitSentence (IfElse v sTrue sFalse) = return ()
-commitSentence (For n vFrom vTo ss) = return ()
-commitSentence (ForEach n v ss) = return ()
-commitSentence (Until v ss) = return ()
-commitSentence (While v ss) = return ()
+commitSentence (If v ss) = commitSentences ss
+commitSentence (IfElse v ssTrue ssFalse) = commitSentences $ ssTrue ++ ssFalse
+commitSentence (For n vFrom vTo ss) = do
+    isDef <- varIsDefined n
+    when isDef $ alreadyDefinedIterator n
+    setVarType n IntT
+    commitSentences ss
+    removeVarType n
+commitSentence (ForEach n v ss) = do
+    isDef <- varIsDefined n
+    when isDef $ alreadyDefinedIterator n
+    eT <- getListElementsType v
+    setVarType n eT
+    commitSentences ss
+    removeVarType n
+commitSentence (Until v ss) = commitSentences ss
+commitSentence (While v ss) = commitSentences ss
 commitSentence (Result t v) = return ()
 commitSentence (ProcedureCall t vs) = return ()
+
+commitSentences :: [Sentence] -> MatcherState ()
+commitSentences = mapM_ commitSentence
 
 getValueType :: Value -> MatcherState Type
 getValueType (IntV _) = return IntT
@@ -156,6 +186,13 @@ getValueType (VarV n) = fromJust <$> getVarType n
 getValueType (PossessiveV (StructV n _) f) = fromJust <$> getStructFieldType n f
 getValueType (OperatorCall t vs) = fromJust <$> getOperatorType t vs
 
+getListElementsType :: Value -> MatcherState Type
+getListElementsType v = do
+    r <- getValueType v
+    case r of
+        ListT eT -> return eT
+        _ -> wrongTypeValue v (ListT $ AnyT "e")
+
 --
 
 
@@ -164,8 +201,8 @@ getValueType (OperatorCall t vs) = fromJust <$> getOperatorType t vs
 matchAsName :: [MatchablePart] -> MatcherState (Maybe Name)
 matchAsName [WordP s] = return $ Just [s]
 matchAsName (WordP s : ps) = do
-    ns <- matchAsName ps
-    case ns of
+    r <- matchAsName ps
+    case r of
         Just ns -> return $ Just (s:ns)
         Nothing -> return Nothing
 matchAsName _ = return Nothing
@@ -179,8 +216,7 @@ matchAsInt _ = return []
 
 matchAsBool :: [MatchablePart] -> MatcherState [Value]
 matchAsBool [WordP s] = do
-    let s' = map toLower s
-    case s' of
+    case map toLower s of
         "true" -> return [BoolV True]
         "false" -> return [BoolV False]
         _ -> return []
@@ -198,8 +234,8 @@ matchAsList _ = return []
 
 matchAsVar :: [MatchablePart] -> MatcherState [Value]
 matchAsVar ps = do
-    n <- matchAsName ps
-    case n of
+    r <- matchAsName ps
+    case r of
         Just n -> do
             r <- varIsDefined n
             return [VarV n | r]
@@ -269,9 +305,9 @@ matchProgram :: Program -> Either Error (Program, Env)
 matchProgram p = runExcept $ runStateT matchProgram' initialEnv
     where
         matchProgram' = do
-            p1 <- registerStructs p
-            p2 <- matchTitles p1
-            p3 <- registerFunctions p2
-            matchBlocks p3
+            --p1 <- registerStructs p
+            --p2 <- matchTitles p1
+            --p3 <- registerFunctions p2
+            matchBlocks p
 
 --

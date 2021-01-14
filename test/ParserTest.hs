@@ -372,6 +372,15 @@ titleTests = testGroup "Title"
                     T.NamedTitleParamM ["n"] (T.TypeM ["number"])
                 ],
 
+        testCase "Wrong end" $
+            expectedResult
+                P.title
+                "A number plus a number"
+                [
+                    T.UnnamedTitleParamM ["number", "plus"],
+                    T.UnnamedTitleParamM ["number"]
+                ],
+
         testCase "Argument" $
             expectedFailure P.title "A number"
     ]
