@@ -164,7 +164,7 @@ commitSentence (For n vFrom vTo ss) = do
 commitSentence (ForEach n v ss) = do
     isDef <- varIsDefined n
     when isDef $ alreadyDefinedIterator n
-    eT <- getListElementsType v
+    ~(ListT eT) <- getValueType v
     setVarType n eT
     commitSentences ss
     removeVarType n
@@ -185,13 +185,6 @@ getValueType (ListV t _) = return $ ListT t
 getValueType (VarV n) = fromJust <$> getVarType n
 getValueType (PossessiveV (StructV n _) f) = fromJust <$> getStructFieldType n f
 getValueType (OperatorCall t vs) = fromJust <$> getOperatorType t vs
-
-getListElementsType :: Value -> MatcherState Type
-getListElementsType v = do
-    r <- getValueType v
-    case r of
-        ListT eT -> return eT
-        _ -> wrongTypeValue v (ListT $ AnyT "e")
 
 --
 
