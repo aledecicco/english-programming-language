@@ -41,7 +41,7 @@ symbol = void . L.symbol' sc
 -- General
 
 reservedWords :: [String]
-reservedWords = ["be", "and", "if", "from", "to", "in", "is", "an", "a"]
+reservedWords = ["be", "and", "if", "from", "to", "in", "is", "an", "a", "with", "equal"]
 
 anyWord :: Parser String
 anyWord = lexeme (some letterChar <* notFollowedBy alphaNumChar) <?> "word"
@@ -196,7 +196,7 @@ variablesDefinition = do
 
 simpleIf :: Parser Sentence
 simpleIf = do
-    c <- try $ reserved "if" >> value <* comma
+    c <- try $ reserved "if" >> condition <* comma
     s <- simpleSentence
     (IfElse c [s] <$> simpleElse) <|> return (If c [s])
     where
@@ -209,7 +209,7 @@ simpleIf = do
 
 ifBlock :: Parser Sentence
 ifBlock = do
-    (c, ss) <- listWithHeader (reserved "if" >> value) sentence
+    (c, ss) <- listWithHeader (reserved "if" >> condition) sentence
     (IfElse c ss <$> elseBlock) <|> return (If c ss)
     where
         elseBlock :: Parser [Sentence]
@@ -258,24 +258,24 @@ forHeader = do
 
 simpleUntil :: Parser Sentence
 simpleUntil = do
-    c <- try $ reserved "until" >> value <* comma
+    c <- try $ reserved "until" >> condition <* comma
     s <- simpleSentence
     return $ Until c [s]
 
 untilBlock :: Parser Sentence
 untilBlock = do
-    (c, ss) <- listWithHeader (reserved "until" >> value) sentence
+    (c, ss) <- listWithHeader (reserved "until" >> condition) sentence
     return $ Until c ss
 
 simpleWhile :: Parser Sentence
 simpleWhile = do
-    c <- try $ reserved "while" >> value <* comma
+    c <- try $ reserved "while" >> condition <* comma
     s <- simpleSentence
     return $ While c [s]
 
 whileBlock :: Parser Sentence
 whileBlock = do
-    (c, ss) <- listWithHeader (reserved "while" >> value) sentence
+    (c, ss) <- listWithHeader (reserved "while" >> condition) sentence
     return $ While c ss
 
 -- Parses a return statement
@@ -289,14 +289,42 @@ result = do
 
 sentenceMatchable :: Parser Sentence
 sentenceMatchable = SentenceM <$> some matchablePart
+
 --
 
 
 -- Values
 
--- Parses a value (which initially can only be a matchable)
 value :: Parser Value
-value = ValueM <$> some matchablePart
+value = listMatchable <|> structValue <|> valueMatchable
+
+-- Parses a list with matchables as elements
+listMatchable :: Parser Value
+listMatchable = do
+    try $ reserved "a" >> reserved "list"
+    reserved "composed"
+    reserved "of"
+    ListM <$> series valueMatchable
+
+structValue :: Parser Value
+structValue = do
+    n <- try $ indefiniteArticle >> name <* reserved "with"
+    StructV n <$> series structValueField
+    where
+        structValueField :: Parser (Name, Value)
+        structValueField = do
+            n <- name
+            reserved "equal"
+            reserved "to"
+            v <- value
+            return (n, v)
+
+
+valueMatchable :: Parser Value
+valueMatchable = ValueM <$> some matchablePart
+
+condition :: Parser Value
+condition = valueMatchable
 
 matchablePart :: Parser MatchablePart
 matchablePart =

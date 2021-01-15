@@ -1,6 +1,6 @@
 module Matcher where
 
-import Control.Monad ( when, void )
+import Control.Monad ( when, void, filterM )
 import Control.Monad.Trans.State ( get, gets, put, modify, liftCatch, runStateT, StateT )
 import Control.Monad.Trans.Except ( throwE, catchE, runExcept, Except )
 import Control.Monad.Trans.Class ( lift )
@@ -148,7 +148,7 @@ registerTitleParameters (TitleParam n t:ts) = do
     if r then alreadyDefinedParameter n else setVarType n t
     registerTitleParameters ts
 
--- Validates a sentence and persists its changes to the state, assuming that its arguments are correctly typed.
+-- Validates a sentence and persists its changes to the state, assuming that its arguments are correctly typed
 commitSentence :: Sentence -> MatcherState ()
 commitSentence (VarDef ns v) = do
     t <- getValueType v
@@ -173,6 +173,7 @@ commitSentence (While v ss) = commitSentences ss
 commitSentence (Result t v) = return ()
 commitSentence (ProcedureCall t vs) = return ()
 
+-- Commits the sentences in a list in order
 commitSentences :: [Sentence] -> MatcherState ()
 commitSentences = mapM_ commitSentence
 
@@ -200,38 +201,28 @@ matchAsName (WordP s : ps) = do
         Nothing -> return Nothing
 matchAsName _ = return Nothing
 
-matchAsProcedureCall :: [MatchablePart] -> MatcherState [Sentence]
-matchAsProcedureCall ps = return []
-
 matchAsInt :: [MatchablePart] -> MatcherState [Value]
 matchAsInt [IntP n] = return [IntV n]
 matchAsInt _ = return []
 
 matchAsBool :: [MatchablePart] -> MatcherState [Value]
-matchAsBool [WordP s] = do
-    case map toLower s of
-        "true" -> return [BoolV True]
-        "false" -> return [BoolV False]
-        _ -> return []
+matchAsBool [WordP s]
+    | s == "true" = return [BoolV True]
+    | s == "false" = return [BoolV False]
 matchAsBool _ = return []
 
 matchAsString :: [MatchablePart] -> MatcherState [Value]
 matchAsString [LiteralP n] = return [StringV n]
 matchAsString _ = return []
 
-matchAsStruct :: [MatchablePart] -> MatcherState [Value]
-matchAsStruct _ = return []
-
-matchAsList :: [MatchablePart] -> MatcherState [Value]
-matchAsList _ = return []
-
 matchAsVar :: [MatchablePart] -> MatcherState [Value]
 matchAsVar ps = do
     r <- matchAsName ps
     case r of
-        Just n -> do
-            r <- varIsDefined n
-            return [VarV n | r]
+        Just (w:ws) -> do
+            let pos = if w == "the" then [w:ws, ws] else [w:ws]
+            pos' <- filterM varIsDefined pos
+            return $ map VarV pos'
         Nothing -> return []
 
 matchAsPossessive :: [MatchablePart] -> MatcherState [Value]
@@ -240,17 +231,22 @@ matchAsPossessive _ = return []
 matchAsOperatorCall :: [MatchablePart] -> MatcherState [Value]
 matchAsOperatorCall _ = return []
 
+matchAsProcedureCall :: [MatchablePart] -> MatcherState [Sentence]
+matchAsProcedureCall ps = return []
+
+
+-- Matches a value matchable as any type of value
 matchValue :: Value -> MatcherState [Value]
 matchValue (ValueM ps) = do
     asInt <- matchAsInt ps
     asBool <- matchAsBool ps
     asString <- matchAsString ps
-    asStruct <- matchAsStruct ps
-    asList <- matchAsList ps
     asVar <- matchAsVar ps
     asPossessive <- matchAsPossessive ps
     asOperatorCall <- matchAsOperatorCall ps
-    return $ asInt ++ asBool ++ asString ++ asStruct ++ asList ++ asVar ++ asPossessive ++ asOperatorCall
+    return $ asInt ++ asBool ++ asString ++ asVar ++ asPossessive ++ asOperatorCall
+matchValue (ListM es) = return [] -- ToDo: match list elements, checking that they have the same type
+matchValue (StructV n fs) = return [] -- ToDo: match field values, checking their integrity
 matchValue v = return [v]
 
 matchSentence :: Sentence -> MatcherState [Sentence]
@@ -261,6 +257,7 @@ matchSentence (If (ValueM ps) ss) = do
     return $ concatMap (\v -> map (If v) ssCombinations) vs
 matchSentence s = return [s]
 
+-- Matches a list of sentences, trying all possible combinations
 matchSentences :: [Sentence] -> MatcherState [Sentence]
 matchSentences [] = return []
 matchSentences (s:rest) = do
@@ -272,6 +269,7 @@ matchSentences (s:rest) = do
             rest' <- matchSentences rest
             return $ s':rest'
 
+-- Matches the matchables in each sentence of a block
 matchBlock :: Block -> MatcherState Block
 matchBlock b = case b of
     StructDef {} -> return b
@@ -280,6 +278,7 @@ matchBlock b = case b of
         ss' <- matchSentences ss
         return $ FunDef t ss'
 
+-- Matches the matchables in each block of a program
 matchBlocks :: Program -> MatcherState Program
 matchBlocks [] = return []
 matchBlocks (b:bs) = do

@@ -501,6 +501,22 @@ listWithHeaderTests = testGroup "ListWithHeader"
     where
         numberItems :: P.Parser (String, [Integer])
         numberItems = P.listWithHeader P.anyWord (P.integer <* P.dot)
+
+valueTests :: TestTree
+valueTests = testGroup "Value"
+    [
+         testCase "List" $
+            expectedResult
+                P.value
+                "A list composed of a, b and c"
+                (T.ListM [T.ValueM [T.WordP "a"], T.ValueM [T.WordP "b"], T.ValueM [T.WordP "c"]]),
+
+         testCase "Struct" $
+            expectedResult
+                P.value
+                "A car with license plate equal to \"abc\""
+                (T.StructV ["car"] [(["license", "plate"], T.ValueM [T.LiteralP "abc"])])
+    ]
 --
 
 
@@ -523,5 +539,6 @@ tests = testGroup "Parser"
         titleTests,
         titleWordsTests,
         titleParamTests,
-        listWithHeaderTests
+        listWithHeaderTests,
+        valueTests
     ]
