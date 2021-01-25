@@ -41,7 +41,7 @@ symbol = void . L.symbol' sc
 -- General
 
 reservedWords :: [String]
-reservedWords = ["be", "and", "if", "from", "to", "in", "is", "an", "a", "with", "equal"]
+reservedWords = ["be", "and", "if", "from", "to", "in", "is", "an", "a", "containing"]
 
 anyWord :: Parser String
 anyWord = lexeme (some letterChar <* notFollowedBy alphaNumChar) <?> "word"
@@ -58,7 +58,7 @@ identifier = do
     then fail $ "Incorrect use of reserved word \"" ++ w ++ "\""
     else return w
 
--- Parses a specific reserved word
+-- Parses a specific word
 reserved :: String -> Parser ()
 reserved w = lexeme $ string' w >> notFollowedBy alphaNumChar
 
@@ -116,8 +116,9 @@ listWithHeader pH pE = L.indentBlock scn listWithHeader'
 -- Blocks
 
 block :: Parser Block
-block = structDefinition <|> functionDefinition
+block = functionDefinition
 
+{-
 structDefinition :: Parser Block
 structDefinition = do
     ((sN, pN), fs) <- listWithHeader structDefinitionHeader fieldDefinition
@@ -136,6 +137,7 @@ structDefinition = do
             t <- TypeM <$> parens name
             dot
             return (n, t)
+-}
 
 functionDefinition :: Parser Block
 functionDefinition = do
@@ -153,12 +155,13 @@ title = do
 titleWords :: Parser TitlePart
 titleWords = TitleWords <$> some (notFollowedBy indefiniteArticle >> anyWord)
 
--- Parses a parameter of a function's title (which initially can only be a matchable)
+-- Parses a parameter of a function's title
 titleParam :: Parser TitlePart
 titleParam = do
     indefiniteArticle
     t <- name
-    (do a <- parens name; return $ NamedTitleParamM a (TypeM t)) <|> return (UnnamedTitleParamM t)
+    a <- parens name
+    return $ TitleParam a (TypeM t)
 
 --
 
@@ -251,9 +254,9 @@ forHeader = do
     reserved "for"
     i <- (try indefiniteArticle >> name) <|> name
     reserved "from"
-    vf <- value
+    vf <- valueMatchable
     reserved "to"
-    vt <- value
+    vt <- valueMatchable
     return (i, vf, vt)
 
 simpleUntil :: Parser Sentence
@@ -296,16 +299,18 @@ sentenceMatchable = SentenceM <$> some matchablePart
 -- Values
 
 value :: Parser Value
-value = listMatchable <|> structValue <|> valueMatchable
+value = listValue <|>{- structValue <|>-} valueMatchable
 
 -- Parses a list with matchables as elements
-listMatchable :: Parser Value
-listMatchable = do
+listValue :: Parser Value
+listValue = do
     try $ reserved "a" >> reserved "list"
-    reserved "composed"
     reserved "of"
-    ListM <$> series valueMatchable
+    tN <- name
+    l <- (reserved "containing" >> series valueMatchable) <|> return []
+    return $ ListV (TypeM tN) l
 
+{-
 structValue :: Parser Value
 structValue = do
     n <- try $ indefiniteArticle >> name <* reserved "with"
@@ -318,7 +323,7 @@ structValue = do
             reserved "to"
             v <- value
             return (n, v)
-
+-}
 
 valueMatchable :: Parser Value
 valueMatchable = ValueM <$> some matchablePart
@@ -331,7 +336,6 @@ matchablePart =
     IntP <$> integer
     <|> LiteralP <$> stringLiteral
     <|> WordP <$> anyWord
-    <|> (reserved "'s" >> return PossessiveP)
     <|> ParensP <$> parens (some matchablePart)
     <?> "valid term"
 
