@@ -181,8 +181,10 @@ getValueType :: Value -> MatcherState Type
 getValueType (IntV _) = return IntT
 getValueType (BoolV _) = return BoolT
 getValueType (StringV _) = return StringT
+getValueType (StructV n _) = return $ StructT n
 getValueType (ListV t _) = return $ ListT t
 getValueType (VarV n) = fromJust <$> getVarType n
+getValueType (PossessiveV (StructV n _) f) = fromJust <$> getStructFieldType n f
 getValueType (OperatorCall t vs) = fromJust <$> getOperatorType t vs
 
 --
@@ -240,8 +242,10 @@ matchValue (ValueM ps) = do
     asBool <- matchAsBool ps
     asString <- matchAsString ps
     asVar <- matchAsVar ps
+    asPossessive <- matchAsPossessive ps
     asOperatorCall <- matchAsOperatorCall ps
-    return $ asInt ++ asBool ++ asString ++ asVar ++ asOperatorCall
+    return $ asInt ++ asBool ++ asString ++ asVar ++ asPossessive ++ asOperatorCall
+matchValue (StructV n fs) = return [] -- ToDo: match field values, checking their integrity
 matchValue (ListV t es) = return [] -- ToDo: match list elements, checking that they have the same type
 matchValue v = return [v]
 
@@ -268,6 +272,7 @@ matchSentences (s:rest) = do
 -- Matches the matchables in each sentence of a block
 matchBlock :: Block -> MatcherState Block
 matchBlock b = case b of
+    StructDef {} -> return b
     FunDef t ss -> do
         registerTitleParameters t
         ss' <- matchSentences ss

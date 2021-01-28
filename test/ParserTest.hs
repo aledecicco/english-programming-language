@@ -308,6 +308,25 @@ intercalatedTests = testGroup "Intercalated"
             expectedFailure (P.intercalated P.identifier P.anyWord) "and"
     ]
 
+structDefinitionTests :: TestTree
+structDefinitionTests = testGroup "Struct definition"
+    [
+        testCase "One field" $
+            expectedResult
+                P.structDefinition
+                "Definition of car (cars):\n  A license plate (string)."
+                (T.StructDef ["car"] ["cars"] [(["license", "plate"], T.TypeM ["string"])]),
+
+        testCase "Many fields" $
+            expectedResult
+                P.structDefinition
+                "Definition of car (cars):\n  A license plate (string).\n  A model year (number)."
+                (T.StructDef ["car"] ["cars"] [(["license", "plate"], T.TypeM ["string"]), (["model", "year"], T.TypeM ["number"])]),
+
+        testCase "Without plural" $
+            expectedFailure P.structDefinition "Definition of car:\n  A license plate (string).\n  A model year (number)."
+    ]
+
 functionDefinitionTests :: TestTree
 functionDefinitionTests = testGroup "Function definition"
     [
@@ -469,7 +488,13 @@ valueTests = testGroup "Value"
             expectedResult
                 P.value
                 "A list of numbers containing a, b and c"
-                (T.ListV (T.TypeM ["numbers"]) [T.ValueM [T.WordP "a"], T.ValueM [T.WordP "b"], T.ValueM [T.WordP "c"]])
+                (T.ListV (T.TypeM ["numbers"]) [T.ValueM [T.WordP "a"], T.ValueM [T.WordP "b"], T.ValueM [T.WordP "c"]]),
+
+        testCase "Struct" $
+            expectedResult
+                P.value
+                "A car with license plate equal to \"abc\""
+                (T.StructV ["car"] [(["license", "plate"], T.ValueM [T.LiteralP "abc"])])
     ]
 --
 
@@ -488,6 +513,7 @@ tests = testGroup "Parser"
         parensTests,
         seriesTests,
         intercalatedTests,
+        structDefinitionTests,
         functionDefinitionTests,
         titleTests,
         titleWordsTests,

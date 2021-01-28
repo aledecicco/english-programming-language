@@ -41,7 +41,7 @@ symbol = void . L.symbol' sc
 -- General
 
 reservedWords :: [String]
-reservedWords = ["be", "and", "if", "from", "to", "in", "is", "an", "a", "containing"]
+reservedWords = ["be", "and", "if", "from", "to", "in", "is", "an", "a", "containing", "with", "equal"]
 
 anyWord :: Parser String
 anyWord = lexeme (some letterChar <* notFollowedBy alphaNumChar) <?> "word"
@@ -116,9 +116,8 @@ listWithHeader pH pE = L.indentBlock scn listWithHeader'
 -- Blocks
 
 block :: Parser Block
-block = functionDefinition
+block = structDefinition <|> functionDefinition
 
-{-
 structDefinition :: Parser Block
 structDefinition = do
     ((sN, pN), fs) <- listWithHeader structDefinitionHeader fieldDefinition
@@ -137,7 +136,6 @@ structDefinition = do
             t <- TypeM <$> parens name
             dot
             return (n, t)
--}
 
 functionDefinition :: Parser Block
 functionDefinition = do
@@ -299,7 +297,7 @@ sentenceMatchable = SentenceM <$> some matchablePart
 -- Values
 
 value :: Parser Value
-value = listValue <|>{- structValue <|>-} valueMatchable
+value = listValue <|> structValue <|> valueMatchable
 
 -- Parses a list with matchables as elements
 listValue :: Parser Value
@@ -310,7 +308,6 @@ listValue = do
     l <- (reserved "containing" >> series valueMatchable) <|> return []
     return $ ListV (TypeM tN) l
 
-{-
 structValue :: Parser Value
 structValue = do
     n <- try $ indefiniteArticle >> name <* reserved "with"
@@ -323,7 +320,6 @@ structValue = do
             reserved "to"
             v <- value
             return (n, v)
--}
 
 valueMatchable :: Parser Value
 valueMatchable = ValueM <$> some matchablePart
@@ -336,6 +332,7 @@ matchablePart =
     IntP <$> integer
     <|> LiteralP <$> stringLiteral
     <|> WordP <$> anyWord
+    <|> (reserved "'s" >> return PossessiveP)
     <|> ParensP <$> parens (some matchablePart)
     <?> "valid term"
 
