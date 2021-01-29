@@ -2,7 +2,7 @@ module Types where
 
 type Name = [String]
 
-data Type = IntT | BoolT | StringT |StructT Name | ListT Type | TypeM Name | AnyT String
+data Type = IntT | BoolT | StringT | StructT Name | ListT Type | TypeM Name | AnyT String
     deriving (Eq, Show)
 
 data MatchablePart = IntP Integer | LiteralP String | WordP String | PossessiveP | ParensP [MatchablePart]

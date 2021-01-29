@@ -493,8 +493,15 @@ valueTests = testGroup "Value"
         testCase "Struct" $
             expectedResult
                 P.value
-                "A car with license plate equal to \"abc\""
-                (T.StructV ["car"] [(["license", "plate"], T.ValueM [T.LiteralP "abc"])])
+                "A car with license plate equal to \"abc\", colour equal to \"red\" and manufacture year equal to 2021"
+                (T.StructV
+                    ["car"]
+                    [
+                        (["license", "plate"], T.ValueM [T.LiteralP "abc"]),
+                        (["colour"], T.ValueM [T.LiteralP "red"]),
+                        (["manufacture", "year"], T.ValueM [T.IntP 2021])
+                    ]
+                )
     ]
 --
 
