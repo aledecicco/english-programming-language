@@ -248,27 +248,40 @@ seriesTests = testGroup "Series"
         testCase "Two numbers" $
             expectedResult
                 (P.series P.integer)
-                "11 and 12"
+                "11, and 12"
                 [11, 12],
 
         testCase "Three numbers" $
             expectedResult
                 (P.series P.integer)
-                "11, 12 and 13"
+                "11, 12, and 13"
                 [11, 12, 13],
 
 
-        testCase "Without comma" $
+        testCase "Without commas" $
             expectedResult
                 (P.series P.integer)
                 "11 12 and 13"
                 [11],
 
+        testCase "Double and" $
+        expectedResult
+            (P.series P.valueMatchable)
+            "11, 12 and 13, and 14"
+            [
+                T.ValueM [T.IntP 11],
+                T.ValueM [T.IntP 12, T.WordP "and", T.IntP 13],
+                T.ValueM [T.IntP 14]
+            ],
+
+        testCase "Without last comma" $
+            expectedFailure (P.series P.integer) "11, 12 13",
+
         testCase "Without and" $
             expectedFailure (P.series P.integer) "11, 12, 13",
 
         testCase "Not and" $
-            expectedFailure (P.series P.integer) "11, 12 android 13"
+            expectedFailure (P.series P.integer) "11, 12, android 13"
     ]
 
 intercalatedTests :: TestTree
@@ -487,13 +500,13 @@ valueTests = testGroup "Value"
          testCase "List" $
             expectedResult
                 P.value
-                "A list of numbers containing a, b and c"
+                "A list of numbers containing a, b, and c"
                 (T.ListV (T.TypeM ["numbers"]) [T.ValueM [T.WordP "a"], T.ValueM [T.WordP "b"], T.ValueM [T.WordP "c"]]),
 
         testCase "Struct" $
             expectedResult
                 P.value
-                "A car with license plate equal to \"abc\", colour equal to \"red\" and manufacture year equal to 2021"
+                "A car with license plate equal to \"abc\", colour equal to \"red\", and manufacture year equal to 2021"
                 (T.StructV
                     ["car"]
                     [

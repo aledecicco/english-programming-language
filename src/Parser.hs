@@ -87,15 +87,15 @@ indefiniteArticle = reserved "an" <|> reserved "a"
 series :: Parser a -> Parser [a]
 series p = do
     x <- p;
-    xs <- series' <|> lastItem <|> return []
+    xs <- series' <|> return []
     return $ x:xs
     where
         series' = do
             comma
-            xs <-sepBy1 p comma
-            x' <- lastItem
-            return $ xs++x'
-        lastItem = reserved "and" >> (:[]) <$> p
+            xs <- (many . try) $ p <* comma
+            reserved "and"
+            x' <- p
+            return $ xs++[x']
 
 -- Parses an intercalated list of two parsers
 intercalated :: Parser a -> Parser a -> Parser [a]

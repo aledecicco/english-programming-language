@@ -80,13 +80,11 @@ functionIsDefined t = do
         Just _ -> return True
         Nothing -> return False
 
-getOperatorType :: Title -> [Value] -> MatcherState (Maybe Type)
-getOperatorType fT vs = do
+getOperatorType :: Title -> [Type] -> MatcherState (Maybe Type)
+getOperatorType fT vTs = do
     f <- getFunction fT
     case f of
-        Just (Operator _ tFun) -> do
-            vTs <- mapM getValueType vs
-            return $ Just (tFun vTs)
+        Just (Operator _ tFun) -> return $ Just (tFun vTs)
         _ -> return Nothing
 
 structIsDefined :: Name -> MatcherState Bool
@@ -173,7 +171,7 @@ alreadyDefinedIteratorError vn = customError $ "Variable \"" ++ concat vn ++ "\"
 
 -- Error that occurs when a value of the wrong type is used in a sentence
 wrongTypeValueError :: Value -> Type -> MatcherState a
-wrongTypeValueError v t = customError $ "Value \"" ++ show v ++ "\" should be of type " ++ show t
+wrongTypeValueError v t = customError $ "Expected value of type \"" ++ show t ++ ", but got \"" ++ show v ++ "\" instead"
 
 -- Error that occurs when a return statement is used in a procedure
 procedureReturnError :: Title -> MatcherState a
@@ -196,7 +194,7 @@ unmatchableAsError s ps = customError $ "\"" ++ show ps ++ "\" couldn't be under
 registerTitleParameters :: Title -> MatcherState ()
 registerTitleParameters [] = return ()
 registerTitleParameters (TitleWords _:ts) = registerTitleParameters ts
-registerTitleParameters (TitleParam n t:ts) = do
+registerTitleParameters (TitleParam n t : ts) = do
     r <- varIsDefined n
     when r $ alreadyDefinedParameterError n
     setVarType n t
@@ -225,7 +223,6 @@ commitSentence fT (ForEach n v ss) = do
 commitSentence fT (Until v ss) = commitSentences fT ss
 commitSentence fT (While v ss) = commitSentences fT ss
 commitSentence fT (Result t v) = do
-    t' <- getOperatorType fT
     r <- isOperator fT
     unless r $ procedureReturnError fT
 commitSentence fT (ProcedureCall t vs) = return ()
@@ -242,7 +239,10 @@ getValueType (StructV n _) = return $ StructT n
 getValueType (ListV t _) = return $ ListT t
 getValueType (VarV n) = fromJust <$> getVarType n
 getValueType (PossessiveV (StructV n _) f) = fromJust <$> getStructFieldType n f
-getValueType (OperatorCall t vs) = fromJust <$> getOperatorType t vs
+getValueType (OperatorCall t vs) = do
+    vTs <- mapM getValueType vs
+    opT <- getOperatorType t vTs
+    return $ fromJust opT
 
 getSingular :: Name -> MatcherState Name
 getSingular n =
@@ -332,7 +332,7 @@ matchField sn (fn, v) = do
     r <- getStructFieldType sn fn
     case r of
         Just t -> do
-            v' <- matchValueAs t v
+            v' <- matchValueWithType t v
             return (fn, v')
         Nothing -> undefinedStructFieldError sn fn
 
@@ -350,12 +350,12 @@ matchValue (StructV n fs) = do
     return $ StructV n fs'
 matchValue (ListV t es) = do
     t' <- matchType t
-    es' <- mapM (matchValueAs t) es
+    es' <- mapM (matchValueWithType t) es
     return $ ListV t' es'
 matchValue v = return v
 
-matchValueAs :: Type -> Value -> MatcherState Value
-matchValueAs t v = do
+matchValueWithType :: Type -> Value -> MatcherState Value
+matchValueWithType t v = do
     v' <- matchValue v
     t' <- getValueType v'
     r <- typesMatch t t'
@@ -368,34 +368,34 @@ matchSentence _ (VarDef ns v) = do
     v' <- matchValue v
     return $ VarDef ns v'
 matchSentence fT (If v ss) = do
-    v' <- matchValueAs BoolT v
+    v' <- matchValueWithType BoolT v
     ss' <- matchSentences fT ss
     return $ If v' ss'
 matchSentence fT (IfElse v ssTrue ssFalse) = do
-    v' <- matchValueAs BoolT v
+    v' <- matchValueWithType BoolT v
     ssTrue' <- matchSentences fT ssTrue
     ssFalse' <- matchSentences fT ssFalse
     return $ IfElse v' ssTrue' ssFalse'
 matchSentence fT (For n vFrom vTo ss) = do
-    vFrom' <- matchValueAs IntT vFrom
-    vTo' <- matchValueAs IntT vTo
+    vFrom' <- matchValueWithType IntT vFrom
+    vTo' <- matchValueWithType IntT vTo
     ss' <- matchSentences fT ss
     return $ For n vFrom' vTo' ss'
 matchSentence fT (ForEach n v ss) = do
-    v' <- matchValueAs (ListT $ AnyT "a") v
+    v' <- matchValueWithType (ListT $ AnyT "a") v
     ss' <- matchSentences fT ss
     return $ ForEach n v' ss'
 matchSentence fT (Until v ss) = do
-    v' <- matchValueAs BoolT v
+    v' <- matchValueWithType BoolT v
     ss' <- matchSentences fT ss
     return $ Until v' ss
 matchSentence fT (While v ss) = do
-    v' <- matchValueAs BoolT v
+    v' <- matchValueWithType BoolT v
     ss' <- matchSentences fT ss
     return $ While v' ss
 matchSentence _ (Result t v) = do
     t' <- matchType t
-    v' <- matchValueAs t' v
+    v' <- matchValueWithType t' v
     return $ Result t' v'
 matchSentence _ s = return s
 
