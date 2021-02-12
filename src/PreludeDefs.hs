@@ -21,14 +21,14 @@ operators =
         Operator
             [
                 TitleWords ["the", "first", "element", "of"],
-                TitleParam ["list"] (ListT (AnyT "t1"))
+                TitleParam ["list"] (ListT AnyT)
             ]
             (\[ListT t] -> t),
         Operator
             [
-                TitleParam ["list", "n"] (ListT (AnyT "t1")),
+                TitleParam ["list", "n"] (ListT AnyT),
                 TitleWords ["appended", "to"],
-                TitleParam ["list", "m"] (ListT (AnyT "t1"))
+                TitleParam ["list", "m"] (ListT AnyT)
             ]
             (\[ListT t, ListT _] -> t)
     ]
@@ -40,20 +40,20 @@ procedures =
         Procedure
             [
                 TitleWords ["print"],
-                TitleParam ["v"] (AnyT "t1")
+                TitleParam ["v"] AnyT
             ],
         Procedure
             [
                 TitleWords ["add"],
-                TitleParam ["e"] (AnyT "t1"),
+                TitleParam ["e"] AnyT,
                 TitleWords ["to"],
-                TitleParam ["l"] (ListT (AnyT "t1"))
+                TitleParam ["l"] (ListT AnyT)
             ],
         Procedure
             [
                 TitleWords ["append"],
-                TitleParam ["list", "n"] (ListT (AnyT "t1")),
+                TitleParam ["list", "m"] (ListT AnyT),
                 TitleWords ["to"],
-                TitleParam ["list", "m"] (ListT (AnyT "t1"))
+                TitleParam ["list", "n"] (ListT AnyT)
             ]
     ]

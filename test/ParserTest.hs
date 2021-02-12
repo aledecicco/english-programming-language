@@ -102,6 +102,60 @@ nameTests = testGroup "Name"
                 "and"
     ]
 
+
+typeNameTests :: TestTree
+typeNameTests = testGroup "Type name"
+    [
+        testCase "Integer" $
+            expectedResult
+                (P.typeName False)
+                "integer"
+                T.IntT,
+
+        testCase "Integers" $
+            expectedResult
+                (P.typeName True)
+                "integers"
+                T.IntT,
+
+        testCase "List" $
+            expectedResult
+                (P.typeName False)
+                "list of integers"
+                (T.ListT T.IntT),
+
+        testCase "List of lists" $
+            expectedResult
+                (P.typeName False)
+                "list of lists of integers"
+                (T.ListT (T.ListT T.IntT)),
+
+        testCase "List without element" $
+            expectedFailure
+                (P.typeName False)
+                "list",
+
+        testCase "List of lists without element" $
+            expectedFailure
+                (P.typeName False)
+                "list of lists",
+
+        testCase "Integers without plural" $
+            expectedFailure
+                (P.typeName True)
+                "integer",
+
+        testCase "Integer with plural" $
+            expectedFailure
+                (P.typeName False)
+                "integers",
+
+        testCase "List without plural element" $
+            expectedFailure
+                (P.typeName False)
+                "list of integer"
+    ]
+
 identifierTests :: TestTree
 identifierTests = testGroup "Identifier"
     [
@@ -321,42 +375,23 @@ intercalatedTests = testGroup "Intercalated"
             expectedFailure (P.intercalated P.identifier P.anyWord) "and"
     ]
 
-structDefinitionTests :: TestTree
-structDefinitionTests = testGroup "Struct definition"
-    [
-        testCase "One field" $
-            expectedResult
-                P.structDefinition
-                "Definition of car (cars):\n  A license plate (string)."
-                (T.StructDef ["car"] ["cars"] [(["license", "plate"], T.TypeM ["string"])]),
-
-        testCase "Many fields" $
-            expectedResult
-                P.structDefinition
-                "Definition of car (cars):\n  A license plate (string).\n  A model year (number)."
-                (T.StructDef ["car"] ["cars"] [(["license", "plate"], T.TypeM ["string"]), (["model", "year"], T.TypeM ["number"])]),
-
-        testCase "Without plural" $
-            expectedFailure P.structDefinition "Definition of car:\n  A license plate (string).\n  A model year (number)."
-    ]
-
 functionDefinitionTests :: TestTree
 functionDefinitionTests = testGroup "Function definition"
     [
         testCase "Many sentences" $
             expectedResult
                 P.functionDefinition
-                "The double of a number (m):\n  Let r be m times 2.\n  The resulting number is r."
+                "The double of an integer (m):\n  Let r be m times 2.\n  The result is r."
                 (T.FunDef
-                    [T.TitleWords ["The", "double", "of"], T.TitleParam ["m"] (T.TypeM ["number"])]
+                    [T.TitleWords ["The", "double", "of"], T.TitleParam ["m"] T.IntT]
                     [
                         T.VarDef [["r"]] (T.ValueM [T.WordP "m", T.WordP "times", T.IntP 2]),
-                        T.Result (T.TypeM ["number"]) (T.ValueM [T.WordP "r"])
+                        T.Result (T.ValueM [T.WordP "r"])
                     ]
                 ),
 
         testCase "Consecutive arguments in title" $
-            expectedFailure P.functionDefinition "The double of a number (m) a number (n):\n  The resulting number is m times n."
+            expectedFailure P.functionDefinition "The double of an integer (m) an integer (n):\n  The result is m times n."
     ]
 
 titleTests :: TestTree
@@ -371,25 +406,25 @@ titleTests = testGroup "Title"
         testCase "Many parts" $
             expectedResult
                 P.title
-                "Definition with a number (m) and a number (n)"
+                "Definition with an integer (m) and an integer (n)"
                 [
                     T.TitleWords ["Definition", "with"],
-                    T.TitleParam ["m"] (T.TypeM ["number"]),
+                    T.TitleParam ["m"] T.IntT,
                     T.TitleWords ["and"],
-                    T.TitleParam ["n"] (T.TypeM ["number"])
+                    T.TitleParam ["n"] T.IntT
                 ],
 
         testCase "Consecutive arguments" $
             expectedResult
                 P.title
-                "Definition with a number (m) a number (n)"
+                "Definition with an integer (m) an integer (n)"
                 [
                     T.TitleWords ["Definition", "with"],
-                    T.TitleParam ["m"] (T.TypeM ["number"])
+                    T.TitleParam ["m"] T.IntT
                 ],
 
         testCase "Missing name" $
-            expectedFailure P.title "Definition with a number"
+            expectedFailure P.title "Definition with an integer"
     ]
 
 titleWordsTests :: TestTree
@@ -410,7 +445,7 @@ titleWordsTests = testGroup "Title words"
         testCase "Words followed by parameter" $
             expectedResult
                 P.titleWords
-                "Function definition a number"
+                "Function definition an integer"
                 (T.TitleWords ["Function", "definition"]),
 
         testCase "Reserved word first" $
@@ -426,26 +461,26 @@ titleParamTests = testGroup "Title parameter"
         testCase "Named" $
             expectedResult
                 P.titleParam
-                "A number (m)"
-                (T.TitleParam ["m"] (T.TypeM ["number"])),
+                "An integer (m)"
+                (T.TitleParam ["m"] T.IntT),
 
         testCase "Followed by words" $
             expectedResult
                 P.titleParam
-                "A number (m) function definition"
-                (T.TitleParam ["m"] (T.TypeM ["number"])),
+                "An integer (m) function definition"
+                (T.TitleParam ["m"] T.IntT),
 
         testCase "Two parameters" $
             expectedResult
                 P.titleParam
-                "A number (m) a number (n)"
-                (T.TitleParam ["m"] (T.TypeM ["number"])),
+                "An integer (m) an integer (n)"
+                (T.TitleParam ["m"] T.IntT),
 
         testCase "Missing name" $
-            expectedFailure P.titleParam "A number",
+            expectedFailure P.titleParam "An integer",
 
         testCase "Missing article" $
-            expectedFailure P.titleParam "number (m)"
+            expectedFailure P.titleParam "integer (m)"
     ]
 
 listWithHeaderTests :: TestTree
@@ -453,46 +488,46 @@ listWithHeaderTests = testGroup "ListWithHeader"
     [
          testCase "One element" $
             expectedResult
-                numberItems
-                "Numbers:\n  11."
-                ("Numbers", [11]),
+                integerItems
+                "Integers:\n  11."
+                ("Integers", [11]),
 
         testCase "Many elements" $
             expectedResult
-                numberItems
-                "Numbers:\n  11.\n  12."
-                ("Numbers", [11, 12]),
+                integerItems
+                "Integers:\n  11.\n  12."
+                ("Integers", [11, 12]),
 
         testCase "Second element not indented" $
             expectedResult
-                numberItems
-                "Numbers:\n  11.\n12."
-                ("Numbers", [11]),
+                integerItems
+                "Integers:\n  11.\n12."
+                ("Integers", [11]),
 
         testCase "Nested lists" $
             expectedResult
-                (P.listWithHeader P.anyWord numberItems)
+                (P.listWithHeader P.anyWord integerItems)
                 "Lists:\n  First:\n    11.\n    12.\n  Second:\n    13.\n    14."
                 ("Lists", [("First", [11, 12]), ("Second", [13, 14])]),
 
         testCase "No elements" $
-            expectedFailure numberItems "Numbers:\n",
+            expectedFailure integerItems "Integers:\n",
 
         testCase "Incorrect header" $
-            expectedFailure numberItems "Number11:\n  11.",
+            expectedFailure integerItems "Integers11:\n  11.",
 
         testCase "First element not indented" $
-            expectedFailure numberItems "Numbers:\n11.",
+            expectedFailure integerItems "Integers:\n11.",
 
         testCase "First element without dot" $
-            expectedFailure numberItems "Numbers:\n  11",
+            expectedFailure integerItems "Integers:\n  11",
 
         testCase "Second element without dot" $
-            expectedFailure numberItems "Numbers:\n  11.\n  12"
+            expectedFailure integerItems "Integers:\n  11.\n  12"
     ]
     where
-        numberItems :: P.Parser (String, [Integer])
-        numberItems = P.listWithHeader P.anyWord (P.integer <* P.dot)
+        integerItems :: P.Parser (String, [Integer])
+        integerItems = P.listWithHeader P.anyWord (P.integer <* P.dot)
 
 valueTests :: TestTree
 valueTests = testGroup "Value"
@@ -500,21 +535,8 @@ valueTests = testGroup "Value"
          testCase "List" $
             expectedResult
                 P.value
-                "A list of numbers containing a, b, and c"
-                (T.ListV (T.TypeM ["numbers"]) [T.ValueM [T.WordP "a"], T.ValueM [T.WordP "b"], T.ValueM [T.WordP "c"]]),
-
-        testCase "Struct" $
-            expectedResult
-                P.value
-                "A car with license plate equal to \"abc\", colour equal to \"red\", and manufacture year equal to 2021"
-                (T.StructV
-                    ["car"]
-                    [
-                        (["license", "plate"], T.ValueM [T.LiteralP "abc"]),
-                        (["colour"], T.ValueM [T.LiteralP "red"]),
-                        (["manufacture", "year"], T.ValueM [T.IntP 2021])
-                    ]
-                )
+                "A list of integers containing a, b, and c"
+                (T.ListV T.IntT [T.ValueM [T.WordP "a"], T.ValueM [T.WordP "b"], T.ValueM [T.WordP "c"]])
     ]
 --
 
@@ -526,6 +548,7 @@ tests = testGroup "Parser"
     [
         anyWordTests,
         nameTests,
+        typeNameTests,
         identifierTests,
         reservedTests,
         integerTests,
@@ -533,7 +556,6 @@ tests = testGroup "Parser"
         parensTests,
         seriesTests,
         intercalatedTests,
-        structDefinitionTests,
         functionDefinitionTests,
         titleTests,
         titleWordsTests,

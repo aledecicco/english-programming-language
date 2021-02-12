@@ -2,17 +2,16 @@ module Types where
 
 type Name = [String]
 
-data Type = IntT | BoolT | StringT | StructT Name | ListT Type | TypeM Name | AnyT String
+data Type = IntT | BoolT | StringT | ListT Type | AnyT
     deriving (Eq, Show)
 
-data MatchablePart = IntP Integer | LiteralP String | WordP String | PossessiveP | ParensP [MatchablePart]
+data MatchablePart = IntP Integer | LiteralP String | WordP String | ParensP [MatchablePart]
     deriving (Eq, Show)
 
 data Value =
     ValueM [MatchablePart]
     | IntV Integer | BoolV Bool | StringV String
-    | StructV Name [(Name, Value)] | ListV Type [Value]
-    | VarV Name | PossessiveV Value Name
+    | ListV Type [Value] | VarV Name
     | OperatorCall Title [Value]
     deriving (Eq, Show)
 
@@ -22,11 +21,11 @@ data Sentence =
     | If Value [Sentence] | IfElse Value [Sentence] [Sentence]
     | For Name Value Value [Sentence] | ForEach Name Value [Sentence]
     | Until Value [Sentence] | While Value [Sentence]
-    | Result Type Value
+    | Result Value
     | ProcedureCall Title [Value]
     deriving (Eq, Show)
 
-data Block = FunDef Title [Sentence] | StructDef Name Name [(Name, Type)]
+data Block = FunDef Title [Sentence]
     deriving (Eq, Show)
 
 type Program = [Block]

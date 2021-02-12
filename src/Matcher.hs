@@ -20,25 +20,21 @@ type Error = String
 
 type FunEnv = [Function]
 type VarEnv = [(Name, Type)]
-type StructEnv = [(Name, Name, [(Name, Type)])]
-type Env = (FunEnv, VarEnv, StructEnv)
+type Env = (FunEnv, VarEnv)
 
 type MatcherState a = StateT Env (Except Error) a
 
 initialEnv :: Env
-initialEnv = (operators ++ procedures, [], [])
+initialEnv = (operators ++ procedures, [])
 
 getVarEnv :: MatcherState VarEnv
-getVarEnv = gets (\(_, vE, _) -> vE)
+getVarEnv = gets snd
 
 getFunEnv :: MatcherState FunEnv
-getFunEnv = gets (\(fE, _, _) -> fE)
-
-getStructEnv :: MatcherState StructEnv
-getStructEnv = gets (\(_, _, sE) -> sE)
+getFunEnv = gets fst
 
 setVarEnv :: VarEnv -> MatcherState ()
-setVarEnv vE = modify (\(fE, _, sE) -> (fE, vE, sE))
+setVarEnv vE = modify (\(fE, _) -> (fE, vE))
 
 getVarType :: Name -> MatcherState (Maybe Type)
 getVarType vn = do
@@ -51,7 +47,7 @@ setVarType vn t' = do
     r <- getVarType vn
     case r of
         Just t -> when (t /= t') $ missmatchingTypeAssignError vn t t'
-        Nothing -> modify (\(fE, vE, sE) -> (fE, (vn, t'):vE, sE))
+        Nothing -> modify (\(fE, vE) -> (fE, (vn, t'):vE))
 
 removeVarType :: Name -> MatcherState ()
 removeVarType vn = do
@@ -87,37 +83,6 @@ getOperatorType fT vTs = do
         Just (Operator _ tFun) -> return $ Just (tFun vTs)
         _ -> return Nothing
 
-structIsDefined :: Name -> MatcherState Bool
-structIsDefined n = do
-    sE <- getStructEnv
-    let r = find (\(n', _, fs) -> n == n') sE
-    case r of
-        Just _ -> return True
-        Nothing -> return False
-
-getStructSingular :: Name -> MatcherState (Maybe Name)
-getStructSingular n = do
-    sE <- getStructEnv
-    let r = find (\(_, n', fs) -> n == n') sE
-    case r of
-        Just (sN, _, _) -> return $ Just sN
-        Nothing -> return Nothing
-
-getStructFields :: Name -> MatcherState (Maybe [(Name, Type)])
-getStructFields n = do
-    sE <- getStructEnv
-    let r = find (\(n', _, fs) -> n == n') sE
-    case r of
-        Just (_, _, fs) -> return $ Just fs
-        Nothing -> return Nothing
-
-getStructFieldType :: Name -> Name -> MatcherState (Maybe Type)
-getStructFieldType sn fn = do
-    fs <- getStructFields sn
-    case fs of
-        Just fs -> return $ snd <$> find (\(fn', t) -> fn == fn') fs
-        Nothing -> return Nothing
-
 varIsDefined :: Name -> MatcherState Bool
 varIsDefined vn = do
     r <- getVarType vn
@@ -152,14 +117,6 @@ missmatchingTypeAssignError vn t t' = customError $ "Can't assign value of type 
 -- Error that occurs when an undefined variable is used
 undefinedVariableError :: Name -> MatcherState a
 undefinedVariableError vn = customError $ "Variable \"" ++ concat vn ++ "\" is not defined"
-
--- Error that occurs when an undefined struct is used
-undefinedStructError :: Name -> MatcherState a
-undefinedStructError sn = customError $ "Struct \"" ++ concat sn ++ "\" is not defined"
-
--- Error that occurs when an undefined struct field is used
-undefinedStructFieldError :: Name -> Name -> MatcherState a
-undefinedStructFieldError sn fn = customError $ "Field \"" ++ concat fn ++ "\" is not defined in struct \"" ++ concat sn ++ "\""
 
 -- Error that occurs when two parameters with the same name are used in a title
 alreadyDefinedParameterError :: Name -> MatcherState a
@@ -222,7 +179,7 @@ commitSentence fT (ForEach n v ss) = do
     removeVarType n
 commitSentence fT (Until v ss) = commitSentences fT ss
 commitSentence fT (While v ss) = commitSentences fT ss
-commitSentence fT (Result t v) = do
+commitSentence fT (Result v) = do
     r <- isOperator fT
     unless r $ procedureReturnError fT
 commitSentence fT (ProcedureCall t vs) = return ()
@@ -235,31 +192,16 @@ getValueType :: Value -> MatcherState Type
 getValueType (IntV _) = return IntT
 getValueType (BoolV _) = return BoolT
 getValueType (StringV _) = return StringT
-getValueType (StructV n _) = return $ StructT n
 getValueType (ListV t _) = return $ ListT t
 getValueType (VarV n) = fromJust <$> getVarType n
-getValueType (PossessiveV (StructV n _) f) = fromJust <$> getStructFieldType n f
 getValueType (OperatorCall t vs) = do
     vTs <- mapM getValueType vs
     opT <- getOperatorType t vTs
     return $ fromJust opT
 
-getSingular :: Name -> MatcherState Name
-getSingular n =
-    case n of
-        ["integers"] -> return ["integer"]
-        ["bools"] -> return ["bool"]
-        ["strings"] -> return ["string"]
-        ("lists":"of":eN) -> return ("list":"of":eN)
-        structPlural -> do
-            structSingular <- getStructSingular structPlural
-            case structSingular of
-                Just n' -> return n'
-                Nothing -> undefinedStructError n
-
 typesMatch :: Type -> Type -> MatcherState Bool
-typesMatch (AnyT _) _ = return True
-typesMatch _ (AnyT _) = return True
+typesMatch AnyT _ = return True
+typesMatch _ AnyT = return True
 typesMatch (ListT t1) (ListT t2) = typesMatch t1 t2
 typesMatch t1 t2 = return $ t1 == t2
 
@@ -303,55 +245,22 @@ matchAsVar ps = do
             unless isDef $ undefinedVariableError n
             return $ VarV n
 
-matchAsPossessive :: [MatchablePart] -> MatcherState Value
-matchAsPossessive _ = undefined
-
 matchAsOperatorCall :: [MatchablePart] -> MatcherState Value
 matchAsOperatorCall _ = undefined
 
 matchAsProcedureCall :: [MatchablePart] -> MatcherState Sentence
 matchAsProcedureCall ps = undefined
 
-matchType :: Type -> MatcherState Type
-matchType (TypeM n) =
-    case n of
-        ["integer"] -> return IntT
-        ["bool"] -> return BoolT
-        ["string"] -> return StringT
-        ("list":"of":eN) -> do
-            eN' <- getSingular eN
-            eT <- matchType $ TypeM eN'
-            return $ ListT eT
-        sN -> do
-            r <- structIsDefined sN
-            unless r $ undefinedStructError sN
-            return $ StructT sN
-
-matchField :: Name -> (Name, Value) -> MatcherState (Name, Value)
-matchField sn (fn, v) = do
-    r <- getStructFieldType sn fn
-    case r of
-        Just t -> do
-            v' <- matchValueWithType t v
-            return (fn, v')
-        Nothing -> undefinedStructFieldError sn fn
-
 -- Matches a value matchable as any type of value
 matchValue :: Value -> MatcherState Value
 matchValue (ValueM [ParensP ps]) = matchValue (ValueM ps)
 matchValue (ValueM ps) =
     matchAsInt ps <|> matchAsBool ps <|> matchAsString ps
-    <|> matchAsVar ps <|> matchAsPossessive ps <|> matchAsOperatorCall ps
+    <|> matchAsVar ps <|> matchAsOperatorCall ps
     <|> unmatchableError ps
-matchValue (StructV n fs) = do
-    r <- structIsDefined n
-    unless r $ undefinedStructError n
-    fs' <- mapM (matchField n) fs
-    return $ StructV n fs'
 matchValue (ListV t es) = do
-    t' <- matchType t
     es' <- mapM (matchValueWithType t) es
-    return $ ListV t' es'
+    return $ ListV t es'
 matchValue v = return v
 
 matchValueWithType :: Type -> Value -> MatcherState Value
@@ -382,7 +291,7 @@ matchSentence fT (For n vFrom vTo ss) = do
     ss' <- matchSentences fT ss
     return $ For n vFrom' vTo' ss'
 matchSentence fT (ForEach n v ss) = do
-    v' <- matchValueWithType (ListT $ AnyT "a") v
+    v' <- matchValueWithType (ListT AnyT) v
     ss' <- matchSentences fT ss
     return $ ForEach n v' ss'
 matchSentence fT (Until v ss) = do
@@ -393,10 +302,9 @@ matchSentence fT (While v ss) = do
     v' <- matchValueWithType BoolT v
     ss' <- matchSentences fT ss
     return $ While v' ss
-matchSentence _ (Result t v) = do
-    t' <- matchType t
-    v' <- matchValueWithType t' v
-    return $ Result t' v'
+matchSentence _ (Result v) = do
+    v' <- matchValue v
+    return $ Result v'
 matchSentence _ s = return s
 
 matchSentences :: Title -> [Sentence] -> MatcherState [Sentence]
@@ -409,12 +317,10 @@ matchSentences fT (s:rest) = do
 
 -- Matches the matchables in each sentence of a block
 matchBlock :: Block -> MatcherState Block
-matchBlock b = case b of
-    StructDef {} -> return b
-    FunDef t ss -> do
-        registerTitleParameters t
-        ss' <- matchSentences t ss
-        return $ FunDef t ss'
+matchBlock (FunDef t ss) = do
+    registerTitleParameters t
+    ss' <- matchSentences t ss
+    return $ FunDef t ss'
 
 -- Matches the matchables in each block of a program
 matchBlocks :: Program -> MatcherState Program

@@ -50,6 +50,28 @@ anyWord = lexeme (some letterChar <* notFollowedBy alphaNumChar) <?> "word"
 name :: Parser Name
 name = (some . try) identifier <?> "name"
 
+-- Parses a type by its name
+typeName :: Bool -> Parser Type
+typeName True =
+    (reserved "integers" >> return IntT)
+    <|> (reserved "booleans" >> return BoolT)
+    <|> (reserved "strings" >> return StringT)
+    <|> (do
+            reserved "lists"
+            reserved "of"
+            eT <- typeName True
+            return $ ListT eT)
+typeName False =
+    (reserved "integer" >> return IntT)
+    <|> (reserved "boolean" >> return BoolT)
+    <|> (reserved "string" >> return StringT)
+    <|> (do
+            reserved "list"
+            reserved "of"
+            eT <- typeName True
+            return $ ListT eT)
+
+
 -- Parses a word and checks that it's not reserved
 identifier :: Parser String
 identifier = do
@@ -116,26 +138,7 @@ listWithHeader pH pE = L.indentBlock scn listWithHeader'
 -- Blocks
 
 block :: Parser Block
-block = structDefinition <|> functionDefinition
-
-structDefinition :: Parser Block
-structDefinition = do
-    ((sN, pN), fs) <- listWithHeader structDefinitionHeader fieldDefinition
-    return $ StructDef sN pN fs
-    where
-        structDefinitionHeader :: Parser (Name, Name)
-        structDefinitionHeader = do
-            reserved "definition"
-            reserved "of"
-            sN <- name
-            pN <- parens name
-            return (sN, pN)
-        fieldDefinition :: Parser (Name, Type)
-        fieldDefinition = do
-            n <- (try indefiniteArticle >> name) <|> name
-            t <- TypeM <$> parens name
-            dot
-            return (n, t)
+block = functionDefinition
 
 functionDefinition :: Parser Block
 functionDefinition = do
@@ -157,9 +160,9 @@ titleWords = TitleWords <$> some (notFollowedBy indefiniteArticle >> anyWord)
 titleParam :: Parser TitlePart
 titleParam = do
     indefiniteArticle
-    t <- name
+    t <- typeName False
     a <- parens name
-    return $ TitleParam a (TypeM t)
+    return $ TitleParam a t
 
 --
 
@@ -283,10 +286,9 @@ whileBlock = do
 result :: Parser Sentence
 result = do
     reserved "the"
-    reserved "resulting"
-    t <- TypeM <$> name
+    reserved "result"
     reserved "is"
-    Result t <$> value
+    Result <$> value
 
 sentenceMatchable :: Parser Sentence
 sentenceMatchable = SentenceM <$> some matchablePart
@@ -297,29 +299,16 @@ sentenceMatchable = SentenceM <$> some matchablePart
 -- Values
 
 value :: Parser Value
-value = listValue <|> structValue <|> valueMatchable
+value = listValue <|> valueMatchable
 
 -- Parses a list with matchables as elements
 listValue :: Parser Value
 listValue = do
     try $ reserved "a" >> reserved "list"
     reserved "of"
-    tN <- name
+    t <- typeName True
     l <- (reserved "containing" >> series valueMatchable) <|> return []
-    return $ ListV (TypeM tN) l
-
-structValue :: Parser Value
-structValue = do
-    n <- try $ indefiniteArticle >> name <* reserved "with"
-    StructV n <$> series structValueField
-    where
-        structValueField :: Parser (Name, Value)
-        structValueField = do
-            n <- name
-            reserved "equal"
-            reserved "to"
-            v <- value
-            return (n, v)
+    return $ ListV t l
 
 valueMatchable :: Parser Value
 valueMatchable = ValueM <$> some matchablePart
@@ -332,7 +321,6 @@ matchablePart =
     IntP <$> integer
     <|> LiteralP <$> stringLiteral
     <|> WordP <$> anyWord
-    <|> (reserved "'s" >> return PossessiveP)
     <|> ParensP <$> parens (some matchablePart)
     <?> "valid term"
 
