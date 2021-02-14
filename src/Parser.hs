@@ -54,6 +54,7 @@ name = (some . try) identifier <?> "name"
 typeName :: Bool -> Parser Type
 typeName True =
     (reserved "integers" >> return IntT)
+    <|> (reserved "floats" >> return FloatT)
     <|> (reserved "booleans" >> return BoolT)
     <|> (reserved "strings" >> return StringT)
     <|> (do
@@ -63,6 +64,7 @@ typeName True =
             return $ ListT eT)
 typeName False =
     (reserved "integer" >> return IntT)
+    <|> (reserved "float" >> return FloatT)
     <|> (reserved "boolean" >> return BoolT)
     <|> (reserved "string" >> return StringT)
     <|> (do
@@ -85,7 +87,10 @@ reserved :: String -> Parser ()
 reserved w = lexeme $ string' w >> notFollowedBy alphaNumChar
 
 integer :: Parser Integer
-integer = lexeme $ L.signed empty L.decimal <* notFollowedBy alphaNumChar
+integer = lexeme $ L.signed (return ()) L.decimal <* notFollowedBy alphaNumChar
+
+float :: Parser Float
+float = lexeme $ L.signed (return ()) L.float <* notFollowedBy alphaNumChar
 
 comma :: Parser ()
 comma = symbol "," <?> "comma"
@@ -318,7 +323,8 @@ condition = valueMatchable
 
 matchablePart :: Parser MatchablePart
 matchablePart =
-    IntP <$> integer
+    try (FloatP <$> float)
+    <|> IntP <$> integer
     <|> LiteralP <$> stringLiteral
     <|> WordP <$> anyWord
     <|> ParensP <$> parens (some matchablePart)

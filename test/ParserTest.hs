@@ -212,6 +212,12 @@ integerTests = testGroup "Integer"
                 "11"
                 11,
 
+        testCase "Negative" $
+            expectedResult
+                P.integer
+                "-11"
+                (-11),
+
         testCase "Followed by symbol" $
             expectedResult
                 P.integer
@@ -224,11 +230,64 @@ integerTests = testGroup "Integer"
                 "11 12"
                 11,
 
+        testCase "Not a float" $
+            expectedResult
+                P.integer
+                "11.a"
+                11,
+
+        testCase "A float" $
+            expectedResult
+                P.integer
+                "11.12"
+                11,
+
         testCase "Word" $
             expectedFailure P.integer "word",
 
-        testCase "Followed by letter" $
-            expectedFailure P.integer "word1"
+        testCase "Negative with space" $
+            expectedFailure P.integer "- 11"
+    ]
+
+
+floatTests :: TestTree
+floatTests = testGroup "Integer"
+    [
+        testCase "Number" $
+            expectedResult
+                P.float
+                "11.12"
+                11.12,
+
+        testCase "Negative" $
+            expectedResult
+                P.float
+                "-11.12"
+                (-11.12),
+
+        testCase "Many numbers" $
+            expectedResult
+                P.float
+                "11.12 12.13"
+                11.12,
+
+        testCase "Not a float" $
+            expectedFailure P.float "11.a",
+
+        testCase "An integer" $
+            expectedFailure P.float "11",
+
+        testCase "Word" $
+            expectedFailure P.float "word",
+
+        testCase "With space after dot" $
+            expectedFailure P.float "11. 12",
+
+        testCase "With space before dot" $
+            expectedFailure P.float "11 .12",
+
+        testCase "Negative with space" $
+            expectedFailure P.float "- 11.12"
     ]
 
 stringLiteralTests :: TestTree
@@ -552,6 +611,7 @@ tests = testGroup "Parser"
         identifierTests,
         reservedTests,
         integerTests,
+        floatTests,
         stringLiteralTests,
         parensTests,
         seriesTests,

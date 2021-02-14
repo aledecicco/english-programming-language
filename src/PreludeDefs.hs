@@ -13,22 +13,22 @@ operators =
     [
         Operator
             [
-                TitleParam ["number", "m"] IntT,
+                TitleParam ["m"] FloatT,
                 TitleWords ["plus"],
-                TitleParam ["number", "n"] IntT
+                TitleParam ["n"] FloatT
             ]
-            (const IntT),
+            (\[tM, tN] -> if tM == FloatT || tN == FloatT then FloatT else IntT),
         Operator
             [
                 TitleWords ["the", "first", "element", "of"],
-                TitleParam ["list"] (ListT AnyT)
+                TitleParam ["l"] (ListT AnyT)
             ]
             (\[ListT t] -> t),
         Operator
             [
-                TitleParam ["list", "n"] (ListT AnyT),
+                TitleParam ["n"] (ListT AnyT),
                 TitleWords ["appended", "to"],
-                TitleParam ["list", "m"] (ListT AnyT)
+                TitleParam ["m"] (ListT AnyT)
             ]
             (\[ListT t, ListT _] -> t)
     ]

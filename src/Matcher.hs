@@ -190,6 +190,7 @@ commitSentences fT = mapM_ $ commitSentence fT
 
 getValueType :: Value -> MatcherState Type
 getValueType (IntV _) = return IntT
+getValueType (FloatV _) = return FloatT
 getValueType (BoolV _) = return BoolT
 getValueType (StringV _) = return StringT
 getValueType (ListV t _) = return $ ListT t
@@ -200,7 +201,6 @@ getValueType (OperatorCall t vs) = do
     return $ fromJust opT
 
 typesMatch :: Type -> Type -> MatcherState Bool
-typesMatch AnyT _ = return True
 typesMatch _ AnyT = return True
 typesMatch (ListT t1) (ListT t2) = typesMatch t1 t2
 typesMatch t1 t2 = return $ t1 == t2
@@ -220,6 +220,10 @@ matchAsName ps = unmatchableAsError "name" ps
 matchAsInt :: [MatchablePart] -> MatcherState Value
 matchAsInt [IntP n] = return $ IntV n
 matchAsInt ps = unmatchableAsError "int" ps
+
+matchAsFloat :: [MatchablePart] -> MatcherState Value
+matchAsFloat [FloatP n] = return $ FloatV n
+matchAsFloat ps = unmatchableAsError "float" ps
 
 matchAsBool :: [MatchablePart] -> MatcherState Value
 matchAsBool [WordP s]
@@ -255,7 +259,7 @@ matchAsProcedureCall ps = undefined
 matchValue :: Value -> MatcherState Value
 matchValue (ValueM [ParensP ps]) = matchValue (ValueM ps)
 matchValue (ValueM ps) =
-    matchAsInt ps <|> matchAsBool ps <|> matchAsString ps
+    matchAsInt ps <|> matchAsFloat ps <|> matchAsBool ps <|> matchAsString ps
     <|> matchAsVar ps <|> matchAsOperatorCall ps
     <|> unmatchableError ps
 matchValue (ListV t es) = do
