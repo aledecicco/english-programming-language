@@ -2,15 +2,15 @@ module Types where
 
 type Name = [String]
 
-data Type = IntT | FloatT | BoolT | StringT | ListT Type | AnyT
+data Type = IntT | FloatT | BoolT | ListT Type | AnyT
     deriving (Eq, Show)
 
-data MatchablePart = IntP Integer | FloatP Float | LiteralP String | WordP String | ParensP [MatchablePart]
+data MatchablePart = IntP Integer | FloatP Float | WordP String | ParensP [MatchablePart]
     deriving (Eq, Show)
 
 data Value =
     ValueM [MatchablePart]
-    | IntV Integer | FloatV Float | BoolV Bool | StringV String
+    | IntV Integer | FloatV Float | BoolV Bool
     | ListV Type [Value] | VarV Name
     | OperatorCall Title [Value]
     deriving (Eq, Show)

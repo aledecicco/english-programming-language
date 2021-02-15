@@ -290,46 +290,6 @@ floatTests = testGroup "Integer"
             expectedFailure P.float "- 11.12"
     ]
 
-stringLiteralTests :: TestTree
-stringLiteralTests = testGroup "String literal"
-    [
-        testCase "Single word" $
-            expectedResult
-                P.stringLiteral
-                "\"word\""
-                "word",
-
-        testCase "Reserved word" $
-            expectedResult
-                P.stringLiteral
-                "\"and\""
-                "and",
-
-        testCase "Many chars" $
-            expectedResult
-                P.stringLiteral
-                "\".,: and 123\""
-                ".,: and 123",
-
-        testCase "Escaped quote" $
-            expectedResult
-                P.stringLiteral
-                "\"word \\\"another\\\" word\""
-                "word \"another\" word",
-
-        testCase "Not escaped quote" $
-            expectedResult
-                P.stringLiteral
-                "\"word \"another\\\" word\""
-                "word ",
-
-        testCase "Without quotes" $
-            expectedFailure P.stringLiteral "word",
-
-        testCase "Not closed" $
-            expectedFailure P.stringLiteral "\"word"
-    ]
-
 parensTests :: TestTree
 parensTests = testGroup "Parens"
     [
@@ -612,7 +572,6 @@ tests = testGroup "Parser"
         reservedTests,
         integerTests,
         floatTests,
-        stringLiteralTests,
         parensTests,
         seriesTests,
         intercalatedTests,

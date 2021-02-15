@@ -192,7 +192,6 @@ getValueType :: Value -> MatcherState Type
 getValueType (IntV _) = return IntT
 getValueType (FloatV _) = return FloatT
 getValueType (BoolV _) = return BoolT
-getValueType (StringV _) = return StringT
 getValueType (ListV t _) = return $ ListT t
 getValueType (VarV n) = fromJust <$> getVarType n
 getValueType (OperatorCall t vs) = do
@@ -231,10 +230,6 @@ matchAsBool [WordP s]
     | s == "false" = return $ BoolV False
 matchAsBool ps = unmatchableAsError "bool" ps
 
-matchAsString :: [MatchablePart] -> MatcherState Value
-matchAsString [LiteralP n] = return $ StringV n
-matchAsString ps = unmatchableAsError "string" ps
-
 matchAsVar :: [MatchablePart] -> MatcherState Value
 matchAsVar ps = do
     ~n@(w:ws) <- matchAsName ps
@@ -259,7 +254,7 @@ matchAsProcedureCall ps = undefined
 matchValue :: Value -> MatcherState Value
 matchValue (ValueM [ParensP ps]) = matchValue (ValueM ps)
 matchValue (ValueM ps) =
-    matchAsInt ps <|> matchAsFloat ps <|> matchAsBool ps <|> matchAsString ps
+    matchAsInt ps <|> matchAsFloat ps <|> matchAsBool ps
     <|> matchAsVar ps <|> matchAsOperatorCall ps
     <|> unmatchableError ps
 matchValue (ListV t es) = do

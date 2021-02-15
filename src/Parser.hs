@@ -56,7 +56,6 @@ typeName True =
     (reserved "integers" >> return IntT)
     <|> (reserved "floats" >> return FloatT)
     <|> (reserved "booleans" >> return BoolT)
-    <|> (reserved "strings" >> return StringT)
     <|> (do
             reserved "lists"
             reserved "of"
@@ -66,7 +65,6 @@ typeName False =
     (reserved "integer" >> return IntT)
     <|> (reserved "float" >> return FloatT)
     <|> (reserved "boolean" >> return BoolT)
-    <|> (reserved "string" >> return StringT)
     <|> (do
             reserved "list"
             reserved "of"
@@ -100,9 +98,6 @@ dot = symbol "." <?> "dot"
 
 colon :: Parser ()
 colon = symbol ":" <?> "colon"
-
-stringLiteral :: Parser String
-stringLiteral = lexeme $ char '\"' >> manyTill L.charLiteral (char '\"')
 
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (symbol ")")
@@ -325,7 +320,6 @@ matchablePart :: Parser MatchablePart
 matchablePart =
     try (FloatP <$> float)
     <|> IntP <$> integer
-    <|> LiteralP <$> stringLiteral
     <|> WordP <$> anyWord
     <|> ParensP <$> parens (some matchablePart)
     <?> "valid term"
