@@ -5,7 +5,7 @@ import Control.Monad.Trans.State ( get, gets, put, modify, liftCatch, runStateT,
 import Control.Monad.Trans.Except ( throwE, catchE, runExcept, Except )
 import Control.Monad.Trans.Class ( lift )
 import Data.List ( find )
-import Data.Maybe ( fromJust )
+import Data.Maybe ( isJust, isNothing, fromJust, catMaybes )
 import Data.Char ( toLower )
 
 import Types
@@ -93,10 +93,6 @@ varIsDefined vn = do
 -- Tries the first action and, if it fails, reverts the state and tries the second action
 (<|>) :: MatcherState a -> MatcherState a -> MatcherState a
 ma <|> mb = liftCatch catchE ma (const mb)
-
--- Tries each action in a list until one of them succeeds
-try :: [MatcherState a] -> String -> MatcherState a
-try actions msg = foldr (<|>) (customError msg) actions
 
 -- Empties the variables environment
 resetVariables :: MatcherState ()
@@ -199,76 +195,98 @@ getValueType (OperatorCall t vs) = do
     opT <- getOperatorType t vTs
     return $ fromJust opT
 
+-- Returns whether a type satisfies another type
 typesMatch :: Type -> Type -> MatcherState Bool
 typesMatch _ AnyT = return True
+typesMatch IntT FloatT = return True
+typesMatch FloatT IntT = return True
 typesMatch (ListT t1) (ListT t2) = typesMatch t1 t2
 typesMatch t1 t2 = return $ t1 == t2
+
+-- Returns whether two words match
+isWord :: String -> String -> Bool
+isWord w1 w2 = map toLower w1 == map toLower w2
 
 --
 
 
 -- Matchers
 
-matchAsName :: [MatchablePart] -> MatcherState Name
-matchAsName [WordP w] = return [w]
+matchAsName :: [MatchablePart] -> MatcherState (Maybe Name)
+matchAsName [WordP w] = return $ Just [w]
 matchAsName (WordP w : ps) = do
-    ws <- matchAsName ps
-    return $ w:ws
-matchAsName ps = unmatchableAsError "name" ps
+    r <- matchAsName ps
+    case r of
+        Just ws -> return $ Just (w:ws)
+        Nothing -> return Nothing
+matchAsName ps = return Nothing
 
-matchAsInt :: [MatchablePart] -> MatcherState Value
-matchAsInt [IntP n] = return $ IntV n
-matchAsInt ps = unmatchableAsError "int" ps
+matchAsInt :: [MatchablePart] -> MatcherState (Maybe Value)
+matchAsInt [IntP n] = return $ Just (IntV n)
+matchAsInt ps = return Nothing
 
-matchAsFloat :: [MatchablePart] -> MatcherState Value
-matchAsFloat [FloatP n] = return $ FloatV n
-matchAsFloat ps = unmatchableAsError "float" ps
+matchAsFloat :: [MatchablePart] -> MatcherState (Maybe Value)
+matchAsFloat [FloatP n] = return $ Just (FloatV n)
+matchAsFloat ps = return Nothing
 
-matchAsBool :: [MatchablePart] -> MatcherState Value
+matchAsBool :: [MatchablePart] -> MatcherState (Maybe Value)
 matchAsBool [WordP s]
-    | s == "true" = return $ BoolV True
-    | s == "false" = return $ BoolV False
-matchAsBool ps = unmatchableAsError "bool" ps
+    | isWord s "true" = return $ Just (BoolV True)
+    | isWord s "false" = return $ Just (BoolV False)
+matchAsBool ps = return Nothing
 
-matchAsVar :: [MatchablePart] -> MatcherState Value
+matchAsVar :: [MatchablePart] -> MatcherState (Maybe Value)
 matchAsVar ps = do
-    ~n@(w:ws) <- matchAsName ps
-    matchAsVar' n <|>
-        if w == "the"
-        then matchAsVar' ws
-        else unmatchableAsError "variable" ps
+    r <- matchAsName ps
+    case r of
+        Just n@(w:ws) -> do
+            r <- matchAsVar' n
+            case r of
+                Just _ -> return r
+                Nothing -> if isWord w "the" then matchAsVar' ws else return Nothing
+        Nothing -> return Nothing
     where
-        matchAsVar' :: Name -> MatcherState Value
+        matchAsVar' :: Name -> MatcherState (Maybe Value)
         matchAsVar' n = do
             isDef <- varIsDefined n
-            unless isDef $ undefinedVariableError n
-            return $ VarV n
+            return $ if isDef then Just (VarV n) else Nothing
 
-matchAsOperatorCall :: [MatchablePart] -> MatcherState Value
+matchAsOperatorCall :: [MatchablePart] -> MatcherState (Maybe Value)
 matchAsOperatorCall _ = undefined
 
-matchAsProcedureCall :: [MatchablePart] -> MatcherState Sentence
+matchAsProcedureCall :: [MatchablePart] -> MatcherState (Maybe Sentence)
 matchAsProcedureCall ps = undefined
 
--- Matches a value matchable as any type of value
-matchValue :: Value -> MatcherState Value
-matchValue (ValueM [ParensP ps]) = matchValue (ValueM ps)
-matchValue (ValueM ps) =
-    matchAsInt ps <|> matchAsFloat ps <|> matchAsBool ps
-    <|> matchAsVar ps <|> matchAsOperatorCall ps
-    <|> unmatchableError ps
+-- Matches a value matchable as any type of value, without guaranteeing type integrity
+matchValue :: Value -> MatcherState (Maybe Value)
 matchValue (ListV t es) = do
-    es' <- mapM (matchValueWithType t) es
-    return $ ListV t es'
-matchValue v = return v
+    es' <- mapM matchValue es
+    if all isJust es'
+    then return $ Just (ListV t (catMaybes es'))
+    else return Nothing
+matchValue (ValueM [ParensP ps]) = matchValue (ValueM ps)
+matchValue (ValueM ps) = matchFirst ps [matchAsInt, matchAsFloat, matchAsBool, matchAsVar, matchAsOperatorCall]
+    where
+        matchFirst :: [MatchablePart] -> [[MatchablePart] -> MatcherState (Maybe Value)] -> MatcherState (Maybe Value)
+        matchFirst ps (f:fs) = do
+            r <- f ps
+            case r of
+                Just _ -> return r
+                Nothing -> matchFirst ps fs
+matchValue v = return $ Just v
 
 matchValueWithType :: Type -> Value -> MatcherState Value
 matchValueWithType t v = do
-    v' <- matchValue v
-    t' <- getValueType v'
-    r <- typesMatch t t'
-    unless r $ wrongTypeValueError v' t
-    return v'
+    r <- matchValue v
+    case r of
+        Just v' -> do
+            t' <- getValueType v'
+            r <- typesMatch t t'
+            unless r $ wrongTypeValueError v' t
+            return v'
+        -- ToDo: throw appropriate error
+        -- Nothing -> when (isNothing v') $ unmatchableError v'
+
 
 matchSentence :: Title -> Sentence -> MatcherState Sentence
 matchSentence _ (SentenceM ps) = matchAsProcedureCall ps
