@@ -5,7 +5,7 @@ import Control.Monad.Trans.State ( get, gets, put, modify, liftCatch, runStateT,
 import Control.Monad.Trans.Except ( throwE, catchE, runExcept, Except )
 import Control.Monad.Trans.Class ( lift )
 import Data.List ( find )
-import Data.Maybe ( isJust, isNothing, fromJust, catMaybes )
+import Data.Maybe ( isJust, isNothing, fromJust )
 import Data.Char ( toLower )
 
 import Types
@@ -76,11 +76,20 @@ functionIsDefined t = do
         Just _ -> return True
         Nothing -> return False
 
-getOperatorType :: Title -> [Type] -> MatcherState (Maybe Type)
-getOperatorType fT vTs = do
+-- Returns the resulting type of a call to an operator
+getOperatorCallType :: Title -> [Type] -> MatcherState (Maybe Type)
+getOperatorCallType fT vTs = do
     f <- getFunction fT
     case f of
         Just (Operator _ tFun) -> return $ Just (tFun vTs)
+        _ -> return Nothing
+
+-- Returns the type of an operator assuming it was user defined and hence its types are not polymorphic
+getUserDefinedOperatorType :: Title -> MatcherState (Maybe Type)
+getUserDefinedOperatorType fT = do
+    f <- getFunction fT
+    case f of
+        Just (Operator _ tFun) -> return $ Just (tFun [])
         _ -> return Nothing
 
 varIsDefined :: Name -> MatcherState Bool
@@ -126,6 +135,14 @@ alreadyDefinedIteratorError vn = customError $ "Variable \"" ++ concat vn ++ "\"
 wrongTypeValueError :: Value -> Type -> MatcherState a
 wrongTypeValueError v t = customError $ "Expected value of type \"" ++ show t ++ ", but got \"" ++ show v ++ "\" instead"
 
+-- Error that occurs when a value can't be understood
+unmatchableValueError :: Value -> MatcherState a
+unmatchableValueError v = customError $ "Couldn't understand the value \"" ++ show v ++ "\""
+
+-- Error that occurs when a sentence can't be understood
+unmatchableSentenceError :: Sentence -> MatcherState a
+unmatchableSentenceError s = customError $ "Couldn't understand the sentence \"" ++ show s ++ "\""
+
 -- Error that occurs when a return statement is used in a procedure
 procedureReturnError :: Title -> MatcherState a
 procedureReturnError t = customError $ "Function \"" ++ show t ++ "\" can't return a value"
@@ -160,12 +177,6 @@ commitSentence fT (VarDef ns v) = do
     mapM_ (`setVarType` t) ns
 commitSentence fT (If v ss) = commitSentences fT ss
 commitSentence fT (IfElse v ssTrue ssFalse) = commitSentences fT $ ssTrue ++ ssFalse
-commitSentence fT (For n vFrom vTo ss) = do
-    isDef <- varIsDefined n
-    when isDef $ alreadyDefinedIteratorError n
-    setVarType n IntT
-    commitSentences fT ss
-    removeVarType n
 commitSentence fT (ForEach n v ss) = do
     isDef <- varIsDefined n
     when isDef $ alreadyDefinedIteratorError n
@@ -175,9 +186,7 @@ commitSentence fT (ForEach n v ss) = do
     removeVarType n
 commitSentence fT (Until v ss) = commitSentences fT ss
 commitSentence fT (While v ss) = commitSentences fT ss
-commitSentence fT (Result v) = do
-    r <- isOperator fT
-    unless r $ procedureReturnError fT
+commitSentence fT (Result v) = return ()
 commitSentence fT (ProcedureCall t vs) = return ()
 
 -- Commits the sentences in a list in order
@@ -192,16 +201,16 @@ getValueType (ListV t _) = return $ ListT t
 getValueType (VarV n) = fromJust <$> getVarType n
 getValueType (OperatorCall t vs) = do
     vTs <- mapM getValueType vs
-    opT <- getOperatorType t vTs
+    opT <- getOperatorCallType t vTs
     return $ fromJust opT
 
 -- Returns whether a type satisfies another type
-typesMatch :: Type -> Type -> MatcherState Bool
-typesMatch _ AnyT = return True
-typesMatch IntT FloatT = return True
-typesMatch FloatT IntT = return True
-typesMatch (ListT t1) (ListT t2) = typesMatch t1 t2
-typesMatch t1 t2 = return $ t1 == t2
+satisfiesType :: Type -> Type -> MatcherState Bool
+satisfiesType _ AnyT = return True
+satisfiesType IntT FloatT = return True
+satisfiesType FloatT IntT = return True
+satisfiesType (ListT t1) (ListT t2) = t1 `satisfiesType` t2
+satisfiesType t1 t2 = return $ t1 == t2
 
 -- Returns whether two words match
 isWord :: String -> String -> Bool
@@ -231,8 +240,8 @@ matchAsFloat ps = return Nothing
 
 matchAsBool :: [MatchablePart] -> MatcherState (Maybe Value)
 matchAsBool [WordP s]
-    | isWord s "true" = return $ Just (BoolV True)
-    | isWord s "false" = return $ Just (BoolV False)
+    | s `isWord` "true" = return $ Just (BoolV True)
+    | s `isWord` "false" = return $ Just (BoolV False)
 matchAsBool ps = return Nothing
 
 matchAsVar :: [MatchablePart] -> MatcherState (Maybe Value)
@@ -243,7 +252,7 @@ matchAsVar ps = do
             r <- matchAsVar' n
             case r of
                 Just _ -> return r
-                Nothing -> if isWord w "the" then matchAsVar' ws else return Nothing
+                Nothing -> if w `isWord` "the" then matchAsVar' ws else return Nothing
         Nothing -> return Nothing
     where
         matchAsVar' :: Name -> MatcherState (Maybe Value)
@@ -257,39 +266,43 @@ matchAsOperatorCall _ = undefined
 matchAsProcedureCall :: [MatchablePart] -> MatcherState (Maybe Sentence)
 matchAsProcedureCall ps = undefined
 
--- Matches a value matchable as any type of value, without guaranteeing type integrity
-matchValue :: Value -> MatcherState (Maybe Value)
-matchValue (ListV t es) = do
-    es' <- mapM matchValue es
-    if all isJust es'
-    then return $ Just (ListV t (catMaybes es'))
-    else return Nothing
-matchValue (ValueM [ParensP ps]) = matchValue (ValueM ps)
-matchValue (ValueM ps) = matchFirst ps [matchAsInt, matchAsFloat, matchAsBool, matchAsVar, matchAsOperatorCall]
+matchAsValue :: [MatchablePart] -> MatcherState (Maybe Value)
+matchAsValue [ParensP ps] = matchAsValue ps
+matchAsValue ps = matchFirst ps [matchAsInt, matchAsFloat, matchAsBool, matchAsVar, matchAsOperatorCall]
     where
         matchFirst :: [MatchablePart] -> [[MatchablePart] -> MatcherState (Maybe Value)] -> MatcherState (Maybe Value)
+        matchFirst _ [] = return Nothing
         matchFirst ps (f:fs) = do
             r <- f ps
             case r of
                 Just _ -> return r
                 Nothing -> matchFirst ps fs
-matchValue v = return $ Just v
+
+matchValue :: Value -> MatcherState Value
+matchValue (ListV t es) = do
+    es' <- mapM matchValue es
+    return $ ListV t es'
+matchValue v@(ValueM ps) = do
+    r <- matchAsValue ps
+    case r of
+        Just v' -> return v'
+        Nothing -> unmatchableValueError v
+matchValue v = return v
 
 matchValueWithType :: Type -> Value -> MatcherState Value
 matchValueWithType t v = do
-    r <- matchValue v
-    case r of
-        Just v' -> do
-            t' <- getValueType v'
-            r <- typesMatch t t'
-            unless r $ wrongTypeValueError v' t
-            return v'
-        -- ToDo: throw appropriate error
-        -- Nothing -> when (isNothing v') $ unmatchableError v'
-
+    v' <- matchValue v
+    t' <- getValueType v'
+    r <- t `satisfiesType` t'
+    unless r $ wrongTypeValueError v' t
+    return v'
 
 matchSentence :: Title -> Sentence -> MatcherState Sentence
-matchSentence _ (SentenceM ps) = matchAsProcedureCall ps
+matchSentence _ s@(SentenceM ps) = do
+    r <- matchAsProcedureCall ps
+    case r of
+        Just s' -> return s'
+        Nothing -> unmatchableSentenceError s
 matchSentence _ (VarDef ns v) = do
     v' <- matchValue v
     return $ VarDef ns v'
@@ -302,11 +315,6 @@ matchSentence fT (IfElse v ssTrue ssFalse) = do
     ssTrue' <- matchSentences fT ssTrue
     ssFalse' <- matchSentences fT ssFalse
     return $ IfElse v' ssTrue' ssFalse'
-matchSentence fT (For n vFrom vTo ss) = do
-    vFrom' <- matchValueWithType IntT vFrom
-    vTo' <- matchValueWithType IntT vTo
-    ss' <- matchSentences fT ss
-    return $ For n vFrom' vTo' ss'
 matchSentence fT (ForEach n v ss) = do
     v' <- matchValueWithType (ListT AnyT) v
     ss' <- matchSentences fT ss
@@ -319,9 +327,13 @@ matchSentence fT (While v ss) = do
     v' <- matchValueWithType BoolT v
     ss' <- matchSentences fT ss
     return $ While v' ss
-matchSentence _ (Result v) = do
-    v' <- matchValue v
-    return $ Result v'
+matchSentence fT (Result v) = do
+    r <- getUserDefinedOperatorType fT
+    case r of
+        Just t -> do
+            v' <- matchValueWithType t v
+            return $ Result v'
+        Nothing -> procedureReturnError fT
 matchSentence _ s = return s
 
 matchSentences :: Title -> [Sentence] -> MatcherState [Sentence]

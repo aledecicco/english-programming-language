@@ -26,7 +26,7 @@ expectedSuccess p s =
         Left e -> assertFailure $ "Parser failed, the error was:\n" ++ errorBundlePretty e
         Right _ -> return ()
 
--- Asserts that a parser yields an error when parsing a given string
+-- Asserts that a parser fails to parse a given string
 expectedFailure :: (HasCallStack, Eq a, Show a) => P.Parser a -> String -> Assertion
 expectedFailure p s =
     case parse p "" s of

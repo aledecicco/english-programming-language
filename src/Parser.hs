@@ -176,8 +176,6 @@ sentence =
     <|> ifBlock
     <|> (simpleForEach <* dot)
     <|> forEachBlock
-    <|> (simpleFor <* dot)
-    <|> forEachBlock
     <|> (simpleUntil <* dot)
     <|> untilBlock
     <|> (simpleWhile <* dot)
@@ -238,27 +236,6 @@ forEachHeader = do
     reserved "in"
     l <- value
     return (n, l)
-
-simpleFor :: Parser Sentence
-simpleFor = do
-    (i, vf, vt) <- try $ forHeader <* comma
-    s <- simpleSentence
-    return $ For i vf vt [s]
-
-forBlock :: Parser Sentence
-forBlock = do
-    ((i, vf, vt), ss) <- listWithHeader forHeader sentence
-    return $ For i vf vt ss
-
-forHeader :: Parser (Name, Value, Value)
-forHeader = do
-    reserved "for"
-    i <- (try indefiniteArticle >> name) <|> name
-    reserved "from"
-    vf <- valueMatchable
-    reserved "to"
-    vt <- valueMatchable
-    return (i, vf, vt)
 
 simpleUntil :: Parser Sentence
 simpleUntil = do

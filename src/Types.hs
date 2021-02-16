@@ -19,8 +19,7 @@ data Sentence =
     SentenceM [MatchablePart]
     | VarDef [Name] Value
     | If Value [Sentence] | IfElse Value [Sentence] [Sentence]
-    | For Name Value Value [Sentence] | ForEach Name Value [Sentence]
-    | Until Value [Sentence] | While Value [Sentence]
+    | ForEach Name Value [Sentence] | Until Value [Sentence] | While Value [Sentence]
     | Result Value
     | ProcedureCall Title [Value]
     deriving (Eq, Show)
