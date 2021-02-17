@@ -44,10 +44,8 @@ getVarType vn = do
 
 setVarType :: Name -> Type -> MatcherState ()
 setVarType vn t' = do
-    r <- getVarType vn
-    case r of
-        Just t -> when (t /= t') $ mismatchingTypeAssignError vn t t'
-        Nothing -> modify (\(fE, vE) -> (fE, (vn, t'):vE))
+    removeVarType vn
+    modify (\(fE, vE) -> (fE, (vn, t'):vE))
 
 removeVarType :: Name -> MatcherState ()
 removeVarType vn = do
@@ -112,53 +110,79 @@ resetVariables = setVarEnv []
 
 -- Errors
 
-customError :: String -> MatcherState a
-customError = lift . throwE
+customError :: LineNumber -> String -> MatcherState a
+customError ln e = lift . throwE $ "Error in line " ++ show ln ++ ":\n" ++ e ++ "\n"
+
+lineText :: LineNumber -> String
+lineText ln = "Error in line " ++ show ln ++ ":\n"
 
 -- Error that occurs when a variable has a value of a given type and is assigned a value of a different type
-mismatchingTypeAssignError :: Name -> Type -> Type -> MatcherState a
-mismatchingTypeAssignError vn t t' = customError $ "Can't assign value of type " ++ show t' ++ " to variable " ++ concat vn ++ " with type " ++ show t
+mismatchingTypeAssignError :: LineNumber -> Name -> Type -> Type -> MatcherState a
+mismatchingTypeAssignError ln vn t t' = customError ln $
+    "Can't assign value of type \"" ++ show t'
+    ++ "\" to variable \"" ++ concat vn
+    ++ "\" with type \"" ++ show t ++ "\""
 
 -- Error that occurs when an undefined variable is used
-undefinedVariableError :: Name -> MatcherState a
-undefinedVariableError vn = customError $ "Variable \"" ++ concat vn ++ "\" is not defined"
+undefinedVariableError :: LineNumber -> Name -> MatcherState a
+undefinedVariableError ln vn = customError ln $
+    "Variable \"" ++ concat vn ++ "\" is not defined"
 
 -- Error that occurs when two parameters with the same name are used in a title
-alreadyDefinedParameterError :: Name -> MatcherState a
-alreadyDefinedParameterError vn = customError $ "Parameter name \"" ++ concat vn ++ "\" can't be used more than once"
+alreadyDefinedParameterError :: LineNumber -> Name -> MatcherState a
+alreadyDefinedParameterError ln vn = customError ln $
+    "Parameter name \"" ++ concat vn ++ "\" can't be used more than once"
 
 -- Error that occurs when a loop uses an iterator with the same name as an already defined variable
-alreadyDefinedIteratorError :: Name -> MatcherState a
-alreadyDefinedIteratorError vn = customError $ "Variable \"" ++ concat vn ++ "\" is already in use"
+alreadyDefinedIteratorError :: LineNumber -> Name -> MatcherState a
+alreadyDefinedIteratorError ln vn = customError ln $
+    "Variable \"" ++ concat vn ++ "\" is already in use"
 
 -- Error that occurs when two functions with the same name are defined
-alreadyDefinedFunctionError :: Title -> MatcherState a
-alreadyDefinedFunctionError t = customError $ "Function title \"" ++ show t ++ "\" is already in use"
+alreadyDefinedFunctionError :: LineNumber -> Title -> MatcherState a
+alreadyDefinedFunctionError ln t = customError ln $
+    "Function title \"" ++ show t ++ "\" is already in use"
 
 -- Error that occurs when a value of the wrong type is used in a sentence
-wrongTypeValueError :: Value -> Type -> MatcherState a
-wrongTypeValueError v t = customError $ "Expected value of type \"" ++ show t ++ ", but got \"" ++ show v ++ "\" instead"
+wrongTypeValueError :: LineNumber -> Value -> Type -> MatcherState a
+wrongTypeValueError ln v t = customError ln $
+    "Expected value of type \"" ++ show t
+    ++ "\", but got \"" ++ show v ++ "\" instead"
 
 -- Error that occurs when a value of the wrong type is used as a parameter for a function
-wrongTypeParameterError :: Value -> Type -> Name -> MatcherState a
-wrongTypeParameterError v t n = customError $ "Expected value of type \"" ++ show t ++ " for parameter \"" ++ concat n ++ "\", but got \"" ++ show v ++ "\" instead"
+wrongTypeParameterError :: LineNumber -> Title -> Value -> Type -> Name -> MatcherState a
+wrongTypeParameterError ln fT v t n = customError ln $
+    "Function \"" ++ show fT ++ "\""
+    ++ " expected value of type \"" ++ show t
+    ++ "\" for parameter \"" ++ concat n
+    ++ "\", but got \"" ++ show v ++ "\" instead"
 
 -- Error that occurs when a value can't be understood
-unmatchableValueError :: Value -> MatcherState a
-unmatchableValueError v = customError $ "Couldn't understand the value \"" ++ show v ++ "\""
+unmatchableValueError :: LineNumber -> Value -> MatcherState a
+unmatchableValueError ln v = customError ln $
+    "Couldn't understand the value \"" ++ show v ++ "\""
 
 -- Error that occurs when a sentence can't be understood
-unmatchableSentenceError :: Sentence -> MatcherState a
-unmatchableSentenceError s = customError $ "Couldn't understand the sentence \"" ++ show s ++ "\""
+unmatchableSentenceError :: LineNumber -> Sentence -> MatcherState a
+unmatchableSentenceError ln s = customError ln $
+    "Couldn't understand the sentence \"" ++ show s ++ "\""
 
 -- Error that occurs when a return statement is used in a procedure
-procedureReturnError :: Title -> MatcherState a
-procedureReturnError t = customError $ "Function \"" ++ show t ++ "\" can't return a value"
+procedureReturnError :: LineNumber -> Title -> MatcherState a
+procedureReturnError ln t = customError ln $
+    "Function \"" ++ show t ++ "\" can't return a value"
 
 --
 
 
 -- Auxiliary
+
+setVarTypeWithCheck :: LineNumber -> Name -> Type -> MatcherState ()
+setVarTypeWithCheck ln vn t' = do
+    r <- getVarType vn
+    case r of
+        Just t -> when (t /= t') $ mismatchingTypeAssignError ln vn t t'
+        Nothing -> setVarType vn t'
 
 getTitleParameters :: Title -> MatcherState [TitlePart]
 getTitleParameters [] = return []
@@ -166,38 +190,39 @@ getTitleParameters (TitleWords _:ts) = getTitleParameters ts
 getTitleParameters (p@TitleParam {} : ts) = (p:) <$> getTitleParameters ts
 
 -- Adds the parameters in a title to the variables environment
-registerTitleParameters :: Title -> MatcherState ()
-registerTitleParameters t = do
-    params <- getTitleParameters t
+registerTitleParameters :: TitleLine -> MatcherState ()
+registerTitleParameters tl = do
+    params <- getTitleParameters $ getLineContent tl
     mapM_ registerTitleParameter params
     where
         registerTitleParameter :: TitlePart -> MatcherState ()
         registerTitleParameter (TitleParam n t) = do
+            let ln = getLineNumber tl
             r <- varIsDefined n
-            when r $ alreadyDefinedParameterError n
-            setVarType n t
+            when r $ alreadyDefinedParameterError ln n
+            setVarTypeWithCheck ln n t
 
 -- Validates a sentence and persists its changes to the state, assuming that its arguments are correctly typed
-commitSentence :: Title -> Sentence -> MatcherState ()
-commitSentence fT (VarDef ns v) = do
+commitSentence :: TitleLine -> SentenceLine -> MatcherState ()
+commitSentence tl (Line ln (VarDef ns v)) = do
     t <- getValueType v
-    mapM_ (`setVarType` t) ns
-commitSentence fT (If v ss) = commitSentences fT ss
-commitSentence fT (IfElse v ssTrue ssFalse) = commitSentences fT $ ssTrue ++ ssFalse
-commitSentence fT (ForEach n v ss) = do
+    mapM_ (\n -> setVarTypeWithCheck ln n t) ns
+commitSentence tl (Line ln (If v ss)) = commitSentences tl ss
+commitSentence tl (Line ln (IfElse v ssTrue ssFalse)) = commitSentences tl $ ssTrue ++ ssFalse
+commitSentence tl (Line ln (ForEach n v ss)) = do
     isDef <- varIsDefined n
-    when isDef $ alreadyDefinedIteratorError n
+    when isDef $ alreadyDefinedIteratorError ln n
     ~(ListT eT) <- getValueType v
-    setVarType n eT
-    commitSentences fT ss
+    setVarTypeWithCheck ln n eT
+    commitSentences tl ss
     removeVarType n
-commitSentence fT (Until v ss) = commitSentences fT ss
-commitSentence fT (While v ss) = commitSentences fT ss
-commitSentence fT (Result v) = return ()
-commitSentence fT (ProcedureCall t vs) = return ()
+commitSentence tl (Line ln (Until v ss)) = commitSentences tl ss
+commitSentence tl (Line ln (While v ss)) = commitSentences tl ss
+commitSentence tl (Line ln (Result v)) = return ()
+commitSentence tl (Line ln (ProcedureCall t vs)) = return ()
 
 -- Commits the sentences in a list in order
-commitSentences :: Title -> [Sentence] -> MatcherState ()
+commitSentences :: TitleLine -> [SentenceLine] -> MatcherState ()
 commitSentences fT = mapM_ $ commitSentence fT
 
 getValueType :: Value -> MatcherState Type
@@ -224,23 +249,23 @@ isWord :: String -> String -> Bool
 isWord w1 w2 = map toLower w1 == map toLower w2
 
 -- Validates that a value is correctly formed
-checkValueTypeIntegrity :: Value -> MatcherState ()
-checkValueTypeIntegrity (OperatorCall t vs) = checkFunctionCallIntegrity t vs
-checkValueTypeIntegrity (ListV t vs) = mapM_ checkValueTypeIntegrity vs
-checkValueTypeIntegrity _ = return ()
+checkValueTypeIntegrity :: LineNumber -> Value -> MatcherState ()
+checkValueTypeIntegrity ln (OperatorCall t vs) = checkFunctionCallIntegrity ln t vs
+checkValueTypeIntegrity ln (ListV t vs) = mapM_ (checkValueTypeIntegrity ln) vs
+checkValueTypeIntegrity _ _ = return ()
 
 -- Validates that a function call is correctly formed
-checkFunctionCallIntegrity :: Title -> [Value] -> MatcherState ()
-checkFunctionCallIntegrity t vs = do
-    mapM_ checkValueTypeIntegrity vs
-    ps <-  getTitleParameters t
+checkFunctionCallIntegrity :: LineNumber -> Title -> [Value] -> MatcherState ()
+checkFunctionCallIntegrity ln fT vs = do
+    mapM_ (checkValueTypeIntegrity ln) vs
+    ps <-  getTitleParameters fT
     mapM_ checkParameterIntegrity $ zip vs ps
     where
         checkParameterIntegrity :: (Value, TitlePart) -> MatcherState ()
         checkParameterIntegrity (v, p@(TitleParam n t')) = do
             t <- getValueType v
             r <- t `satisfiesType` t'
-            unless r $ wrongTypeParameterError v t' n
+            unless r $ wrongTypeParameterError ln fT v t' n
 
 --
 
@@ -304,80 +329,83 @@ matchAsValue ps = matchFirst ps [matchAsInt, matchAsFloat, matchAsBool, matchAsV
                 Just _ -> return r
                 Nothing -> matchFirst ps fs
 
-matchValue :: Value -> MatcherState Value
-matchValue (ListV t es) = do
-    es' <- mapM matchValue es
+matchValue :: LineNumber -> Value -> MatcherState Value
+matchValue ln (ListV t es) = do
+    es' <- mapM (matchValue ln) es
     return $ ListV t es'
-matchValue v@(ValueM ps) = do
+matchValue ln v@(ValueM ps) = do
     r <- matchAsValue ps
     case r of
         Just v' -> do
-            checkValueTypeIntegrity v'
+            checkValueTypeIntegrity ln v'
             return v'
-        Nothing -> unmatchableValueError v
-matchValue v = return v
+        Nothing -> unmatchableValueError ln v
+matchValue _ v = return v
 
-matchValueWithType :: Type -> Value -> MatcherState Value
-matchValueWithType t v = do
-    v' <- matchValue v
+matchValueWithType :: LineNumber -> Type -> Value -> MatcherState Value
+matchValueWithType ln t v = do
+    v' <- matchValue ln v
     t' <- getValueType v'
     r <- t `satisfiesType` t'
-    unless r $ wrongTypeValueError v' t'
+    unless r $ wrongTypeValueError ln v' t'
     return v'
 
-matchSentence :: Title -> Sentence -> MatcherState Sentence
-matchSentence _ s@(SentenceM ps) = do
+matchSentence :: TitleLine -> SentenceLine -> MatcherState SentenceLine
+matchSentence _ (Line ln s@(SentenceM ps)) = do
     r <- matchAsProcedureCall ps
     case r of
-        Just s' -> return s'
-        Nothing -> unmatchableSentenceError s
-matchSentence _ (VarDef ns v) = do
-    v' <- matchValue v
-    return $ VarDef ns v'
-matchSentence fT (If v ss) = do
-    v' <- matchValueWithType BoolT v
-    ss' <- matchSentences fT ss
-    return $ If v' ss'
-matchSentence fT (IfElse v ssTrue ssFalse) = do
-    v' <- matchValueWithType BoolT v
-    ssTrue' <- matchSentences fT ssTrue
-    ssFalse' <- matchSentences fT ssFalse
-    return $ IfElse v' ssTrue' ssFalse'
-matchSentence fT (ForEach n v ss) = do
-    v' <- matchValueWithType (ListT AnyT) v
-    ss' <- matchSentences fT ss
-    return $ ForEach n v' ss'
-matchSentence fT (Until v ss) = do
-    v' <- matchValueWithType BoolT v
-    ss' <- matchSentences fT ss
-    return $ Until v' ss
-matchSentence fT (While v ss) = do
-    v' <- matchValueWithType BoolT v
-    ss' <- matchSentences fT ss
-    return $ While v' ss
-matchSentence fT (Result v) = do
+        Just s'@(ProcedureCall t vs) -> do
+            checkFunctionCallIntegrity ln t vs
+            return $ Line ln s'
+        Nothing -> unmatchableSentenceError ln s
+matchSentence _ (Line ln (VarDef ns v)) = do
+    v' <- matchValue ln v
+    return $ Line ln (VarDef ns v')
+matchSentence tl (Line ln (If v ss)) = do
+    v' <- matchValueWithType ln BoolT v
+    ss' <- matchSentences tl ss
+    return $ Line ln (If v' ss')
+matchSentence tl (Line ln (IfElse v ssTrue ssFalse)) = do
+    v' <- matchValueWithType ln BoolT v
+    ssTrue' <- matchSentences tl ssTrue
+    ssFalse' <- matchSentences tl ssFalse
+    return $ Line ln (IfElse v' ssTrue' ssFalse')
+matchSentence tl (Line ln (ForEach n v ss)) = do
+    v' <- matchValueWithType ln (ListT AnyT) v
+    ss' <- matchSentences tl ss
+    return $ Line ln (ForEach n v' ss')
+matchSentence tl (Line ln (Until v ss)) = do
+    v' <- matchValueWithType ln BoolT v
+    ss' <- matchSentences tl ss
+    return $ Line ln (Until v' ss)
+matchSentence tl (Line ln (While v ss)) = do
+    v' <- matchValueWithType ln BoolT v
+    ss' <- matchSentences tl ss
+    return $ Line ln (While v' ss)
+matchSentence tl (Line ln (Result v)) = do
+    let fT = getLineContent tl
     r <- getUserDefinedOperatorType fT
     case r of
         Just t -> do
-            v' <- matchValueWithType t v
-            return $ Result v'
-        Nothing -> procedureReturnError fT
+            v' <- matchValueWithType ln t v
+            return $ Line ln (Result v')
+        Nothing -> procedureReturnError ln fT
 matchSentence _ s = return s
 
-matchSentences :: Title -> [Sentence] -> MatcherState [Sentence]
-matchSentences fT [] = return []
-matchSentences fT (s:rest) = do
-    s' <- matchSentence fT s
-    commitSentence fT s'
-    rest' <- matchSentences fT rest
+matchSentences :: TitleLine -> [SentenceLine] -> MatcherState [SentenceLine]
+matchSentences tl [] = return []
+matchSentences tl (s:rest) = do
+    s' <- matchSentence tl s
+    commitSentence tl s'
+    rest' <- matchSentences tl rest
     return $ s':rest'
 
 -- Matches the matchables in each sentence of a block
 matchBlock :: Block -> MatcherState Block
-matchBlock (FunDef t ss) = do
-    registerTitleParameters t
-    ss' <- matchSentences t ss
-    return $ FunDef t ss'
+matchBlock (FunDef tl ss) = do
+    registerTitleParameters tl
+    ss' <- matchSentences tl ss
+    return $ FunDef tl ss'
 
 -- Matches the matchables in each block of a program
 matchBlocks :: Program -> MatcherState Program
@@ -398,8 +426,8 @@ matchProgram :: Program -> Either Error (Program, Env)
 matchProgram p = runExcept $ runStateT matchProgram' initialEnv
     where
         matchProgram' = do
-            --p1 <- registerStructs p
-            --p2 <- registerFunctions p1
-            matchBlocks p
+            --registerFunctions p
+            p' <- matchBlocks p
+            return p'
 
 --

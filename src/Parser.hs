@@ -132,6 +132,16 @@ listWithHeader pH pE = L.indentBlock scn listWithHeader'
             colon
             return $ L.IndentSome Nothing (return . (h, )) pE
 
+-- Parses a specific sentence in block format
+blockSentence :: Parser a -> Parser (a, LineNumber, [SentenceLine])
+blockSentence pH = do
+    ln <- getCurrentLineNumber
+    (h, ss) <- listWithHeader pH sentence
+    return (h, ln, ss)
+
+getCurrentLineNumber :: Parser Int
+getCurrentLineNumber = unPos . sourceLine <$> getSourcePos
+
 --
 
 
@@ -145,12 +155,14 @@ functionDefinition = do
     (t, ss) <- listWithHeader title sentence
     return $ FunDef t ss
 
-title :: Parser Title
+title :: Parser TitleLine
 title = do
+    ln <- getCurrentLineNumber
     x <- titleParam <|> titleWords
-    case x of
-        TitleWords _ -> (x:) <$> (intercalated titleParam titleWords <|> return [])
-        _ -> (x:) <$> intercalated titleWords titleParam
+    xs <- case x of
+        TitleWords _ -> intercalated titleParam titleWords <|> return []
+        _ -> intercalated titleWords titleParam
+    return $ Line ln (x:xs)
 
 -- Parses words for an identifying part of a function's title
 titleWords :: Parser TitlePart
@@ -169,7 +181,7 @@ titleParam = do
 
 -- Sentences
 
-sentence :: Parser Sentence
+sentence :: Parser SentenceLine
 sentence =
     (variablesDefinition <* dot)
     <|> (simpleIf <* dot)
@@ -185,48 +197,51 @@ sentence =
     <?> "sentence"
 
 -- Parses a sentence that can be used inside a simple statement
-simpleSentence :: Parser Sentence
+simpleSentence :: Parser SentenceLine
 simpleSentence = variablesDefinition <|> sentenceMatchable <?> "simple sentence"
 
 -- Parses the definition of one or more variables with the same value
-variablesDefinition :: Parser Sentence
+variablesDefinition :: Parser SentenceLine
 variablesDefinition = do
     reserved "let"
     ns <- series name
     reserved "be"
-    VarDef ns <$> value
+    ln <- getCurrentLineNumber
+    Line ln . VarDef ns <$> value
 
-simpleIf :: Parser Sentence
+simpleIf :: Parser SentenceLine
 simpleIf = do
     c <- try $ reserved "if" >> condition <* comma
+    ln <- getCurrentLineNumber
     s <- simpleSentence
-    (IfElse c [s] <$> simpleElse) <|> return (If c [s])
+    Line ln <$> ((IfElse c [s] <$> simpleElse) <|> return (If c [s]))
     where
-        simpleElse :: Parser [Sentence]
+        simpleElse :: Parser [SentenceLine]
         simpleElse = do
             comma
             reserved "otherwise"
             s <- simpleSentence
             return [s]
 
-ifBlock :: Parser Sentence
+ifBlock :: Parser SentenceLine
 ifBlock = do
-    (c, ss) <- listWithHeader (reserved "if" >> condition) sentence
-    (IfElse c ss <$> elseBlock) <|> return (If c ss)
+    (c, ln, ss) <- blockSentence (reserved "if" >> condition)
+    Line ln <$> ((IfElse c ss <$> elseBlock) <|> return (If c ss))
     where
-        elseBlock :: Parser [Sentence]
+        elseBlock :: Parser [SentenceLine]
         elseBlock = snd <$> listWithHeader (reserved "otherwise") sentence
 
-simpleForEach :: Parser Sentence
+simpleForEach :: Parser SentenceLine
 simpleForEach = do
     (n, l) <- try $ forEachHeader <* comma
+    ln <- getCurrentLineNumber
     s <- simpleSentence
-    return $ ForEach n l [s]
+    return $ Line ln (ForEach n l [s])
 
-forEachBlock :: Parser Sentence
+forEachBlock :: Parser SentenceLine
 forEachBlock = do
-    ((n, l), ss) <- listWithHeader forEachHeader sentence
-    return $ ForEach n l ss
+    ((n, l), ln, ss) <- blockSentence forEachHeader
+    return $ Line ln (ForEach n l ss)
 
 forEachHeader :: Parser (Name, Value)
 forEachHeader = do
@@ -237,38 +252,42 @@ forEachHeader = do
     l <- value
     return (n, l)
 
-simpleUntil :: Parser Sentence
+simpleUntil :: Parser SentenceLine
 simpleUntil = do
     c <- try $ reserved "until" >> condition <* comma
+    ln <- getCurrentLineNumber
     s <- simpleSentence
-    return $ Until c [s]
+    return $ Line ln (Until c [s])
 
-untilBlock :: Parser Sentence
+untilBlock :: Parser SentenceLine
 untilBlock = do
-    (c, ss) <- listWithHeader (reserved "until" >> condition) sentence
-    return $ Until c ss
+    (c, ln, ss) <- blockSentence (reserved "until" >> condition)
+    return $ Line ln (Until c ss)
 
-simpleWhile :: Parser Sentence
+simpleWhile :: Parser SentenceLine
 simpleWhile = do
     c <- try $ reserved "while" >> condition <* comma
+    ln <- getCurrentLineNumber
     s <- simpleSentence
-    return $ While c [s]
+    return $ Line ln (While c [s])
 
-whileBlock :: Parser Sentence
+whileBlock :: Parser SentenceLine
 whileBlock = do
-    (c, ss) <- listWithHeader (reserved "while" >> condition) sentence
-    return $ While c ss
+    (c, ln, ss) <- blockSentence (reserved "while" >> condition)
+    return $ Line ln (While c ss)
 
 -- Parses a return statement
-result :: Parser Sentence
+result :: Parser SentenceLine
 result = do
-    reserved "the"
-    reserved "result"
+    try (reserved "the" >> reserved "result")
+    ln <- getCurrentLineNumber
     reserved "is"
-    Result <$> value
+    Line ln . Result <$> value
 
-sentenceMatchable :: Parser Sentence
-sentenceMatchable = SentenceM <$> some matchablePart
+sentenceMatchable :: Parser SentenceLine
+sentenceMatchable = do
+    ln <- getCurrentLineNumber
+    Line ln . SentenceM <$> some matchablePart
 
 --
 

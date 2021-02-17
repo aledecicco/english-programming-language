@@ -402,10 +402,10 @@ functionDefinitionTests = testGroup "Function definition"
                 P.functionDefinition
                 "The double of an integer (m):\n  Let r be m times 2.\n  The result is r."
                 (T.FunDef
-                    [T.TitleWords ["The", "double", "of"], T.TitleParam ["m"] T.IntT]
+                    (T.Line 1 [T.TitleWords ["The", "double", "of"], T.TitleParam ["m"] T.IntT])
                     [
-                        T.VarDef [["r"]] (T.ValueM [T.WordP "m", T.WordP "times", T.IntP 2]),
-                        T.Result (T.ValueM [T.WordP "r"])
+                        T.Line 2 (T.VarDef [["r"]] (T.ValueM [T.WordP "m", T.WordP "times", T.IntP 2])),
+                        T.Line 3 (T.Result (T.ValueM [T.WordP "r"]))
                     ]
                 ),
 
@@ -420,27 +420,27 @@ titleTests = testGroup "Title"
             expectedResult
                 P.title
                 "Function definition"
-                [T.TitleWords ["Function", "definition"]],
+                (T.Line 1 [T.TitleWords ["Function", "definition"]]),
 
         testCase "Many parts" $
             expectedResult
                 P.title
                 "Definition with an integer (m) and an integer (n)"
-                [
+                (T.Line 1 [
                     T.TitleWords ["Definition", "with"],
                     T.TitleParam ["m"] T.IntT,
                     T.TitleWords ["and"],
                     T.TitleParam ["n"] T.IntT
-                ],
+                ]),
 
         testCase "Consecutive arguments" $
             expectedResult
                 P.title
                 "Definition with an integer (m) an integer (n)"
-                [
+                (T.Line 1 [
                     T.TitleWords ["Definition", "with"],
                     T.TitleParam ["m"] T.IntT
-                ],
+                ]),
 
         testCase "Missing name" $
             expectedFailure P.title "Definition with an integer"
