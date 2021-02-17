@@ -46,7 +46,7 @@ setVarType :: Name -> Type -> MatcherState ()
 setVarType vn t' = do
     r <- getVarType vn
     case r of
-        Just t -> when (t /= t') $ missmatchingTypeAssignError vn t t'
+        Just t -> when (t /= t') $ mismatchingTypeAssignError vn t t'
         Nothing -> modify (\(fE, vE) -> (fE, (vn, t'):vE))
 
 removeVarType :: Name -> MatcherState ()
@@ -116,8 +116,8 @@ customError :: String -> MatcherState a
 customError = lift . throwE
 
 -- Error that occurs when a variable has a value of a given type and is assigned a value of a different type
-missmatchingTypeAssignError :: Name -> Type -> Type -> MatcherState a
-missmatchingTypeAssignError vn t t' = customError $ "Can't assign value of type " ++ show t' ++ " to variable " ++ concat vn ++ " with type " ++ show t
+mismatchingTypeAssignError :: Name -> Type -> Type -> MatcherState a
+mismatchingTypeAssignError vn t t' = customError $ "Can't assign value of type " ++ show t' ++ " to variable " ++ concat vn ++ " with type " ++ show t
 
 -- Error that occurs when an undefined variable is used
 undefinedVariableError :: Name -> MatcherState a
@@ -131,9 +131,17 @@ alreadyDefinedParameterError vn = customError $ "Parameter name \"" ++ concat vn
 alreadyDefinedIteratorError :: Name -> MatcherState a
 alreadyDefinedIteratorError vn = customError $ "Variable \"" ++ concat vn ++ "\" is already in use"
 
+-- Error that occurs when two functions with the same name are defined
+alreadyDefinedFunctionError :: Title -> MatcherState a
+alreadyDefinedFunctionError t = customError $ "Function title \"" ++ show t ++ "\" is already in use"
+
 -- Error that occurs when a value of the wrong type is used in a sentence
 wrongTypeValueError :: Value -> Type -> MatcherState a
 wrongTypeValueError v t = customError $ "Expected value of type \"" ++ show t ++ ", but got \"" ++ show v ++ "\" instead"
+
+-- Error that occurs when a value of the wrong type is used as a parameter for a function
+wrongTypeParameterError :: Value -> Type -> Name -> MatcherState a
+wrongTypeParameterError v t n = customError $ "Expected value of type \"" ++ show t ++ " for parameter \"" ++ concat n ++ "\", but got \"" ++ show v ++ "\" instead"
 
 -- Error that occurs when a value can't be understood
 unmatchableValueError :: Value -> MatcherState a
@@ -147,28 +155,27 @@ unmatchableSentenceError s = customError $ "Couldn't understand the sentence \""
 procedureReturnError :: Title -> MatcherState a
 procedureReturnError t = customError $ "Function \"" ++ show t ++ "\" can't return a value"
 
--- Error that occurs when a matchable can't be matched
-unmatchableError :: [MatchablePart] -> MatcherState a
-unmatchableError ps = customError $ "\"" ++ show ps ++ "\" couldn't be understood"
-
--- Error that occurs when a matchable can't be matched a specific way
-unmatchableAsError :: String -> [MatchablePart] -> MatcherState a
-unmatchableAsError s ps = customError $ "\"" ++ show ps ++ "\" couldn't be understood as a " ++ s
-
 --
 
 
 -- Auxiliary
 
+getTitleParameters :: Title -> MatcherState [TitlePart]
+getTitleParameters [] = return []
+getTitleParameters (TitleWords _:ts) = getTitleParameters ts
+getTitleParameters (p@TitleParam {} : ts) = (p:) <$> getTitleParameters ts
+
 -- Adds the parameters in a title to the variables environment
 registerTitleParameters :: Title -> MatcherState ()
-registerTitleParameters [] = return ()
-registerTitleParameters (TitleWords _:ts) = registerTitleParameters ts
-registerTitleParameters (TitleParam n t : ts) = do
-    r <- varIsDefined n
-    when r $ alreadyDefinedParameterError n
-    setVarType n t
-    registerTitleParameters ts
+registerTitleParameters t = do
+    params <- getTitleParameters t
+    mapM_ registerTitleParameter params
+    where
+        registerTitleParameter :: TitlePart -> MatcherState ()
+        registerTitleParameter (TitleParam n t) = do
+            r <- varIsDefined n
+            when r $ alreadyDefinedParameterError n
+            setVarType n t
 
 -- Validates a sentence and persists its changes to the state, assuming that its arguments are correctly typed
 commitSentence :: Title -> Sentence -> MatcherState ()
@@ -215,6 +222,25 @@ satisfiesType t1 t2 = return $ t1 == t2
 -- Returns whether two words match
 isWord :: String -> String -> Bool
 isWord w1 w2 = map toLower w1 == map toLower w2
+
+-- Validates that a value is correctly formed
+checkValueTypeIntegrity :: Value -> MatcherState ()
+checkValueTypeIntegrity (OperatorCall t vs) = checkFunctionCallIntegrity t vs
+checkValueTypeIntegrity (ListV t vs) = mapM_ checkValueTypeIntegrity vs
+checkValueTypeIntegrity _ = return ()
+
+-- Validates that a function call is correctly formed
+checkFunctionCallIntegrity :: Title -> [Value] -> MatcherState ()
+checkFunctionCallIntegrity t vs = do
+    mapM_ checkValueTypeIntegrity vs
+    ps <-  getTitleParameters t
+    mapM_ checkParameterIntegrity $ zip vs ps
+    where
+        checkParameterIntegrity :: (Value, TitlePart) -> MatcherState ()
+        checkParameterIntegrity (v, p@(TitleParam n t')) = do
+            t <- getValueType v
+            r <- t `satisfiesType` t'
+            unless r $ wrongTypeParameterError v t' n
 
 --
 
@@ -285,7 +311,9 @@ matchValue (ListV t es) = do
 matchValue v@(ValueM ps) = do
     r <- matchAsValue ps
     case r of
-        Just v' -> return v'
+        Just v' -> do
+            checkValueTypeIntegrity v'
+            return v'
         Nothing -> unmatchableValueError v
 matchValue v = return v
 
@@ -294,7 +322,7 @@ matchValueWithType t v = do
     v' <- matchValue v
     t' <- getValueType v'
     r <- t `satisfiesType` t'
-    unless r $ wrongTypeValueError v' t
+    unless r $ wrongTypeValueError v' t'
     return v'
 
 matchSentence :: Title -> Sentence -> MatcherState Sentence
