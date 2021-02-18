@@ -84,8 +84,8 @@ identifier = do
     else return w
 
 -- Parses a specific word
-reserved :: String -> Parser ()
-reserved w = lexeme $ string' w >> notFollowedBy alphaNumChar
+reserved :: String -> Parser String
+reserved w = lexeme $ string' w <* notFollowedBy alphaNumChar
 
 integer :: Parser Integer
 integer = lexeme $ L.signed (return ()) L.decimal <* notFollowedBy alphaNumChar
@@ -105,17 +105,18 @@ colon = symbol ":" <?> "colon"
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (symbol ")")
 
-indefiniteArticle :: Parser ()
+indefiniteArticle :: Parser String
 indefiniteArticle = reserved "an" <|> reserved "a"
 
 -- Parses a series of a given parser (such as "a, b and c")
 series :: Parser a -> Parser [a]
 series p = do
     x <- p;
-    xs <- series' <|> return []
+    xs <- series' p <|> return []
     return $ x:xs
     where
-        series' = do
+        series' :: Parser a -> Parser [a]
+        series' p = do
             comma
             xs <- (many . try) $ p <* comma
             reserved "and"

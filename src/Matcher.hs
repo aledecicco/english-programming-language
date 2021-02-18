@@ -6,10 +6,11 @@ import Control.Monad.Trans.Except ( throwE, catchE, runExcept, Except )
 import Control.Monad.Trans.Class ( lift )
 import Data.List ( find, intercalate )
 import Data.Maybe ( isJust, isNothing, fromJust )
+import Data.Bifunctor ( first, second )
 
 import Types
 import PreludeDefs
-import Utils ( isWord, getLineNumber, getLineContent )
+import Utils ( isWord, getLineContent )
 
 --
 
@@ -45,13 +46,18 @@ getVarType vn = do
 setVarType :: Name -> Type -> MatcherState ()
 setVarType vn t' = do
     removeVarType vn
-    modify (\(fE, vE) -> (fE, (vn, t'):vE))
+    modify (second $ (:) (vn, t'))
 
 removeVarType :: Name -> MatcherState ()
 removeVarType vn = do
     vE <- getVarEnv
     let vE' = filter ((vn /=) . fst) vE
     setVarEnv vE'
+
+setFunction :: Title -> Function -> MatcherState ()
+setFunction t f = do
+    fid <- getFunctionId t
+    modify (first $ (:) (fid, f))
 
 getFunction :: Title -> MatcherState (Maybe Function)
 getFunction t = do
@@ -61,22 +67,12 @@ getFunction t = do
         Just (_, f) -> return $ Just f
         Nothing -> return Nothing
 
-
 getFunctionId :: Title -> MatcherState String
 getFunctionId t = return $ intercalate "_" (getFunctionIdParts t)
     where
         getFunctionIdParts :: Title -> [String]
         getFunctionIdParts (TitleWords w : ts) = w ++ getFunctionIdParts ts
         getFunctionIdParts (TitleParam {} : ts) = "%" : getFunctionIdParts ts
-
-
-
-isOperator :: Title -> MatcherState Bool
-isOperator t = do
-    r <- getFunction t
-    case r of
-        Just (Operator _ _) -> return True
-        _ -> return False
 
 functionIsDefined :: Title -> MatcherState Bool
 functionIsDefined t = do
@@ -116,20 +112,12 @@ resetVariables = setVarEnv []
 customError :: LineNumber -> String -> MatcherState a
 customError ln e = lift . throwE $ "Error in line " ++ show ln ++ ":\n" ++ e ++ "\n"
 
-lineText :: LineNumber -> String
-lineText ln = "Error in line " ++ show ln ++ ":\n"
-
 -- Error that occurs when a variable has a value of a given type and is assigned a value of a different type
 mismatchingTypeAssignError :: LineNumber -> Name -> Type -> Type -> MatcherState a
 mismatchingTypeAssignError ln vn t t' = customError ln $
     "Can't assign value of type \"" ++ show t'
     ++ "\" to variable \"" ++ concat vn
     ++ "\" with type \"" ++ show t ++ "\""
-
--- Error that occurs when an undefined variable is used
-undefinedVariableError :: LineNumber -> Name -> MatcherState a
-undefinedVariableError ln vn = customError ln $
-    "Variable \"" ++ concat vn ++ "\" is not defined"
 
 -- Error that occurs when two parameters with the same name are used in a title
 alreadyDefinedParameterError :: LineNumber -> Name -> MatcherState a
@@ -194,13 +182,12 @@ getTitleParameters (p@TitleParam {} : ts) = (p:) <$> getTitleParameters ts
 
 -- Adds the parameters in a title to the variables environment
 registerTitleParameters :: TitleLine -> MatcherState ()
-registerTitleParameters tl = do
-    params <- getTitleParameters $ getLineContent tl
+registerTitleParameters (Line ln fT) = do
+    params <- getTitleParameters fT
     mapM_ registerTitleParameter params
     where
         registerTitleParameter :: TitlePart -> MatcherState ()
         registerTitleParameter (TitleParam n t) = do
-            let ln = getLineNumber tl
             r <- varIsDefined n
             when r $ alreadyDefinedParameterError ln n
             setVarTypeWithCheck ln n t
@@ -419,9 +406,15 @@ matchBlocks (b:bs) = do
 -- Function registration
 
 registerFunctions :: Program -> MatcherState ()
-registerFunctions (FunDef tl rt _ : ps) = do
-    let fT = getLineContent tl
-    return ()
+registerFunctions = mapM_ registerFunction
+    where
+        registerFunction :: Block -> MatcherState ()
+        registerFunction (FunDef (Line ln fT) rt _) = do
+            r <- functionIsDefined fT
+            when r $ alreadyDefinedFunctionError ln fT
+            setFunction fT $ case rt of
+                Just t -> Operator fT (const t)
+                Nothing -> Procedure fT
 
 --
 
@@ -432,9 +425,7 @@ registerFunctions (FunDef tl rt _ : ps) = do
 matchProgram :: Program -> Either Error (Program, Env)
 matchProgram p = runExcept $ runStateT matchProgram' initialEnv
     where
-        matchProgram' = do
-            registerFunctions p
-            p' <- matchBlocks p
-            return p'
+        matchProgram' :: MatcherState Program
+        matchProgram' = registerFunctions p >> matchBlocks p
 
 --
