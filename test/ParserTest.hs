@@ -1,4 +1,4 @@
-module ParserTest (tests) where
+module ParserTest ( tests ) where
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -50,8 +50,8 @@ anyWordTests = testGroup "Any word"
         testCase "Reserved word" $
             expectedResult
                 P.anyWord
-                "and"
-                "and",
+                "be"
+                "be",
 
         testCase "Many words" $
             expectedResult
@@ -81,13 +81,13 @@ nameTests = testGroup "Name"
         testCase "Not reserved word" $
             expectedResult
                 P.name
-                "android"
-                ["android"],
+                "become"
+                ["become"],
 
         testCase "Many words with reserved" $
             expectedResult
                 P.name
-                "word and another word"
+                "word be another word"
                 ["word"],
 
         testCase "Many words without reserved" $
@@ -99,7 +99,12 @@ nameTests = testGroup "Name"
         testCase "Reserved word" $
             expectedFailure
                 P.name
-                "and"
+                "be",
+
+        testCase "All caps reserved word" $
+            expectedFailure
+                P.name
+                "BE"
     ]
 
 
@@ -168,17 +173,17 @@ identifierTests = testGroup "Identifier"
         testCase "Not reserved word" $
             expectedResult
                 P.identifier
-                "android"
-                "android",
+                "become"
+                "become",
 
-        testCase "Many words" $
+        testCase "Many words with reserved" $
             expectedResult
                  P.identifier
-                "word and another word"
+                "word be another word"
                 "word",
 
         testCase "Reserved word" $
-            expectedFailure P.identifier "and"
+            expectedFailure P.identifier "be"
     ]
 
 reservedTests :: TestTree
@@ -188,19 +193,19 @@ reservedTests = testGroup "Reserved"
             expectedSuccess (P.reserved "word") "word",
 
         testCase "Reserved word" $
-            expectedSuccess (P.reserved "and") "and",
+            expectedSuccess (P.reserved "be") "be",
 
         testCase "Many words" $
-            expectedSuccess (P.reserved "word") "word and another word",
+            expectedSuccess (P.reserved "word") "word be another word",
 
         testCase "Mismatching word" $
             expectedFailure (P.reserved "another") "word",
 
         testCase "Longer word" $
-            expectedFailure (P.reserved "android") "and",
+            expectedFailure (P.reserved "become") "be",
 
         testCase "Not reserved word" $
-            expectedFailure (P.reserved "and") "android"
+            expectedFailure (P.reserved "be") "become"
     ]
 
 integerTests :: TestTree
@@ -369,48 +374,86 @@ intercalatedTests = testGroup "Intercalated"
         testCase "Even elements" $
             expectedResult
                 (P.intercalated P.identifier P.anyWord)
-                "word and another and"
-                ["word", "and", "another", "and"],
+                "word be another be"
+                ["word", "be", "another", "be"],
 
         testCase "Odd elements" $
             expectedResult
                 (P.intercalated P.identifier P.anyWord)
-                "word and another and word"
-                ["word", "and", "another", "and", "word"],
+                "word be another be word"
+                ["word", "be", "another", "be", "word"],
 
         testCase "Repeated even element" $
             expectedResult
                 (P.intercalated P.identifier P.anyWord)
-                "word and and another and"
-                ["word", "and"],
+                "word be be another be"
+                ["word", "be"],
 
         testCase "Repeated odd element" $
             expectedResult
                 (P.intercalated P.identifier P.anyWord)
-                "word and another another and"
-                ["word", "and", "another", "another"],
+                "word be another another be"
+                ["word", "be", "another", "another"],
 
         testCase "Single incorrect element" $
-            expectedFailure (P.intercalated P.identifier P.anyWord) "and"
+            expectedFailure (P.intercalated P.identifier P.anyWord) "be"
     ]
 
 functionDefinitionTests :: TestTree
 functionDefinitionTests = testGroup "Function definition"
     [
-        testCase "Many sentences" $
+        testCase "Operator" $
             expectedResult
                 P.functionDefinition
-                "The double of an integer (m):\n  Let r be m times 2.\n  The result is r."
+                "The double of an integer (m), which results in an integer:\n  Let r be m times 2.\n  The result is r."
                 (T.FunDef
                     (T.Line 1 [T.TitleWords ["The", "double", "of"], T.TitleParam ["m"] T.IntT])
+                    (Just T.IntT)
                     [
                         T.Line 2 (T.VarDef [["r"]] (T.ValueM [T.WordP "m", T.WordP "times", T.IntP 2])),
                         T.Line 3 (T.Result (T.ValueM [T.WordP "r"]))
                     ]
                 ),
 
+        testCase "Procedure" $
+            expectedResult
+                P.functionDefinition
+                "To double an integer (m):\n  Let r be m times 2."
+                (T.FunDef
+                    (T.Line 1 [T.TitleWords ["double"], T.TitleParam ["m"] T.IntT])
+                    Nothing
+                    [
+                        T.Line 2 (T.VarDef [["r"]] (T.ValueM [T.WordP "m", T.WordP "times", T.IntP 2]))
+                    ]
+                ),
+
+
+        testCase "Predicate" $
+            expectedResult
+                P.functionDefinition
+                "Whether an integer (m) is whole:\n  The result is true."
+                (T.FunDef
+                    (T.Line 1 [T.TitleParam ["m"] T.IntT, T.TitleWords ["is", "whole"]])
+                    (Just T.BoolT)
+                    [
+                        T.Line 2 (T.Result (T.ValueM [T.WordP "true"]))
+                    ]
+                ),
+
         testCase "Consecutive arguments in title" $
-            expectedFailure P.functionDefinition "The double of an integer (m) an integer (n):\n  The result is m times n."
+            expectedFailure
+                P.functionDefinition
+                "The double of an integer (m) an integer (n):\n  The result is m times n.",
+
+        testCase "Operator without return type" $
+            expectedFailure
+                P.functionDefinition
+                "The double of an integer (m):\n  Let r be m times 2.\n  The result is r.",
+
+        testCase "Procedure with return type" $
+            expectedFailure
+                P.functionDefinition
+                "To double an integer (m), which results in an integer:\n  Let r be m times 2.\n  The result is r."
     ]
 
 titleTests :: TestTree
@@ -458,8 +501,8 @@ titleWordsTests = testGroup "Title words"
         testCase "Words followed by reserved word" $
             expectedResult
                 P.titleWords
-                "Function definition and"
-                (T.TitleWords ["Function", "definition", "and"]),
+                "Function definition be"
+                (T.TitleWords ["Function", "definition", "be"]),
 
         testCase "Words followed by parameter" $
             expectedResult
@@ -470,8 +513,8 @@ titleWordsTests = testGroup "Title words"
         testCase "Reserved word first" $
             expectedResult
                 P.titleWords
-                "And function definition"
-                (T.TitleWords ["And", "function", "definition"])
+                "Be function definition"
+                (T.TitleWords ["Be", "function", "definition"])
     ]
 
 titleParamTests :: TestTree
@@ -486,7 +529,7 @@ titleParamTests = testGroup "Title parameter"
         testCase "Followed by words" $
             expectedResult
                 P.titleParam
-                "An integer (m) function definition"
+                "An integer (m ) function definition"
                 (T.TitleParam ["m"] T.IntT),
 
         testCase "Two parameters" $

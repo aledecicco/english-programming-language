@@ -10,6 +10,7 @@ import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
 import Types
+import Utils ( isWord )
 
 --
 
@@ -41,7 +42,7 @@ symbol = void . L.symbol' sc
 -- General
 
 reservedWords :: [String]
-reservedWords = ["be", "and", "if", "from", "to", "in", "is", "an", "a", "containing", "with", "equal"]
+reservedWords = ["be", "in", "is", "an", "a", "containing"]
 
 anyWord :: Parser String
 anyWord = lexeme (some letterChar <* notFollowedBy alphaNumChar) <?> "word"
@@ -61,6 +62,7 @@ typeName True =
             reserved "of"
             eT <- typeName True
             return $ ListT eT)
+    <?> "singular type"
 typeName False =
     (reserved "integer" >> return IntT)
     <|> (reserved "float" >> return FloatT)
@@ -70,13 +72,14 @@ typeName False =
             reserved "of"
             eT <- typeName True
             return $ ListT eT)
+    <?> "plural type"
 
 
 -- Parses a word and checks that it's not reserved
 identifier :: Parser String
 identifier = do
     w <- anyWord
-    if w `elem` reservedWords
+    if any (\w' -> w `isWord` w') reservedWords
     then fail $ "Incorrect use of reserved word \"" ++ w ++ "\""
     else return w
 
@@ -152,8 +155,34 @@ block = functionDefinition
 
 functionDefinition :: Parser Block
 functionDefinition = do
-    (t, ss) <- listWithHeader title sentence
-    return $ FunDef t ss
+    ((tl, rt), ss) <- listWithHeader functionHeader sentence
+    return $ FunDef tl rt ss
+    where
+        functionHeader :: Parser (TitleLine, Maybe Type)
+        functionHeader = do
+            (Line ln fT) <- title
+            (fT', rt) <- inferTypeFromTitle fT
+            return (Line ln fT', rt)
+
+-- Tries to find clues in the title of a function for its return type.
+-- If no clues are found, it requires the type to be specified
+-- Can modify the title after a clue is found, if applicable
+inferTypeFromTitle :: Title -> Parser (Title, Maybe Type)
+inferTypeFromTitle fT@(TitleWords (w:ws) : ts)
+    | w `isWord` "whether" = return (removeFirstWord fT, Just BoolT)
+    | w `isWord` "to" = return (removeFirstWord fT, Nothing)
+    | otherwise = do
+        comma
+        reserved "which"
+        reserved "results"
+        reserved "in"
+        indefiniteArticle
+        t <- typeName False
+        return (fT, Just t)
+    where
+        removeFirstWord :: Title -> Title
+        removeFirstWord (TitleWords [w] : ts) = ts
+        removeFirstWord (TitleWords (w:ws) : ts) = TitleWords ws : ts
 
 title :: Parser TitleLine
 title = do

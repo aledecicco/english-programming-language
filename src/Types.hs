@@ -32,12 +32,6 @@ type SentenceLine = Line Sentence
 
 type TitleLine = Line Title
 
-getLineNumber :: Line a -> LineNumber
-getLineNumber (Line ln _) = ln
-
-getLineContent :: Line a -> a
-getLineContent (Line _ c) = c
-
 data TitlePart = TitleWords [String] | TitleParam Name Type
     deriving (Eq, Show)
 
@@ -45,7 +39,7 @@ type Title = [TitlePart]
 
 data Function = Operator Title ([Type] -> Type) | Procedure Title
 
-data Block = FunDef TitleLine [SentenceLine]
+data Block = FunDef TitleLine (Maybe Type) [SentenceLine]
     deriving (Eq, Show)
 
 type Program = [Block]

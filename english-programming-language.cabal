@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 759645fc4f9f2acec76a8f91c3f7f1b321d8dd6756499b044f45e0dcfca9f3d1
+-- hash: 8874279f7df8e6d4f590a22a40f862034fa33c253f4c92a65847a4c90982a679
 
 name:           english-programming-language
 version:        0.1.0.0
@@ -22,6 +22,7 @@ library
       Parser
       PreludeDefs
       Types
+      Utils
   other-modules:
       Paths_english_programming_language
   hs-source-dirs:

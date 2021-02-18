@@ -4,12 +4,12 @@ import Control.Monad ( when, unless, void, filterM )
 import Control.Monad.Trans.State ( get, gets, put, modify, liftCatch, runStateT, StateT )
 import Control.Monad.Trans.Except ( throwE, catchE, runExcept, Except )
 import Control.Monad.Trans.Class ( lift )
-import Data.List ( find )
+import Data.List ( find, intercalate )
 import Data.Maybe ( isJust, isNothing, fromJust )
-import Data.Char ( toLower )
 
 import Types
 import PreludeDefs
+import Utils ( isWord, getLineNumber, getLineContent )
 
 --
 
@@ -18,7 +18,7 @@ import PreludeDefs
 
 type Error = String
 
-type FunEnv = [Function]
+type FunEnv = [(String, Function)]
 type VarEnv = [(Name, Type)]
 type Env = (FunEnv, VarEnv)
 
@@ -54,11 +54,22 @@ removeVarType vn = do
     setVarEnv vE'
 
 getFunction :: Title -> MatcherState (Maybe Function)
-getFunction t = find funFinder <$> getFunEnv
+getFunction t = do
+    fid <- getFunctionId t
+    r <- find (\(fid', _) -> fid == fid') <$> getFunEnv
+    case r of
+        Just (_, f) -> return $ Just f
+        Nothing -> return Nothing
+
+
+getFunctionId :: Title -> MatcherState String
+getFunctionId t = return $ intercalate "_" (getFunctionIdParts t)
     where
-        funFinder :: Function -> Bool
-        funFinder (Operator t' _) = t == t'
-        funFinder (Procedure t') = t == t'
+        getFunctionIdParts :: Title -> [String]
+        getFunctionIdParts (TitleWords w : ts) = w ++ getFunctionIdParts ts
+        getFunctionIdParts (TitleParam {} : ts) = "%" : getFunctionIdParts ts
+
+
 
 isOperator :: Title -> MatcherState Bool
 isOperator t = do
@@ -80,14 +91,6 @@ getOperatorCallType fT vTs = do
     f <- getFunction fT
     case f of
         Just (Operator _ tFun) -> return $ Just (tFun vTs)
-        _ -> return Nothing
-
--- Returns the type of an operator assuming it was user defined and hence its types are not polymorphic
-getUserDefinedOperatorType :: Title -> MatcherState (Maybe Type)
-getUserDefinedOperatorType fT = do
-    f <- getFunction fT
-    case f of
-        Just (Operator _ tFun) -> return $ Just (tFun [])
         _ -> return Nothing
 
 varIsDefined :: Name -> MatcherState Bool
@@ -186,7 +189,7 @@ setVarTypeWithCheck ln vn t' = do
 
 getTitleParameters :: Title -> MatcherState [TitlePart]
 getTitleParameters [] = return []
-getTitleParameters (TitleWords _:ts) = getTitleParameters ts
+getTitleParameters (TitleWords _ : ts) = getTitleParameters ts
 getTitleParameters (p@TitleParam {} : ts) = (p:) <$> getTitleParameters ts
 
 -- Adds the parameters in a title to the variables environment
@@ -203,27 +206,27 @@ registerTitleParameters tl = do
             setVarTypeWithCheck ln n t
 
 -- Validates a sentence and persists its changes to the state, assuming that its arguments are correctly typed
-commitSentence :: TitleLine -> SentenceLine -> MatcherState ()
-commitSentence tl (Line ln (VarDef ns v)) = do
+commitSentence :: SentenceLine -> MatcherState ()
+commitSentence (Line ln (VarDef ns v)) = do
     t <- getValueType v
     mapM_ (\n -> setVarTypeWithCheck ln n t) ns
-commitSentence tl (Line ln (If v ss)) = commitSentences tl ss
-commitSentence tl (Line ln (IfElse v ssTrue ssFalse)) = commitSentences tl $ ssTrue ++ ssFalse
-commitSentence tl (Line ln (ForEach n v ss)) = do
+commitSentence (Line ln (If v ss)) = commitSentences ss
+commitSentence (Line ln (IfElse v ssTrue ssFalse)) = commitSentences $ ssTrue ++ ssFalse
+commitSentence (Line ln (ForEach n v ss)) = do
     isDef <- varIsDefined n
     when isDef $ alreadyDefinedIteratorError ln n
     ~(ListT eT) <- getValueType v
     setVarTypeWithCheck ln n eT
-    commitSentences tl ss
+    commitSentences ss
     removeVarType n
-commitSentence tl (Line ln (Until v ss)) = commitSentences tl ss
-commitSentence tl (Line ln (While v ss)) = commitSentences tl ss
-commitSentence tl (Line ln (Result v)) = return ()
-commitSentence tl (Line ln (ProcedureCall t vs)) = return ()
+commitSentence (Line ln (Until v ss)) = commitSentences ss
+commitSentence (Line ln (While v ss)) = commitSentences ss
+commitSentence (Line ln (Result v)) = return ()
+commitSentence (Line ln (ProcedureCall t vs)) = return ()
 
 -- Commits the sentences in a list in order
-commitSentences :: TitleLine -> [SentenceLine] -> MatcherState ()
-commitSentences fT = mapM_ $ commitSentence fT
+commitSentences :: [SentenceLine] -> MatcherState ()
+commitSentences = mapM_ commitSentence
 
 getValueType :: Value -> MatcherState Type
 getValueType (IntV _) = return IntT
@@ -243,10 +246,6 @@ satisfiesType IntT FloatT = return True
 satisfiesType FloatT IntT = return True
 satisfiesType (ListT t1) (ListT t2) = t1 `satisfiesType` t2
 satisfiesType t1 t2 = return $ t1 == t2
-
--- Returns whether two words match
-isWord :: String -> String -> Bool
-isWord w1 w2 = map toLower w1 == map toLower w2
 
 -- Validates that a value is correctly formed
 checkValueTypeIntegrity :: LineNumber -> Value -> MatcherState ()
@@ -350,62 +349,60 @@ matchValueWithType ln t v = do
     unless r $ wrongTypeValueError ln v' t'
     return v'
 
-matchSentence :: TitleLine -> SentenceLine -> MatcherState SentenceLine
-matchSentence _ (Line ln s@(SentenceM ps)) = do
+matchSentence :: Maybe Type -> Title -> SentenceLine -> MatcherState SentenceLine
+matchSentence _ _ (Line ln s@(SentenceM ps)) = do
     r <- matchAsProcedureCall ps
     case r of
         Just s'@(ProcedureCall t vs) -> do
             checkFunctionCallIntegrity ln t vs
             return $ Line ln s'
         Nothing -> unmatchableSentenceError ln s
-matchSentence _ (Line ln (VarDef ns v)) = do
+matchSentence _ _ (Line ln (VarDef ns v)) = do
     v' <- matchValue ln v
     return $ Line ln (VarDef ns v')
-matchSentence tl (Line ln (If v ss)) = do
+matchSentence rt fT (Line ln (If v ss)) = do
     v' <- matchValueWithType ln BoolT v
-    ss' <- matchSentences tl ss
+    ss' <- matchSentences rt fT ss
     return $ Line ln (If v' ss')
-matchSentence tl (Line ln (IfElse v ssTrue ssFalse)) = do
+matchSentence rt fT (Line ln (IfElse v ssTrue ssFalse)) = do
     v' <- matchValueWithType ln BoolT v
-    ssTrue' <- matchSentences tl ssTrue
-    ssFalse' <- matchSentences tl ssFalse
+    ssTrue' <- matchSentences rt fT ssTrue
+    ssFalse' <- matchSentences rt fT ssFalse
     return $ Line ln (IfElse v' ssTrue' ssFalse')
-matchSentence tl (Line ln (ForEach n v ss)) = do
+matchSentence rt fT (Line ln (ForEach n v ss)) = do
     v' <- matchValueWithType ln (ListT AnyT) v
-    ss' <- matchSentences tl ss
+    ss' <- matchSentences rt fT ss
     return $ Line ln (ForEach n v' ss')
-matchSentence tl (Line ln (Until v ss)) = do
+matchSentence rt fT (Line ln (Until v ss)) = do
     v' <- matchValueWithType ln BoolT v
-    ss' <- matchSentences tl ss
+    ss' <- matchSentences rt fT ss
     return $ Line ln (Until v' ss)
-matchSentence tl (Line ln (While v ss)) = do
+matchSentence rt fT (Line ln (While v ss)) = do
     v' <- matchValueWithType ln BoolT v
-    ss' <- matchSentences tl ss
+    ss' <- matchSentences rt fT ss
     return $ Line ln (While v' ss)
-matchSentence tl (Line ln (Result v)) = do
-    let fT = getLineContent tl
-    r <- getUserDefinedOperatorType fT
-    case r of
+matchSentence rt fT (Line ln (Result v)) = do
+    case rt of
         Just t -> do
             v' <- matchValueWithType ln t v
             return $ Line ln (Result v')
         Nothing -> procedureReturnError ln fT
-matchSentence _ s = return s
+matchSentence _ _ s = return s
 
-matchSentences :: TitleLine -> [SentenceLine] -> MatcherState [SentenceLine]
-matchSentences tl [] = return []
-matchSentences tl (s:rest) = do
-    s' <- matchSentence tl s
-    commitSentence tl s'
-    rest' <- matchSentences tl rest
+matchSentences :: Maybe Type -> Title -> [SentenceLine] -> MatcherState [SentenceLine]
+matchSentences rt fT [] = return []
+matchSentences rt fT (s:rest) = do
+    s' <- matchSentence rt fT s
+    commitSentence s'
+    rest' <- matchSentences rt fT rest
     return $ s':rest'
 
 -- Matches the matchables in each sentence of a block
 matchBlock :: Block -> MatcherState Block
-matchBlock (FunDef tl ss) = do
+matchBlock (FunDef tl rt ss) = do
     registerTitleParameters tl
-    ss' <- matchSentences tl ss
-    return $ FunDef tl ss'
+    ss' <- matchSentences rt (getLineContent tl) ss
+    return $ FunDef tl rt ss'
 
 -- Matches the matchables in each block of a program
 matchBlocks :: Program -> MatcherState Program
@@ -419,6 +416,16 @@ matchBlocks (b:bs) = do
 --
 
 
+-- Function registration
+
+registerFunctions :: Program -> MatcherState ()
+registerFunctions (FunDef tl rt _ : ps) = do
+    let fT = getLineContent tl
+    return ()
+
+--
+
+
 -- Main
 
 -- Returns the given program with its matchables matched
@@ -426,7 +433,7 @@ matchProgram :: Program -> Either Error (Program, Env)
 matchProgram p = runExcept $ runStateT matchProgram' initialEnv
     where
         matchProgram' = do
-            --registerFunctions p
+            registerFunctions p
             p' <- matchBlocks p
             return p'
 
