@@ -4,6 +4,8 @@ type Name = [String]
 
 type LineNumber = Int
 
+type FunctionId = String
+
 data Type = IntT | FloatT | BoolT | ListT Type | AnyT
     deriving (Eq, Show)
 
@@ -14,7 +16,7 @@ data Value =
     ValueM [MatchablePart]
     | IntV Integer | FloatV Float | BoolV Bool
     | ListV Type [Value] | VarV Name
-    | OperatorCall Title [Value]
+    | OperatorCall FunctionId [Value]
     deriving (Eq, Show)
 
 data Sentence =
@@ -23,7 +25,7 @@ data Sentence =
     | If Value [SentenceLine] | IfElse Value [SentenceLine] [SentenceLine]
     | ForEach Name Value [SentenceLine] | Until Value [SentenceLine] | While Value [SentenceLine]
     | Result Value
-    | ProcedureCall Title [Value]
+    | ProcedureCall FunctionId [Value]
     deriving (Eq, Show)
 
 data Line a = Line LineNumber a deriving (Eq, Show)

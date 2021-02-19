@@ -54,14 +54,13 @@ removeVarType vn = do
     let vE' = filter ((vn /=) . fst) vE
     setVarEnv vE'
 
-setFunction :: Title -> Function -> MatcherState ()
-setFunction t f = do
-    fid <- getFunctionId t
+setFunction :: Function -> MatcherState ()
+setFunction f = do
+    fid <- getFunctionId $ getTitle f
     modify (first $ (:) (fid, f))
 
-getFunction :: Title -> MatcherState (Maybe Function)
-getFunction t = do
-    fid <- getFunctionId t
+getFunction :: FunctionId -> MatcherState (Maybe Function)
+getFunction fid = do
     r <- find (\(fid', _) -> fid == fid') <$> getFunEnv
     case r of
         Just (_, f) -> return $ Just f
@@ -76,15 +75,16 @@ getFunctionId t = return $ intercalate "_" (getFunctionIdParts t)
 
 functionIsDefined :: Title -> MatcherState Bool
 functionIsDefined t = do
-    r <- getFunction t
+    fid <- getFunctionId t
+    r <- getFunction fid
     case r of
         Just _ -> return True
         Nothing -> return False
 
 -- Returns the resulting type of a call to an operator
-getOperatorCallType :: Title -> [Type] -> MatcherState (Maybe Type)
-getOperatorCallType fT vTs = do
-    f <- getFunction fT
+getOperatorCallType :: FunctionId -> [Type] -> MatcherState (Maybe Type)
+getOperatorCallType fid vTs = do
+    f <- getFunction fid
     case f of
         Just (Operator _ tFun) -> return $ Just (tFun vTs)
         _ -> return Nothing
@@ -175,6 +175,10 @@ setVarTypeWithCheck ln vn t' = do
         Just t -> when (t /= t') $ mismatchingTypeAssignError ln vn t t'
         Nothing -> setVarType vn t'
 
+getTitle :: Function -> Title
+getTitle (Operator t _) = t
+getTitle (Procedure t) = t
+
 getTitleParameters :: Title -> MatcherState [TitlePart]
 getTitleParameters [] = return []
 getTitleParameters (TitleWords _ : ts) = getTitleParameters ts
@@ -236,7 +240,9 @@ satisfiesType t1 t2 = return $ t1 == t2
 
 -- Validates that a value is correctly formed
 checkValueTypeIntegrity :: LineNumber -> Value -> MatcherState ()
-checkValueTypeIntegrity ln (OperatorCall t vs) = checkFunctionCallIntegrity ln t vs
+checkValueTypeIntegrity ln (OperatorCall fid vs) = do
+    ~(Just (Operator t ps)) <- getFunction fid
+    checkFunctionCallIntegrity ln t vs
 checkValueTypeIntegrity ln (ListV t vs) = mapM_ (checkValueTypeIntegrity ln) vs
 checkValueTypeIntegrity _ _ = return ()
 
@@ -340,7 +346,8 @@ matchSentence :: Maybe Type -> Title -> SentenceLine -> MatcherState SentenceLin
 matchSentence _ _ (Line ln s@(SentenceM ps)) = do
     r <- matchAsProcedureCall ps
     case r of
-        Just s'@(ProcedureCall t vs) -> do
+        Just s'@(ProcedureCall fid vs) -> do
+            ~(Just (Procedure t)) <- getFunction fid
             checkFunctionCallIntegrity ln t vs
             return $ Line ln s'
         Nothing -> unmatchableSentenceError ln s
@@ -412,7 +419,7 @@ registerFunctions = mapM_ registerFunction
         registerFunction (FunDef (Line ln fT) rt _) = do
             r <- functionIsDefined fT
             when r $ alreadyDefinedFunctionError ln fT
-            setFunction fT $ case rt of
+            setFunction $ case rt of
                 Just t -> Operator fT (const t)
                 Nothing -> Procedure fT
 
