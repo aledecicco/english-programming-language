@@ -66,10 +66,10 @@ getFunction fid = do
         Just (_, f) -> return $ Just f
         Nothing -> return Nothing
 
-getFunctionId :: Title -> MatcherState String
+getFunctionId :: Title -> MatcherState FunctionId
 getFunctionId t = return $ intercalate "_" (getFunctionIdParts t)
     where
-        getFunctionIdParts :: Title -> [String]
+        getFunctionIdParts :: Title -> [FunctionId]
         getFunctionIdParts (TitleWords w : ts) = w ++ getFunctionIdParts ts
         getFunctionIdParts (TitleParam {} : ts) = "%" : getFunctionIdParts ts
 
@@ -80,6 +80,20 @@ functionIsDefined t = do
     case r of
         Just _ -> return True
         Nothing -> return False
+
+isOperator :: FunctionId -> MatcherState Bool
+isOperator fid = do
+    r <- getFunction fid
+    case r of
+        Just Operator {} -> return True
+        _ -> return False
+
+isProcedure :: FunctionId -> MatcherState Bool
+isProcedure fid = do
+    r <- getFunction fid
+    case r of
+        Just Procedure {} -> return True
+        _ -> return False
 
 -- Returns the resulting type of a call to an operator
 getOperatorCallType :: FunctionId -> [Type] -> MatcherState (Maybe Type)
@@ -225,9 +239,9 @@ getValueType (FloatV _) = return FloatT
 getValueType (BoolV _) = return BoolT
 getValueType (ListV t _) = return $ ListT t
 getValueType (VarV n) = fromJust <$> getVarType n
-getValueType (OperatorCall t vs) = do
+getValueType (OperatorCall fid vs) = do
     vTs <- mapM getValueType vs
-    opT <- getOperatorCallType t vTs
+    opT <- getOperatorCallType fid vTs
     return $ fromJust opT
 
 -- Returns whether a type satisfies another type
@@ -258,6 +272,34 @@ checkFunctionCallIntegrity ln fT vs = do
             t <- getValueType v
             r <- t `satisfiesType` t'
             unless r $ wrongTypeParameterError ln fT v t' n
+
+-- Returns the result of the first action that returns a value when applied to the given element
+firstNotNull :: a -> [a -> MatcherState (Maybe b)] -> MatcherState (Maybe b)
+firstNotNull _ [] = return Nothing
+firstNotNull e (f:fs) = do
+    r <- f e
+    case r of
+        Just _ -> return r
+        Nothing -> firstNotNull e fs
+
+-- Returns all the ways to split a list into two, with at least one element in the first part
+splits :: [a] -> [([a], [a])]
+splits [] = []
+splits (x:xs) = splits' [x] xs
+    where
+        splits' :: [a] -> [a] -> [([a], [a])]
+        splits' l [] = [(l,[])]
+        splits' l (r:rs) = (l, r:rs) : splits' (l++[r]) rs
+
+-- Returns whether a list of words a prefix of the given matchable, and the unmatched sufix
+isPrefix :: [String] -> [MatchablePart] -> (Bool, [MatchablePart])
+isPrefix [] ms = (True, ms)
+isPrefix _ [] = (False, [])
+isPrefix (t:ts) ms@(WordP w : ps) =
+    if t == w
+    then isPrefix ts ps
+    else (False, ms)
+isPrefix _ ms = (False, ms)
 
 --
 
@@ -304,22 +346,51 @@ matchAsVar ps = do
             return $ if isDef then Just (VarV n) else Nothing
 
 matchAsOperatorCall :: [MatchablePart] -> MatcherState (Maybe Value)
-matchAsOperatorCall _ = undefined
+matchAsOperatorCall ps = do
+    r <- matchAsFunctionCall ps
+    case r of
+        Just (fid, vs) -> do
+            isOpCall <- isOperator fid
+            return $ if isOpCall then Just (OperatorCall fid vs) else Nothing
+        Nothing -> return Nothing
 
 matchAsProcedureCall :: [MatchablePart] -> MatcherState (Maybe Sentence)
-matchAsProcedureCall ps = undefined
+matchAsProcedureCall ps = do
+    r <- matchAsFunctionCall ps
+    case r of
+        Just (fid, vs) -> do
+            isProcCall <- isProcedure fid
+            return $ if isProcCall then Just (ProcedureCall fid vs) else Nothing
+        Nothing -> return Nothing
+
+matchAsFunctionCall :: [MatchablePart] -> MatcherState (Maybe (FunctionId, [Value]))
+matchAsFunctionCall ps = do
+    fs <- map snd <$> getFunEnv
+    firstNotNull ps $ map matchAsFunctionCall' fs
+    where
+        matchAsFunctionCall' :: Function -> [MatchablePart] -> MatcherState (Maybe (FunctionId, [Value]))
+        matchAsFunctionCall' f ps = do
+            let fT = getTitle f
+            pos <- getTitleMatches fT ps
+            return Nothing
+
+getTitleMatches :: Title -> [MatchablePart] -> MatcherState [[[MatchablePart]]]
+getTitleMatches (TitleWords ws : ts) ps = do
+    let (isP, rest) = ws `isPrefix` ps
+    if isP then getTitleMatches ts rest else return []
+getTitleMatches (TitleParam _ _ : ts) ps = do
+    let posSpans = splits ps
+    lists <- mapM combineMatches posSpans
+    return $ concat lists
+    where
+        combineMatches :: ([MatchablePart], [MatchablePart]) -> MatcherState [[[MatchablePart]]]
+        combineMatches (span, rest) = do
+            matches <- getTitleMatches ts rest
+            return $ map (span:) matches
 
 matchAsValue :: [MatchablePart] -> MatcherState (Maybe Value)
 matchAsValue [ParensP ps] = matchAsValue ps
-matchAsValue ps = matchFirst ps [matchAsInt, matchAsFloat, matchAsBool, matchAsVar, matchAsOperatorCall]
-    where
-        matchFirst :: [MatchablePart] -> [[MatchablePart] -> MatcherState (Maybe Value)] -> MatcherState (Maybe Value)
-        matchFirst _ [] = return Nothing
-        matchFirst ps (f:fs) = do
-            r <- f ps
-            case r of
-                Just _ -> return r
-                Nothing -> matchFirst ps fs
+matchAsValue ps = firstNotNull ps [matchAsInt, matchAsFloat, matchAsBool, matchAsVar, matchAsOperatorCall]
 
 matchValue :: LineNumber -> Value -> MatcherState Value
 matchValue ln (ListV t es) = do
