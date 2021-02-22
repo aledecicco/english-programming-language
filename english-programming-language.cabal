@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: fcd9eb9d87a9aa059cc7d4528378117fa6f97471bd54f8d55bbea6cf1b17b147
+-- hash: 18489a0526debef7d900b8e5d37a79a5d88374ae37e4368b9fcdb2b211d24ef7
 
 name:           english-programming-language
 version:        0.1.0.0
@@ -23,7 +23,6 @@ library
       PreludeDefs
       Types
       Utils
-      Verificator
   other-modules:
       Paths_english_programming_language
   hs-source-dirs:
@@ -56,6 +55,7 @@ test-suite english-programming-language-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      MatcherTest
       ParserTest
       Paths_english_programming_language
   hs-source-dirs:

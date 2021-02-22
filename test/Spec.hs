@@ -1,5 +1,11 @@
-import Test.Tasty
+import Test.Tasty ( defaultMain, testGroup, TestTree )
+
 import qualified ParserTest
+
+--
+
+
+--
 
 main :: IO ()
 main = defaultMain tests
