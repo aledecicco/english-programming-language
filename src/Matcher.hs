@@ -229,9 +229,10 @@ registerFunctions = mapM_ registerFunction
         registerFunction (FunDef (Line ln fT) rt _) = do
             r <- functionIsDefined fT
             when r $ alreadyDefinedFunctionError ln fT
-            setFunction $ case rt of
-                Just t -> Operator fT (const t)
-                Nothing -> Procedure fT
+            setFunction $
+                case rt of
+                    Just t -> Operator fT (const t)
+                    Nothing -> Procedure fT
 
 -- Validates a sentence and persists its changes to the state, assuming that its arguments are correctly typed
 commitSentence :: SentenceLine -> Matcher ()
@@ -501,11 +502,17 @@ matchBlocks (b:bs) = do
 
 -- Main
 
+match :: Env -> (a -> Matcher b) -> a -> Either Error (b, Env)
+match env m x = runExcept $ runStateT (m x) env
+
 -- Returns the given program with its matchables matched
-matchProgram :: Program -> Either Error (Program, Env)
-matchProgram p = runExcept $ runStateT matchProgram' initialEnv
+matchProgram :: Program -> Program
+matchProgram p =
+    case match initialEnv matchProgram' p of
+        Left e -> error e
+        Right p' -> fst p'
     where
-        matchProgram' :: Matcher Program
-        matchProgram' = registerFunctions p >> matchBlocks p
+        matchProgram' :: Program -> Matcher Program
+        matchProgram' p = registerFunctions p >> matchBlocks p
 
 --

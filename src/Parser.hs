@@ -355,10 +355,18 @@ matchablePart =
 
 -- Main
 
+-- Parses a string using a specific parser and returns its result or the error it yielded
+parse :: Parser a -> String -> Either String a
+parse p s =
+    case Text.Megaparsec.parse p "" s of
+        Left e -> Left $ errorBundlePretty e
+        Right b -> Right b
+
 -- Returns the program parsed from a given source code
 parseProgram :: String -> Program
-parseProgram s = case parse (some block <* eof) "" s of
-    Left e -> error $ errorBundlePretty e
-    Right b -> b
+parseProgram s =
+    case Parser.parse (some block <* eof) s of
+        Left e -> error e
+        Right b -> b
 
 --

@@ -1,8 +1,7 @@
 module ParserTest ( tests ) where
 
 import Test.Tasty
-import Test.Tasty.HUnit
-import Text.Megaparsec
+import Test.Tasty.HUnit ( HasCallStack, testCase, assertFailure, Assertion )
 
 import qualified Parser as P
 import qualified Types as T
@@ -15,21 +14,24 @@ import qualified Types as T
 -- Asserts that a parser yields a specific result when parsing a given string
 expectedResult :: (HasCallStack, Eq a, Show a) => P.Parser a -> String -> a -> Assertion
 expectedResult p s r =
-    case parse p "" s of
-        Left e -> assertFailure $ "Parser failed, the error was:\n" ++ errorBundlePretty e
-        Right r' -> if r == r' then return () else assertFailure $ "The result was:\n" ++ show r' ++ "\nBut was expecting:\n" ++ show r
+    case P.parse p s of
+        Left e -> assertFailure $ "Parser failed, the error was:\n" ++ e
+        Right r' ->
+            if r == r'
+            then return ()
+            else assertFailure $ "The result was:\n" ++ show r' ++ "\nBut was expecting:\n" ++ show r
 
 -- Asserts that a parser succeeds when parsing a given string
 expectedSuccess :: (HasCallStack, Eq a, Show a) => P.Parser a -> String -> Assertion
 expectedSuccess p s =
-    case parse p "" s of
-        Left e -> assertFailure $ "Parser failed, the error was:\n" ++ errorBundlePretty e
+    case P.parse p s of
+        Left e -> assertFailure $ "Parser failed, the error was:\n" ++ e
         Right _ -> return ()
 
 -- Asserts that a parser fails to parse a given string
 expectedFailure :: (HasCallStack, Eq a, Show a) => P.Parser a -> String -> Assertion
 expectedFailure p s =
-    case parse p "" s of
+    case P.parse p s of
         Left _ -> return ()
         Right r -> assertFailure $ "Parser didn't fail, the result was " ++ show r
 
