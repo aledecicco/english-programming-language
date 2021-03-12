@@ -1,14 +1,14 @@
-module MatcherTest ( tests ) where
+module MatcherTest ( {-tests-} ) where
 
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import qualified Matcher as M
-import qualified Types as T
+import qualified ParserEnv as M
+import qualified AST as T
 
 --
 
-
+{-
 -- Assertions
 
 -- Asserts that a matcher yields a specific result when matching a matchable with the given environment
@@ -65,3 +65,4 @@ tests = testGroup "Matcher"
     ]
 
 --
+-}

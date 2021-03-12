@@ -32,7 +32,7 @@ getValueType (OperatorCall fid vs) = do
     where
         getOperatorCallType :: FunctionId -> [Type] -> ParserEnv Type
         getOperatorCallType fid vTs = do
-            (Operator _ tFun)  <- fromJust <$> getFunction fid
+            ~(Operator _ tFun)  <- fromJust <$> getFunction fid
             return $ tFun vTs
 
 solveValueWithType :: Type -> Value -> ParserEnv Value
@@ -41,20 +41,20 @@ solveValueWithType t v = do
     t' <- getValueType v'
     if t' `satisfiesType` t
         then return v'
-        else wrongTypeValue v' t'
+        else undefined --wrongTypeValue v' t'
 
 setVariableTypeWithCheck :: Type -> Name -> ParserEnv ()
 setVariableTypeWithCheck t' vn = do
     r <- getVariableType vn
     case r of
-        Just t -> unless (t `satisfiesType` t') $ mismatchingTypeAssigned vn t t'
+        Just t -> unless (t `satisfiesType` t') $ undefined --mismatchingTypeAssigned vn t t'
         Nothing -> setVariableType vn t'
 
 setNewVariableType :: Type -> Name -> ParserEnv ()
 setNewVariableType t' vn = do
     isDef <- variableIsDefined vn
     if isDef
-        then alreadyDefinedVariable vn
+        then undefined --alreadyDefinedVariable vn
         else setVariableType vn t'
 
 -- Validates that a value is correctly formed
@@ -76,7 +76,7 @@ checkFunctionCallIntegrity (fid, vs) = do
             t <- getValueType v
             if t `satisfiesType` t'
                 then checkParameterTypes ts vs
-                else wrongTypeParameter n t' v
+                else undefined --wrongTypeParameter n t' v
 
 
 --
@@ -92,7 +92,7 @@ solveValue (ValueM ps) = do
     r <- matchAsValue ps
     case r of
         Just v' -> checkValueIntegrity v' >> return v'
-        Nothing -> unmatchableValue ps
+        Nothing -> undefined --unmatchableValue ps
 solveValue v = return v
 
 solveSentence :: Sentence -> Maybe Type -> ParserEnv Sentence
@@ -129,12 +129,12 @@ solveSentence (Result v) rt =
         Just t -> do
             v' <- solveValueWithType t v
             return $ Result v'
-        Nothing -> resultInProcedure v
+        Nothing -> undefined --resultInProcedure v
 solveSentence (SentenceM ps) _ = do
     r <- matchAsSentence ps
     case r of
         Just s@(ProcedureCall fid vs) -> checkFunctionCallIntegrity (fid, vs) >> return s
-        _ -> unmatchableSentence ps
+        _ -> undefined --unmatchableSentence ps
 
 solveSentenceLine :: Line Sentence -> Maybe Type -> ParserEnv (Line Sentence)
 solveSentenceLine (Line ln s) rt = do

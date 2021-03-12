@@ -1,10 +1,10 @@
-module ParserTest ( tests ) where
+module FuzzyParserTest ( tests ) where
 
 import Test.Tasty
 import Test.Tasty.HUnit ( HasCallStack, testCase, assertFailure, Assertion )
 
 import qualified FuzzyParser as P
-import qualified Types as T
+import qualified AST as T
 
 --
 
@@ -12,7 +12,7 @@ import qualified Types as T
 -- Assertions
 
 -- Asserts that a parser yields a specific result when parsing a given string
-expectedResult :: (HasCallStack, Eq a, Show a) => P.Parser a -> String -> a -> Assertion
+expectedResult :: (HasCallStack, Eq a, Show a) => P.FuzzyParser a -> String -> a -> Assertion
 expectedResult p s r =
     case P.parse p s of
         Left e -> assertFailure $ "Parser failed, the error was:\n" ++ e
@@ -22,14 +22,14 @@ expectedResult p s r =
             else assertFailure $ "The result was:\n" ++ show r' ++ "\nBut was expecting:\n" ++ show r
 
 -- Asserts that a parser succeeds when parsing a given string
-expectedSuccess :: (HasCallStack, Eq a, Show a) => P.Parser a -> String -> Assertion
+expectedSuccess :: (HasCallStack, Eq a, Show a) => P.FuzzyParser a -> String -> Assertion
 expectedSuccess p s =
     case P.parse p s of
         Left e -> assertFailure $ "Parser failed, the error was:\n" ++ e
         Right _ -> return ()
 
 -- Asserts that a parser fails to parse a given string
-expectedFailure :: (HasCallStack, Eq a, Show a) => P.Parser a -> String -> Assertion
+expectedFailure :: (HasCallStack, Eq a, Show a) => P.FuzzyParser a -> String -> Assertion
 expectedFailure p s =
     case P.parse p s of
         Left _ -> return ()
@@ -590,7 +590,7 @@ listWithHeaderTests = testGroup "ListWithHeader"
             expectedFailure integerItems "Integers:\n  11.\n  12"
     ]
     where
-        integerItems :: P.Parser (String, [Integer])
+        integerItems :: P.FuzzyParser (String, [Integer])
         integerItems = P.listWithHeader P.anyWord (P.integer <* P.dot)
 
 valueTests :: TestTree

@@ -1,6 +1,6 @@
 import Test.Tasty ( defaultMain, testGroup, TestTree )
 
-import qualified ParserTest
+import qualified FuzzyParserTest
 import qualified MatcherTest
 
 --
@@ -12,4 +12,4 @@ main :: IO ()
 main = defaultMain tests
 
 tests :: TestTree
-tests = testGroup "Tests" [ParserTest.tests, MatcherTest.tests]
+tests = testGroup "Tests" [FuzzyParserTest.tests]--, MatcherTest.tests]

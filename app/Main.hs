@@ -1,7 +1,7 @@
 module Main where
 
 import FuzzyParser (parseProgram)
-import Matcher (matchProgram)
+--import Matcher (matchProgram)
 
 main :: IO ()
 main = do

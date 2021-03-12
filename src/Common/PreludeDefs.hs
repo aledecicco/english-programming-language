@@ -1,6 +1,6 @@
 module PreludeDefs where
 
-import Types
+import AST
 
 --
 
