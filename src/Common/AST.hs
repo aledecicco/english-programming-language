@@ -1,15 +1,23 @@
-module Types where
+module AST where
+
+--
+
+
+-- General
 
 type Name = [String]
 
-type LineNumber = Int
-
 type FunctionId = String
 
-data Type = IntT | FloatT | BoolT | ListT Type | AnyT
+data MatchablePart = IntP Integer | FloatP Float | WordP String | ParensP [MatchablePart]
     deriving (Eq, Show)
 
-data MatchablePart = IntP Integer | FloatP Float | WordP String | ParensP [MatchablePart]
+--
+
+
+-- Program structure
+
+data Type = IntT | FloatT | BoolT | ListT Type | AnyT
     deriving (Eq, Show)
 
 data Value =
@@ -28,12 +36,6 @@ data Sentence =
     | ProcedureCall FunctionId [Value]
     deriving (Eq, Show)
 
-data Line a = Line LineNumber a deriving (Eq, Show)
-
-type SentenceLine = Line Sentence
-
-type TitleLine = Line Title
-
 data TitlePart = TitleWords [String] | TitleParam Name Type
     deriving (Eq, Show)
 
@@ -45,3 +47,18 @@ data Block = FunDef TitleLine (Maybe Type) [SentenceLine]
     deriving (Eq, Show)
 
 type Program = [Block]
+
+--
+
+
+-- Lines
+
+type LineNumber = Int
+
+data Line a = Line LineNumber a deriving (Eq, Show)
+
+type SentenceLine = Line Sentence
+
+type TitleLine = Line Title
+
+--

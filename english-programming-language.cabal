@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 18489a0526debef7d900b8e5d37a79a5d88374ae37e4368b9fcdb2b211d24ef7
+-- hash: 74de8df3deef9c80bfb7fccfb60f7e4b5ae34e8b8db217214b55ae889b99b350
 
 name:           english-programming-language
 version:        0.1.0.0
@@ -18,15 +18,19 @@ extra-source-files:
 
 library
   exposed-modules:
-      Matcher
-      Parser
+      AST
+      Env
       PreludeDefs
-      Types
+      FuzzyParser
+      Matcher
+      ParserEnv
+      Solver
       Utils
   other-modules:
       Paths_english_programming_language
   hs-source-dirs:
-      src
+      src/Common
+      src/Parser
   build-depends:
       base >=4.7 && <5
     , megaparsec
@@ -55,8 +59,8 @@ test-suite english-programming-language-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      FuzzyParserTest
       MatcherTest
-      ParserTest
       Paths_english_programming_language
   hs-source-dirs:
       test

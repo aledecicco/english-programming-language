@@ -1,6 +1,6 @@
 {-# LANGUAGE TupleSections #-}
 
-module Parser where
+module FuzzyParser where
 
 import Data.Void (Void)
 import Control.Monad (void, when)
@@ -9,7 +9,7 @@ import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
-import Types
+import AST
 import Utils ( isWord )
 
 --
@@ -17,42 +17,42 @@ import Utils ( isWord )
 
 -- Parser definitions
 
-type Parser = Parsec Void String
+type FuzzyParser = Parsec Void String
 type Error = ParseErrorBundle String Void
 
--- Consumes whitespace including new lines
-scn :: Parser ()
+-- FuzzyParser whitespace including new lines
+scn :: FuzzyParser ()
 scn = L.space space1 empty empty
 
 -- Consumes whitespace not including new lines
-sc :: Parser ()
+sc :: FuzzyParser ()
 sc = L.space (void $ some (char ' ' <|> char '\t')) empty empty
 
 -- Wrapper for parsing lexemes consumig trailing whitespace
-lexeme :: Parser a -> Parser a
+lexeme :: FuzzyParser a -> FuzzyParser a
 lexeme = L.lexeme sc
 
 -- Parses a case insensitive string consuming trailing whitespace
-symbol :: String -> Parser ()
+symbol :: String -> FuzzyParser ()
 symbol = void . L.symbol' sc
+
+reservedWords :: [String]
+reservedWords = ["be", "in", "is", "an", "a", "containing"]
 
 --
 
 
 -- General
 
-reservedWords :: [String]
-reservedWords = ["be", "in", "is", "an", "a", "containing"]
-
-anyWord :: Parser String
+anyWord :: FuzzyParser String
 anyWord = lexeme (some letterChar <* notFollowedBy alphaNumChar) <?> "word"
 
 -- Parses a name (list of words that are not reserved)
-name :: Parser Name
+name :: FuzzyParser Name
 name = (some . try) identifier <?> "name"
 
 -- Parses a type by its name
-typeName :: Bool -> Parser Type
+typeName :: Bool -> FuzzyParser Type
 typeName True =
     (reserved "integers" >> return IntT)
     <|> (reserved "floats" >> return FloatT)
@@ -74,48 +74,55 @@ typeName False =
             return $ ListT eT)
     <?> "plural type"
 
-
 -- Parses a word and checks that it's not reserved
-identifier :: Parser String
+identifier :: FuzzyParser String
 identifier = do
     w <- anyWord
     if any (\w' -> w `isWord` w') reservedWords
-    then fail $ "Incorrect use of reserved word \"" ++ w ++ "\""
-    else return w
+        then fail $ "Incorrect use of reserved word \"" ++ w ++ "\""
+        else return w
 
 -- Parses a specific word
-reserved :: String -> Parser String
+reserved :: String -> FuzzyParser String
 reserved w = lexeme $ string' w <* notFollowedBy alphaNumChar
 
-integer :: Parser Integer
+integer :: FuzzyParser Integer
 integer = lexeme $ L.signed (return ()) L.decimal <* notFollowedBy alphaNumChar
 
-float :: Parser Float
+float :: FuzzyParser Float
 float = lexeme $ L.signed (return ()) L.float <* notFollowedBy alphaNumChar
 
-comma :: Parser ()
+comma :: FuzzyParser ()
 comma = symbol "," <?> "comma"
 
-dot :: Parser ()
+dot :: FuzzyParser ()
 dot = symbol "." <?> "dot"
 
-colon :: Parser ()
+colon :: FuzzyParser ()
 colon = symbol ":" <?> "colon"
 
-parens :: Parser a -> Parser a
+parens :: FuzzyParser a -> FuzzyParser a
 parens = between (symbol "(") (symbol ")")
 
-indefiniteArticle :: Parser String
+indefiniteArticle :: FuzzyParser String
 indefiniteArticle = reserved "an" <|> reserved "a"
 
+getCurrentLineNumber :: FuzzyParser Int
+getCurrentLineNumber = unPos . sourceLine <$> getSourcePos
+
+--
+
+
+-- Combinators
+
 -- Parses a series of a given parser (such as "a, b and c")
-series :: Parser a -> Parser [a]
+series :: FuzzyParser a -> FuzzyParser [a]
 series p = do
     x <- p;
     xs <- series' p <|> return []
     return $ x:xs
     where
-        series' :: Parser a -> Parser [a]
+        series' :: FuzzyParser a -> FuzzyParser [a]
         series' p = do
             comma
             xs <- (many . try) $ p <* comma
@@ -124,11 +131,11 @@ series p = do
             return $ xs++[x']
 
 -- Parses an intercalated list of two parsers
-intercalated :: Parser a -> Parser a -> Parser [a]
+intercalated :: FuzzyParser a -> FuzzyParser a -> FuzzyParser [a]
 intercalated pA pB = (:) <$> pA <*> (try (intercalated pB pA) <|> return [])
 
 -- Parses a header followed by a block of indented elements
-listWithHeader :: Parser a -> Parser b -> Parser (a, [b])
+listWithHeader :: FuzzyParser a -> FuzzyParser b -> FuzzyParser (a, [b])
 listWithHeader pH pE = L.indentBlock scn listWithHeader'
     where
         listWithHeader' = do
@@ -137,29 +144,26 @@ listWithHeader pH pE = L.indentBlock scn listWithHeader'
             return $ L.IndentSome Nothing (return . (h, )) pE
 
 -- Parses a specific sentence in block format
-blockSentence :: Parser a -> Parser (a, LineNumber, [SentenceLine])
+blockSentence :: FuzzyParser a -> FuzzyParser (a, LineNumber, [SentenceLine])
 blockSentence pH = do
     ln <- getCurrentLineNumber
     (h, ss) <- listWithHeader pH sentence
     return (h, ln, ss)
-
-getCurrentLineNumber :: Parser Int
-getCurrentLineNumber = unPos . sourceLine <$> getSourcePos
 
 --
 
 
 -- Blocks
 
-block :: Parser Block
+block :: FuzzyParser Block
 block = functionDefinition
 
-functionDefinition :: Parser Block
+functionDefinition :: FuzzyParser Block
 functionDefinition = do
     ((tl, rt), ss) <- listWithHeader functionHeader sentence
     return $ FunDef tl rt ss
     where
-        functionHeader :: Parser (TitleLine, Maybe Type)
+        functionHeader :: FuzzyParser (TitleLine, Maybe Type)
         functionHeader = do
             (Line ln fT) <- title
             (fT', rt) <- inferTypeFromTitle fT
@@ -168,7 +172,7 @@ functionDefinition = do
 -- Tries to find clues in the title of a function for its return type.
 -- If no clues are found, it requires the type to be specified
 -- Can modify the title after a clue is found, if applicable
-inferTypeFromTitle :: Title -> Parser (Title, Maybe Type)
+inferTypeFromTitle :: Title -> FuzzyParser (Title, Maybe Type)
 inferTypeFromTitle fT@(TitleWords (w:ws) : ts)
     | w `isWord` "whether" = return (removeFirstWord fT, Just BoolT)
     | w `isWord` "to" = return (removeFirstWord fT, Nothing)
@@ -185,7 +189,7 @@ inferTypeFromTitle fT@(TitleWords (w:ws) : ts)
         removeFirstWord (TitleWords [w] : ts) = ts
         removeFirstWord (TitleWords (w:ws) : ts) = TitleWords ws : ts
 
-title :: Parser TitleLine
+title :: FuzzyParser TitleLine
 title = do
     ln <- getCurrentLineNumber
     x <- titleParam <|> titleWords
@@ -195,11 +199,11 @@ title = do
     return $ Line ln (x:xs)
 
 -- Parses words for an identifying part of a function's title
-titleWords :: Parser TitlePart
+titleWords :: FuzzyParser TitlePart
 titleWords = TitleWords <$> some (notFollowedBy indefiniteArticle >> anyWord)
 
 -- Parses a parameter of a function's title
-titleParam :: Parser TitlePart
+titleParam :: FuzzyParser TitlePart
 titleParam = do
     indefiniteArticle
     t <- typeName False
@@ -211,7 +215,7 @@ titleParam = do
 
 -- Sentences
 
-sentence :: Parser SentenceLine
+sentence :: FuzzyParser SentenceLine
 sentence =
     (variablesDefinition <* dot)
     <|> (simpleIf <* dot)
@@ -227,11 +231,11 @@ sentence =
     <?> "sentence"
 
 -- Parses a sentence that can be used inside a simple statement
-simpleSentence :: Parser SentenceLine
+simpleSentence :: FuzzyParser SentenceLine
 simpleSentence = variablesDefinition <|> sentenceMatchable <?> "simple sentence"
 
 -- Parses the definition of one or more variables with the same value
-variablesDefinition :: Parser SentenceLine
+variablesDefinition :: FuzzyParser SentenceLine
 variablesDefinition = do
     reserved "let"
     ns <- series name
@@ -239,41 +243,41 @@ variablesDefinition = do
     ln <- getCurrentLineNumber
     Line ln . VarDef ns <$> value
 
-simpleIf :: Parser SentenceLine
+simpleIf :: FuzzyParser SentenceLine
 simpleIf = do
     c <- try $ reserved "if" >> condition <* comma
     ln <- getCurrentLineNumber
     s <- simpleSentence
     Line ln <$> ((IfElse c [s] <$> simpleElse) <|> return (If c [s]))
     where
-        simpleElse :: Parser [SentenceLine]
+        simpleElse :: FuzzyParser [SentenceLine]
         simpleElse = do
             comma
             reserved "otherwise"
             s <- simpleSentence
             return [s]
 
-ifBlock :: Parser SentenceLine
+ifBlock :: FuzzyParser SentenceLine
 ifBlock = do
     (c, ln, ss) <- blockSentence (reserved "if" >> condition)
     Line ln <$> ((IfElse c ss <$> elseBlock) <|> return (If c ss))
     where
-        elseBlock :: Parser [SentenceLine]
+        elseBlock :: FuzzyParser [SentenceLine]
         elseBlock = snd <$> listWithHeader (reserved "otherwise") sentence
 
-simpleForEach :: Parser SentenceLine
+simpleForEach :: FuzzyParser SentenceLine
 simpleForEach = do
     (n, l) <- try $ forEachHeader <* comma
     ln <- getCurrentLineNumber
     s <- simpleSentence
     return $ Line ln (ForEach n l [s])
 
-forEachBlock :: Parser SentenceLine
+forEachBlock :: FuzzyParser SentenceLine
 forEachBlock = do
     ((n, l), ln, ss) <- blockSentence forEachHeader
     return $ Line ln (ForEach n l ss)
 
-forEachHeader :: Parser (Name, Value)
+forEachHeader :: FuzzyParser (Name, Value)
 forEachHeader = do
     reserved "for"
     reserved "each"
@@ -282,39 +286,39 @@ forEachHeader = do
     l <- value
     return (n, l)
 
-simpleUntil :: Parser SentenceLine
+simpleUntil :: FuzzyParser SentenceLine
 simpleUntil = do
     c <- try $ reserved "until" >> condition <* comma
     ln <- getCurrentLineNumber
     s <- simpleSentence
     return $ Line ln (Until c [s])
 
-untilBlock :: Parser SentenceLine
+untilBlock :: FuzzyParser SentenceLine
 untilBlock = do
     (c, ln, ss) <- blockSentence (reserved "until" >> condition)
     return $ Line ln (Until c ss)
 
-simpleWhile :: Parser SentenceLine
+simpleWhile :: FuzzyParser SentenceLine
 simpleWhile = do
     c <- try $ reserved "while" >> condition <* comma
     ln <- getCurrentLineNumber
     s <- simpleSentence
     return $ Line ln (While c [s])
 
-whileBlock :: Parser SentenceLine
+whileBlock :: FuzzyParser SentenceLine
 whileBlock = do
     (c, ln, ss) <- blockSentence (reserved "while" >> condition)
     return $ Line ln (While c ss)
 
 -- Parses a return statement
-result :: Parser SentenceLine
+result :: FuzzyParser SentenceLine
 result = do
     try (reserved "the" >> reserved "result")
     ln <- getCurrentLineNumber
     reserved "is"
     Line ln . Result <$> value
 
-sentenceMatchable :: Parser SentenceLine
+sentenceMatchable :: FuzzyParser SentenceLine
 sentenceMatchable = do
     ln <- getCurrentLineNumber
     Line ln . SentenceM <$> some matchablePart
@@ -324,11 +328,11 @@ sentenceMatchable = do
 
 -- Values
 
-value :: Parser Value
+value :: FuzzyParser Value
 value = listValue <|> valueMatchable
 
 -- Parses a list with matchables as elements
-listValue :: Parser Value
+listValue :: FuzzyParser Value
 listValue = do
     try $ reserved "a" >> reserved "list"
     reserved "of"
@@ -336,13 +340,13 @@ listValue = do
     l <- (reserved "containing" >> series valueMatchable) <|> return []
     return $ ListV t l
 
-valueMatchable :: Parser Value
+valueMatchable :: FuzzyParser Value
 valueMatchable = ValueM <$> some matchablePart
 
-condition :: Parser Value
+condition :: FuzzyParser Value
 condition = valueMatchable
 
-matchablePart :: Parser MatchablePart
+matchablePart :: FuzzyParser MatchablePart
 matchablePart =
     try (FloatP <$> float)
     <|> IntP <$> integer
@@ -356,7 +360,7 @@ matchablePart =
 -- Main
 
 -- Parses a string using a specific parser and returns its result or the error it yielded
-parse :: Parser a -> String -> Either String a
+parse :: FuzzyParser a -> String -> Either String a
 parse p s =
     case Text.Megaparsec.parse p "" s of
         Left e -> Left $ errorBundlePretty e
@@ -365,7 +369,7 @@ parse p s =
 -- Returns the program parsed from a given source code
 parseProgram :: String -> Program
 parseProgram s =
-    case Parser.parse (some block <* eof) s of
+    case FuzzyParser.parse (some block <* eof) s of
         Left e -> error e
         Right b -> b
 

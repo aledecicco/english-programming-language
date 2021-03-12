@@ -3,7 +3,7 @@ module ParserTest ( tests ) where
 import Test.Tasty
 import Test.Tasty.HUnit ( HasCallStack, testCase, assertFailure, Assertion )
 
-import qualified Parser as P
+import qualified FuzzyParser as P
 import qualified Types as T
 
 --

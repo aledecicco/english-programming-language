@@ -15,7 +15,9 @@ dependencies:
 - tasty-hunit
 
 library:
-  source-dirs: src
+  source-dirs:
+  - src/Common
+  - src/Parser
 
 executables:
   english-programming-language-exe:

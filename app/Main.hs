@@ -1,6 +1,6 @@
 module Main where
 
-import Parser (parseProgram)
+import FuzzyParser (parseProgram)
 import Matcher (matchProgram)
 
 main :: IO ()
