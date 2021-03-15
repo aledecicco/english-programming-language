@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 74de8df3deef9c80bfb7fccfb60f7e4b5ae34e8b8db217214b55ae889b99b350
+-- hash: 6347afbde2eaa83a7f6918f9715b74a43c5c58c8e1ff1a9a479a03dc4ed60f60
 
 name:           english-programming-language
 version:        0.1.0.0
@@ -20,6 +20,7 @@ library
   exposed-modules:
       AST
       Env
+      Errors
       PreludeDefs
       FuzzyParser
       Matcher

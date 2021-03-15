@@ -20,7 +20,7 @@ import Utils ( isWord )
 type FuzzyParser = Parsec Void String
 type Error = ParseErrorBundle String Void
 
--- FuzzyParser whitespace including new lines
+-- Parses whitespace including new lines
 scn :: FuzzyParser ()
 scn = L.space space1 empty empty
 

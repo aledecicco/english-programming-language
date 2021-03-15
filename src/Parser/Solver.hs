@@ -7,6 +7,7 @@ import Utils ( getTitle )
 import Matcher
 import ParserEnv
 import AST
+import Errors
 
 --
 
@@ -41,20 +42,20 @@ solveValueWithType t v = do
     t' <- getValueType v'
     if t' `satisfiesType` t
         then return v'
-        else undefined --wrongTypeValue v' t'
+        else wrongTypeValueError v' t
 
 setVariableTypeWithCheck :: Type -> Name -> ParserEnv ()
-setVariableTypeWithCheck t' vn = do
+setVariableTypeWithCheck t vn = do
     r <- getVariableType vn
     case r of
-        Just t -> unless (t `satisfiesType` t') $ undefined --mismatchingTypeAssigned vn t t'
-        Nothing -> setVariableType vn t'
+        Just t' -> unless (t' `satisfiesType` t) $ mismatchingTypeAssignedError vn t t'
+        Nothing -> setVariableType vn t
 
 setNewVariableType :: Type -> Name -> ParserEnv ()
 setNewVariableType t' vn = do
     isDef <- variableIsDefined vn
     if isDef
-        then undefined --alreadyDefinedVariable vn
+        then alreadyDefinedVariableError vn
         else setVariableType vn t'
 
 -- Validates that a value is correctly formed
@@ -72,11 +73,11 @@ checkFunctionCallIntegrity (fid, vs) = do
         checkParameterTypes :: Title -> [Value] -> ParserEnv ()
         checkParameterTypes _ [] = return ()
         checkParameterTypes (TitleWords {} : ts) vs = checkParameterTypes ts vs
-        checkParameterTypes (TitleParam n t' : ts) (v:vs)  = do
-            t <- getValueType v
-            if t `satisfiesType` t'
+        checkParameterTypes (TitleParam n t : ts) (v:vs)  = do
+            t' <- getValueType v
+            if t' `satisfiesType` t
                 then checkParameterTypes ts vs
-                else undefined --wrongTypeParameter n t' v
+                else wrongTypeParameterError v t n
 
 
 --
@@ -92,7 +93,7 @@ solveValue (ValueM ps) = do
     r <- matchAsValue ps
     case r of
         Just v' -> checkValueIntegrity v' >> return v'
-        Nothing -> undefined --unmatchableValue ps
+        Nothing -> unmatchableValueError ps
 solveValue v = return v
 
 solveSentence :: Sentence -> Maybe Type -> ParserEnv Sentence
@@ -129,12 +130,12 @@ solveSentence (Result v) rt =
         Just t -> do
             v' <- solveValueWithType t v
             return $ Result v'
-        Nothing -> undefined --resultInProcedure v
+        Nothing -> resultInProcedureError
 solveSentence (SentenceM ps) _ = do
     r <- matchAsSentence ps
     case r of
         Just s@(ProcedureCall fid vs) -> checkFunctionCallIntegrity (fid, vs) >> return s
-        _ -> undefined --unmatchableSentence ps
+        _ -> unmatchableSentenceError ps
 
 solveSentenceLine :: Line Sentence -> Maybe Type -> ParserEnv (Line Sentence)
 solveSentenceLine (Line ln s) rt = do

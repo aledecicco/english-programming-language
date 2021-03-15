@@ -13,13 +13,6 @@ import AST
 
 -- Auxiliary
 
-isOperator :: FunctionId -> ParserEnv Bool
-isOperator fid = do
-    r <- getFunction fid
-    case r of
-        Just (Operator {}) -> return True
-        _ -> return False
-
 -- Returns whether a list of words is a prefix of the given matchable, and the unmatched sufix
 isPrefix :: [String] -> [MatchablePart] -> (Bool, [MatchablePart])
 isPrefix [] ms = (True, ms)
