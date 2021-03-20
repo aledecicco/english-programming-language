@@ -13,32 +13,32 @@ operators =
     [
         (
             "%_plus_%",
-            Operator
+            Function
                 [
                     TitleParam ["m"] FloatT,
                     TitleWords ["plus"],
                     TitleParam ["n"] FloatT
-                ]
-                (\[tM, tN] -> if tM == FloatT || tN == FloatT then FloatT else IntT)
+                ] $
+                Operator (\[tM, tN] -> if tM == FloatT || tN == FloatT then FloatT else IntT)
         ),
         (
             "the_first_element_of_%",
-            Operator
+            Function
                 [
                     TitleWords ["the", "first", "element", "of"],
                     TitleParam ["l"] (ListT AnyT)
-                ]
-                (\[ListT t] -> t)
+                ] $
+                Operator (\[ListT t] -> t)
         ),
         (
             "%_appended_to_%",
-            Operator
+            Function
                 [
                     TitleParam ["n"] (ListT AnyT),
                     TitleWords ["appended", "to"],
                     TitleParam ["m"] (ListT AnyT)
-                ]
-                (\[ListT t, ListT _] -> t)
+                ] $
+                Operator (\[ListT t, ListT _] -> t)
         )
     ]
 
@@ -48,30 +48,33 @@ procedures =
     [
         (
             "print_%",
-            Procedure
+            Function
                 [
                     TitleWords ["print"],
                     TitleParam ["v"] AnyT
                 ]
+                Procedure
         ),
         (
             "add_%_to_%",
-            Procedure
+            Function
                 [
                     TitleWords ["add"],
                     TitleParam ["e"] AnyT,
                     TitleWords ["to"],
                     TitleParam ["l"] (ListT AnyT)
                 ]
+                Procedure
         ),
         (
             "append_%_to_%",
-            Procedure
+            Function
                 [
                     TitleWords ["append"],
                     TitleParam ["list", "m"] (ListT AnyT),
                     TitleWords ["to"],
                     TitleParam ["list", "n"] (ListT AnyT)
                 ]
+                Procedure
         )
     ]

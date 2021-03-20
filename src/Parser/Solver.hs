@@ -3,7 +3,8 @@ module Solver where
 import Data.Maybe ( fromJust, isNothing )
 import Control.Monad ( unless, when )
 
-import Utils ( getTitle )
+import Utils (getFunctionId)
+import PreludeDefs
 import Matcher
 import ParserEnv
 import AST
@@ -12,7 +13,7 @@ import Errors
 --
 
 
--- Auxiliary
+-- Types information
 
 satisfiesType :: Type -> Type -> Bool
 satisfiesType _ AnyT = True
@@ -33,16 +34,13 @@ getValueType (OperatorCall fid vs) = do
     where
         getOperatorCallType :: FunctionId -> [Type] -> ParserEnv Type
         getOperatorCallType fid vTs = do
-            ~(Operator _ tFun)  <- fromJust <$> getFunction fid
+            ~(Function _ (Operator tFun)) <- fromJust <$> getFunction fid
             return $ tFun vTs
 
-solveValueWithType :: Type -> Value -> ParserEnv Value
-solveValueWithType t v = do
-    v' <- solveValue v
-    t' <- getValueType v'
-    if t' `satisfiesType` t
-        then return v'
-        else wrongTypeValueError v' t
+--
+
+
+-- Validations
 
 setVariableTypeWithCheck :: Type -> Name -> ParserEnv ()
 setVariableTypeWithCheck t vn = do
@@ -67,8 +65,8 @@ checkValueIntegrity _ = return ()
 checkFunctionCallIntegrity :: (FunctionId, [Value]) -> ParserEnv ()
 checkFunctionCallIntegrity (fid, vs) = do
     mapM_ checkValueIntegrity vs
-    ~(Just f) <- getFunction fid
-    checkParameterTypes (getTitle f) vs
+    ~(Just (Function ft _)) <- getFunction fid
+    checkParameterTypes ft vs
     where
         checkParameterTypes :: Title -> [Value] -> ParserEnv ()
         checkParameterTypes _ [] = return ()
@@ -79,6 +77,26 @@ checkFunctionCallIntegrity (fid, vs) = do
                 then checkParameterTypes ts vs
                 else wrongTypeParameterError v t n
 
+--
+
+
+-- Auxiliary
+
+initialState :: ParserState
+initialState = (operators ++ procedures, [], 0)
+
+registerFunctions :: Program -> ParserEnv ()
+registerFunctions = mapM_ registerFunction
+    where
+        registerFunction :: Block -> ParserEnv ()
+        registerFunction (FunDef (Line _ ft) rt _) = do
+            let fid = getFunctionId ft
+            isDef <- functionIsDefined fid
+            when isDef $ alreadyDefinedFunctionError ft
+            let frt = case rt of
+                    Just t -> Operator $ const t
+                    Nothing -> Procedure
+            setFunction fid $ Function ft frt
 
 --
 
@@ -95,6 +113,14 @@ solveValue (ValueM ps) = do
         Just v' -> checkValueIntegrity v' >> return v'
         Nothing -> unmatchableValueError ps
 solveValue v = return v
+
+solveValueWithType :: Type -> Value -> ParserEnv Value
+solveValueWithType t v = do
+    v' <- solveValue v
+    t' <- getValueType v'
+    if t' `satisfiesType` t
+        then return v'
+        else wrongTypeValueError v' t
 
 solveSentence :: Sentence -> Maybe Type -> ParserEnv Sentence
 solveSentence (VarDef vNs v) _ = do
@@ -146,11 +172,26 @@ solveSentenceLine (Line ln s) rt = do
 solveSentenceLines :: [Line Sentence] -> Maybe Type -> ParserEnv [Line Sentence]
 solveSentenceLines ss rt = mapM (\s -> solveSentenceLine s rt) ss
 
+solveBlock :: Block -> ParserEnv Block
+solveBlock (FunDef t rt ss) = FunDef t rt <$> solveSentenceLines ss rt
+
 --
 
 
 -- Main
 
+runSolver :: ParserEnv r -> ParserState -> Either Error (r, ParserState)
+runSolver = runParserEnv
 
+solveProgram :: Program -> (Program, ParserState)
+solveProgram p =
+    case runSolver (solveProgram p) initialState of
+        Left e -> error e
+        Right r -> r
+    where
+        solveProgram :: Program -> ParserEnv Program
+        solveProgram p = do
+            registerFunctions p
+            mapM solveBlock p
 
 --

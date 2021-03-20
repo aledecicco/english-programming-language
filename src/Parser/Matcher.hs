@@ -4,7 +4,7 @@ module Matcher where
 
 import Control.Monad ( msum )
 
-import Utils ( isWord, getTitle, getFunctionId )
+import Utils ( getFunctionId )
 import ParserEnv
 import AST
 
@@ -18,7 +18,7 @@ isPrefix :: [String] -> [MatchablePart] -> (Bool, [MatchablePart])
 isPrefix [] ms = (True, ms)
 isPrefix _ [] = (False, [])
 isPrefix (t:ts) ms@(WordP w : ps)
-    | t `isWord` w = isPrefix ts ps
+    | t == w = isPrefix ts ps
     | otherwise = (False, ms)
 isPrefix _ ms = (False, ms)
 
@@ -66,11 +66,11 @@ matchAsFunctionCall ps = do
     firstNotNull matchAsFunctionCall' fs
     where
         matchAsFunctionCall' :: Function -> ParserEnv (Maybe (FunctionId, [Value]))
-        matchAsFunctionCall' f = do
-            let fT = getTitle f
-                posArgs = sepByTitle ps fT
+        matchAsFunctionCall' (Function ft _) = do
+            let posArgs = sepByTitle ps ft
+                fid = getFunctionId ft
             r <- firstNotNull matchAllArgs posArgs
-            return $ (getFunctionId fT, ) <$> r
+            return $ (fid, ) <$> r
         matchAllArgs :: [[MatchablePart]] -> ParserEnv (Maybe [Value])
         matchAllArgs = allOrNone matchAsValue
 
@@ -83,8 +83,8 @@ matchAsPrimitive :: [MatchablePart] -> ParserEnv (Maybe Value)
 matchAsPrimitive [IntP n] = return $ Just (IntV n)
 matchAsPrimitive [FloatP n] = return $ Just (FloatV n)
 matchAsPrimitive [WordP w]
-    | w `isWord` "true" = return $ Just (BoolV True)
-    | w `isWord` "false" = return $ Just (BoolV False)
+    | w == "true" = return $ Just (BoolV True)
+    | w == "false" = return $ Just (BoolV False)
 matchAsPrimitive _ = return Nothing
 
 matchAsVariable :: [MatchablePart] -> ParserEnv (Maybe Value)

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 6347afbde2eaa83a7f6918f9715b74a43c5c58c8e1ff1a9a479a03dc4ed60f60
+-- hash: 82a8da21e7f26a01d89e07f49819fce589ecc545f65f54e9f9100e4d543b6dec
 
 name:           english-programming-language
 version:        0.1.0.0
@@ -22,11 +22,11 @@ library
       Env
       Errors
       PreludeDefs
+      Utils
       FuzzyParser
       Matcher
       ParserEnv
       Solver
-      Utils
   other-modules:
       Paths_english_programming_language
   hs-source-dirs:
@@ -35,6 +35,7 @@ library
   build-depends:
       base >=4.7 && <5
     , megaparsec
+    , mtl
     , tasty
     , tasty-hunit
     , transformers
@@ -51,6 +52,7 @@ executable english-programming-language-exe
       base >=4.7 && <5
     , english-programming-language
     , megaparsec
+    , mtl
     , tasty
     , tasty-hunit
     , transformers
@@ -70,6 +72,7 @@ test-suite english-programming-language-test
       base >=4.7 && <5
     , english-programming-language
     , megaparsec
+    , mtl
     , tasty
     , tasty-hunit
     , transformers

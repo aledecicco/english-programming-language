@@ -13,6 +13,7 @@ dependencies:
 - transformers
 - tasty
 - tasty-hunit
+- mtl
 
 library:
   source-dirs:

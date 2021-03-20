@@ -14,7 +14,7 @@ import qualified AST as T
 -- Asserts that a parser yields a specific result when parsing a given string
 expectedResult :: (HasCallStack, Eq a, Show a) => P.FuzzyParser a -> String -> a -> Assertion
 expectedResult p s r =
-    case P.parse p s of
+    case P.runParser p s of
         Left e -> assertFailure $ "Parser failed, the error was:\n" ++ e
         Right r' ->
             if r == r'
@@ -24,14 +24,14 @@ expectedResult p s r =
 -- Asserts that a parser succeeds when parsing a given string
 expectedSuccess :: (HasCallStack, Eq a, Show a) => P.FuzzyParser a -> String -> Assertion
 expectedSuccess p s =
-    case P.parse p s of
+    case P.runParser p s of
         Left e -> assertFailure $ "Parser failed, the error was:\n" ++ e
         Right _ -> return ()
 
 -- Asserts that a parser fails to parse a given string
 expectedFailure :: (HasCallStack, Eq a, Show a) => P.FuzzyParser a -> String -> Assertion
 expectedFailure p s =
-    case P.parse p s of
+    case P.runParser p s of
         Left _ -> return ()
         Right r -> assertFailure $ "Parser didn't fail, the result was " ++ show r
 
@@ -192,22 +192,22 @@ reservedTests :: TestTree
 reservedTests = testGroup "Reserved"
     [
         testCase "Single word" $
-            expectedSuccess (P.reserved "word") "word",
+            expectedSuccess (P.word "word") "word",
 
         testCase "Reserved word" $
-            expectedSuccess (P.reserved "be") "be",
+            expectedSuccess (P.word "be") "be",
 
         testCase "Many words" $
-            expectedSuccess (P.reserved "word") "word be another word",
+            expectedSuccess (P.word "word") "word be another word",
 
         testCase "Mismatching word" $
-            expectedFailure (P.reserved "another") "word",
+            expectedFailure (P.word "another") "word",
 
         testCase "Longer word" $
-            expectedFailure (P.reserved "become") "be",
+            expectedFailure (P.word "become") "be",
 
         testCase "Not reserved word" $
-            expectedFailure (P.reserved "be") "become"
+            expectedFailure (P.word "be") "become"
     ]
 
 integerTests :: TestTree

@@ -2,8 +2,13 @@ module ParserEnv (
     module ParserEnv,
     setFunction, getFunction, functionIsDefined,
     variableIsDefined,
-    setLineNumber, getLineNumber
+    setLineNumber, getLineNumber,
+    Error
     ) where
+
+import Control.Monad.Identity ( runIdentity, Identity )
+import Control.Monad.Trans.State ( runStateT )
+import Control.Monad.Trans.Except ( runExceptT )
 
 import Env
 import AST
@@ -11,10 +16,10 @@ import AST
 --
 
 
--- Aliases
+--
 
--- Store function signatures and variable types
-type ParserEnv a = Env Function Type a
+type ParserEnv a = Env Function Type Identity a
+type ParserState = EnvData Function Type
 
 setVariableType :: Name -> Type -> ParserEnv ()
 setVariableType = setVariable
@@ -27,5 +32,8 @@ resetVariableTypes = resetVariables
 
 getFunctions :: ParserEnv [Function]
 getFunctions = map snd <$> getFunEnv
+
+runParserEnv :: ParserEnv r -> ParserState -> Either Error (r, ParserState)
+runParserEnv f e = runIdentity $ runExceptT (runStateT f e)
 
 --

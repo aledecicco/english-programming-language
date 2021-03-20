@@ -1,9 +1,12 @@
 module Main where
 
-import FuzzyParser (parseProgram)
---import Matcher (matchProgram)
+import FuzzyParser ( parseProgram )
+import Solver ( solveProgram )
 
 main :: IO ()
 main = do
     fc <- readFile "examples/sum.exp"
-    (print . parseProgram) fc
+    let p = parseProgram fc
+        (p', s) = solveProgram p
+    -- evaluateProgram p' s
+    return ()

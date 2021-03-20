@@ -41,7 +41,10 @@ data TitlePart = TitleWords [String] | TitleParam Name Type
 
 type Title = [TitlePart]
 
-data Function = Operator Title ([Type] -> Type) | Procedure Title
+data Function = Function Title ReturnType
+
+data ReturnType = Operator ([Type] -> Type) | Procedure
+
 
 data Block = FunDef TitleLine (Maybe Type) [SentenceLine]
     deriving (Eq, Show)
