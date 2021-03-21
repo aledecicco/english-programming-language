@@ -368,11 +368,11 @@ runParser p s =
 -- Returns the program parsed from a given source code
 parseProgram :: String -> Program
 parseProgram s =
-    case FuzzyParser.runParser parseProgram s of
+    case FuzzyParser.runParser parseProgram' s of
         Left e -> error e
         Right r -> r
     where
-        parseProgram :: FuzzyParser Program
-        parseProgram = some block <* eof
+        parseProgram' :: FuzzyParser Program
+        parseProgram' = some block <* eof
 
 --

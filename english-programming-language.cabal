@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 82a8da21e7f26a01d89e07f49819fce589ecc545f65f54e9f9100e4d543b6dec
+-- hash: 7796c74acf07561e28d899abd60f3f28037e1d8c95d581aa77d51dc07c026473
 
 name:           english-programming-language
 version:        0.1.0.0
@@ -27,11 +27,15 @@ library
       Matcher
       ParserEnv
       Solver
+      Evaluator
+      EvaluatorEnv
+      PreludeEval
   other-modules:
       Paths_english_programming_language
   hs-source-dirs:
       src/Common
       src/Parser
+      src/Evaluator
   build-depends:
       base >=4.7 && <5
     , megaparsec

@@ -185,12 +185,12 @@ runSolver = runParserEnv
 
 solveProgram :: Program -> (Program, ParserState)
 solveProgram p =
-    case runSolver (solveProgram p) initialState of
+    case runSolver (solveProgram' p) initialState of
         Left e -> error e
         Right r -> r
     where
-        solveProgram :: Program -> ParserEnv Program
-        solveProgram p = do
+        solveProgram' :: Program -> ParserEnv Program
+        solveProgram' p = do
             registerFunctions p
             mapM solveBlock p
 

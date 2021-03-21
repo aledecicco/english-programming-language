@@ -19,6 +19,7 @@ library:
   source-dirs:
   - src/Common
   - src/Parser
+  - src/Evaluator
 
 executables:
   english-programming-language-exe:

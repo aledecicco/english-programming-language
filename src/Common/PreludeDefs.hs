@@ -54,27 +54,5 @@ procedures =
                     TitleParam ["v"] AnyT
                 ]
                 Procedure
-        ),
-        (
-            "add_%_to_%",
-            Function
-                [
-                    TitleWords ["add"],
-                    TitleParam ["e"] AnyT,
-                    TitleWords ["to"],
-                    TitleParam ["l"] (ListT AnyT)
-                ]
-                Procedure
-        ),
-        (
-            "append_%_to_%",
-            Function
-                [
-                    TitleWords ["append"],
-                    TitleParam ["list", "m"] (ListT AnyT),
-                    TitleWords ["to"],
-                    TitleParam ["list", "n"] (ListT AnyT)
-                ]
-                Procedure
         )
     ]
