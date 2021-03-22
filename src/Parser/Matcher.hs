@@ -2,9 +2,7 @@
 
 module Matcher where
 
-import Control.Monad ( msum )
-
-import Utils ( getFunctionId )
+import Utils ( getFunctionId, firstNotNull, allOrNone )
 import ParserEnv
 import AST
 
@@ -40,15 +38,6 @@ sepByTitle ps (TitleParam {} : ts) = do
     (span, rest) <- splits ps
     restMatches <- sepByTitle rest ts
     return $ span:restMatches
-
--- Receives a computation and tries it on each element of a list, returning the first non-empty result
-firstNotNull :: (a -> ParserEnv (Maybe b)) -> [a] -> ParserEnv (Maybe b)
-firstNotNull f xs = msum <$> traverse f xs
-
--- Receives a computation and tries it on each element of a list, returning all the results
--- but only if all of them yielded a result
-allOrNone :: (a -> ParserEnv (Maybe b)) -> [a] -> ParserEnv (Maybe [b])
-allOrNone f xs = sequence <$> traverse f xs
 
 --
 

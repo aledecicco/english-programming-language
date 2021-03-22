@@ -142,6 +142,7 @@ solveSentence (ForEach iN v ls) rt = do
     ~(ListT t) <- getValueType v'
     setNewVariableType t iN
     ls' <- solveSentenceLines ls rt
+    removeVariableType iN
     return $ ForEach iN v' ls'
 solveSentence (Until v ls) rt = do
     v' <- solveValueWithType BoolT v
@@ -192,6 +193,6 @@ solveProgram p =
         solveProgram' :: Program -> ParserEnv Program
         solveProgram' p = do
             registerFunctions p
-            mapM solveBlock p
+            mapM (\b -> solveBlock b <* resetVariables) p
 
 --

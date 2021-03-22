@@ -46,4 +46,7 @@ mismatchingTypeAssignedError :: Monad m => Name -> Type -> Type -> Env a b m r
 mismatchingTypeAssignedError n t t' = customError ["Could not assign value of type", quote t, "to variable", show n, "of type", quote t']
 
 resultInProcedureError :: Monad m => Env a b m r
-resultInProcedureError = customError ["Found unexpected return statement in procedure"]
+resultInProcedureError = customError ["Found unexpected result statement in procedure"]
+
+expectedResultError :: Monad m => Env a b m r
+expectedResultError = customError ["Expected a result statement before end of operator"]

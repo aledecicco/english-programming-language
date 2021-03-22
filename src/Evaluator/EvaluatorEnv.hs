@@ -24,6 +24,16 @@ setVariableValue = setVariable
 getVariableValue :: Name -> EvaluatorEnv (Maybe Value)
 getVariableValue = getVariable
 
+removeVariableValue :: Name -> EvaluatorEnv ()
+removeVariableValue = removeVariable
+
+withVariablesReset :: EvaluatorEnv a -> EvaluatorEnv a
+withVariablesReset action = do
+    vs <- getVarEnv
+    r <- action
+    setVarEnv vs
+    return r
+
 setFunctionSentences :: FunctionId -> [SentenceLine] -> EvaluatorEnv ()
 setFunctionSentences = setFunction
 

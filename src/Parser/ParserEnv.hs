@@ -1,7 +1,7 @@
 module ParserEnv (
     module ParserEnv,
     setFunction, getFunction, functionIsDefined,
-    variableIsDefined,
+    variableIsDefined, resetVariables,
     setLineNumber, getLineNumber,
     Error
     ) where
@@ -27,8 +27,8 @@ setVariableType = setVariable
 getVariableType :: Name -> ParserEnv (Maybe Type)
 getVariableType = getVariable
 
-resetVariableTypes :: ParserEnv ()
-resetVariableTypes = resetVariables
+removeVariableType :: Name -> ParserEnv ()
+removeVariableType = removeVariable
 
 getFunctions :: ParserEnv [Function]
 getFunctions = map snd <$> getFunEnv
