@@ -2,6 +2,8 @@ module Evaluator where
 
 import Data.List ( find )
 import Data.Maybe ( fromJust )
+import Control.Monad ( void )
+import Control.Applicative ( (<|>) )
 
 import EvaluatorEnv
 import ParserEnv ( ParserState )
@@ -61,18 +63,19 @@ evaluateSentence (IfElse v lsT lsF) = do
         else evaluateSentenceLines lsF
 evaluateSentence (ForEach iN lv ls) = do
     (ListV _ v') <- evaluateValue lv
-    r <- firstNotNull (\v -> setVariableValue iN v >> evaluateSentenceLines ls) v'
+    let iterateLoop = (\v -> setVariableValue iN v >> evaluateSentenceLines ls)
+    r <- firstNotNull iterateLoop v'
     removeVariableValue iN
     return r
-evaluateSentence (Until bv ls) = do
+evaluateSentence s@(Until bv ls) = do
     (BoolV v') <- evaluateValue bv
     if v'
         then return Nothing
-        else evaluateSentenceLines ls -- ToDo: repeat loop
-evaluateSentence (While bv ls) = do
+        else evaluateSentenceLines ls <|> evaluateSentence s
+evaluateSentence s@(While bv ls) = do
     (BoolV v') <- evaluateValue bv
     if v'
-        then evaluateSentenceLines ls -- ToDo: repeat loop
+        then evaluateSentenceLines ls <|> evaluateSentence s
         else return Nothing
 evaluateSentence (Result v) = do
     v' <- evaluateValue v
@@ -93,8 +96,7 @@ evaluateOperator fid vs = do
 evaluateProcedure :: FunctionId -> [Value] -> EvaluatorEnv ()
 evaluateProcedure fid vs = do
     ss <- fromJust <$> getFunctionSentences fid
-    evaluateSentenceLines ss
-    return ()
+    void $ evaluateSentenceLines ss
 
 --
 
@@ -113,4 +115,5 @@ evaluateProgram p s = do
     where
         evaluateProgram' :: EvaluatorEnv ()
         evaluateProgram' = evaluateProcedure "run" []
+
 --
