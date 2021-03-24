@@ -95,6 +95,7 @@ matchAsOperatorCall ps = do
     return $ uncurry OperatorCall <$> r
 
 matchAsValue :: [MatchablePart] -> ParserEnv (Maybe Value)
+matchAsValue [ParensP ps] = matchAsValue ps
 matchAsValue ps = firstNotNull (\matcher -> matcher ps) [matchAsPrimitive, matchAsVariable, matchAsOperatorCall]
 
 --
@@ -108,6 +109,7 @@ matchAsProcedureCall ps = do
     return $ uncurry ProcedureCall <$> r
 
 matchAsSentence :: [MatchablePart] -> ParserEnv (Maybe Sentence)
-matchAsSentence = matchAsProcedureCall
+matchAsSentence [ParensP ps] = matchAsSentence ps
+matchAsSentence ps = matchAsProcedureCall ps
 
 --

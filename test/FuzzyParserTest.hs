@@ -1,7 +1,7 @@
 module FuzzyParserTest ( tests ) where
 
-import Test.Tasty
-import Test.Tasty.HUnit ( HasCallStack, testCase, assertFailure, Assertion )
+import Test.Tasty ( testGroup, TestTree )
+import Test.Tasty.HUnit ( HasCallStack, testCase, assertFailure, Assertion, (@?=) )
 
 import qualified FuzzyParser as P
 import qualified AST as T
@@ -16,10 +16,7 @@ expectedResult :: (HasCallStack, Eq a, Show a) => P.FuzzyParser a -> String -> a
 expectedResult p s r =
     case P.runFuzzyParser p s of
         Left e -> assertFailure $ "Parser failed, the error was:\n" ++ e
-        Right r' ->
-            if r == r'
-            then return ()
-            else assertFailure $ "The result was:\n" ++ show r' ++ "\nBut was expecting:\n" ++ show r
+        Right r' -> r' @?= r
 
 -- Asserts that a parser succeeds when parsing a given string
 expectedSuccess :: HasCallStack => P.FuzzyParser a -> String -> Assertion

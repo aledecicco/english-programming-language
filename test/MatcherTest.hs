@@ -1,44 +1,12 @@
 module MatcherTest ( tests ) where
 
-import Test.Tasty
-import Test.Tasty.HUnit
+import Test.Tasty ( testGroup, TestTree )
+import Test.Tasty.HUnit ( testCase, (@?=) )
 
-import qualified PreludeDefs as D
+import TestUtils
 import qualified ParserEnv as E
 import qualified Matcher as M
 import qualified AST as T
-
---
-
--- Assertions
-
--- Asserts that a matcher yields a specific result when matching a matchable with the given environment
-expectedResult :: (HasCallStack, Eq a, Show a) => E.ParserEnv a -> E.ParserState -> a -> Assertion
-expectedResult m s r =
-    case E.runParserEnv m s of
-        Left e -> assertFailure $ "Matcher failed, the error was:\n" ++ e
-        Right (r', _) ->
-            if r == r'
-            then return ()
-            else assertFailure $ "The result was:\n" ++ show r' ++ "\nBut was expecting:\n" ++ show r
-
--- Asserts that a matcher fails to match a matchable with the given environment
-expectedFailure :: (HasCallStack, Show a) => E.ParserEnv a -> E.ParserState -> Assertion
-expectedFailure m s =
-    case E.runParserEnv m s of
-        Left _ -> return ()
-        Right (r, _) -> assertFailure $ "Matcher didn't fail, the result was " ++ show r
-
---
-
-
--- Auxiliary
-
-emptyEnv :: E.ParserState
-emptyEnv = ([], [], 0)
-
-envWithFunctions :: E.ParserState
-envWithFunctions = (D.operators ++ D.procedures, [], 0)
 
 --
 
@@ -86,7 +54,17 @@ sepByTitleTests = testGroup "Sep by title"
                 [T.IntP 2, T.WordP "times", T.IntP 3, T.WordP "plus", T.IntP 4, T.WordP "times", T.IntP 5]
                 [T.TitleParam ["m"] T.FloatT, T.TitleWords ["plus"], T.TitleParam ["n"] T.FloatT]
             @?=
-            [[[T.IntP 2, T.WordP "times", T.IntP 3],[T.IntP 4, T.WordP "times", T.IntP 5]]]
+            [[[T.IntP 2, T.WordP "times", T.IntP 3],[T.IntP 4, T.WordP "times", T.IntP 5]]],
+
+        testCase "Multiplication with recursive arguments" $
+            M.sepByTitle
+                [T.IntP 2, T.WordP "times", T.IntP 3, T.WordP "plus", T.IntP 4, T.WordP "times", T.IntP 5]
+                [T.TitleParam ["m"] T.FloatT, T.TitleWords ["times"], T.TitleParam ["n"] T.FloatT]
+            @?=
+            [
+                [[T.IntP 2], [T.IntP 3, T.WordP "plus", T.IntP 4, T.WordP "times", T.IntP 5]],
+                [[T.IntP 2, T.WordP "times", T.IntP 3, T.WordP "plus", T.IntP 4], [T.IntP 5]]
+            ]
     ]
 
 asNameTests :: TestTree
@@ -113,11 +91,24 @@ asFunctionCallTests = testGroup "As function call"
                 (M.matchAsFunctionCall [T.IntP 2, T.WordP "plus", T.IntP 3])
                 envWithFunctions
                 (Just ("%_plus_%", [T.IntV 2, T.IntV 3])),
+
         testCase "Addition and multiplication associativity" $
             expectedResult
                 (M.matchAsFunctionCall [T.IntP 2, T.WordP "times", T.IntP 3, T.WordP "plus", T.IntP 4, T.WordP "times", T.IntP 5])
                 envWithFunctions
-                (Just ("%_plus_%", [T.OperatorCall "%_times_%" [T.IntV 2, T.IntV 3], T.OperatorCall "%_times_%" [T.IntV 4, T.IntV 5]]))
+                (Just ("%_plus_%", [T.OperatorCall "%_times_%" [T.IntV 2, T.IntV 3], T.OperatorCall "%_times_%" [T.IntV 4, T.IntV 5]])),
+
+        testCase "Forced associativity with parenthesis" $
+            expectedResult
+                (M.matchAsFunctionCall [T.ParensP [T.IntP 2, T.WordP "times", T.IntP 3, T.WordP "plus", T.IntP 4], T.WordP "times", T.IntP 5])
+                envWithFunctions
+                (Just ("%_times_%", [T.OperatorCall "%_plus_%" [T.OperatorCall "%_times_%" [T.IntV 2, T.IntV 3], T.IntV 4], T.IntV 5])),
+
+        testCase "Wrong type arguments" $
+            expectedResult
+                (M.matchAsFunctionCall [T.WordP "true", T.WordP "plus", T.WordP "false"])
+                envWithFunctions
+                (Just ("%_plus_%", [T.BoolV True, T.BoolV False]))
     ]
 
 --

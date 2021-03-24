@@ -42,15 +42,15 @@ getValueType (OperatorCall fid vs) = do
 
 -- Validations
 
-setVariableTypeWithCheck :: Type -> Name -> ParserEnv ()
-setVariableTypeWithCheck t vn = do
+setVariableTypeWithCheck :: Name -> Type -> ParserEnv ()
+setVariableTypeWithCheck vn t = do
     r <- getVariableType vn
     case r of
         Just t' -> unless (t' `satisfiesType` t) $ mismatchingTypeAssignedError vn t t'
         Nothing -> setVariableType vn t
 
-setNewVariableType :: Type -> Name -> ParserEnv ()
-setNewVariableType t' vn = do
+setNewVariableType :: Name -> Type -> ParserEnv ()
+setNewVariableType vn t' = do
     isDef <- variableIsDefined vn
     if isDef
         then alreadyDefinedVariableError vn
@@ -126,7 +126,7 @@ solveSentence :: Sentence -> Maybe Type -> ParserEnv Sentence
 solveSentence (VarDef vNs v) _ = do
     v' <- solveValue v
     t <- getValueType v'
-    mapM_ (setVariableTypeWithCheck t) vNs
+    mapM_ (\vn -> setVariableTypeWithCheck vn t) vNs
     return $ VarDef vNs v'
 solveSentence (If v ls) rt = do
     v' <- solveValueWithType BoolT v
@@ -140,7 +140,7 @@ solveSentence (IfElse v lsT lsF) rt = do
 solveSentence (ForEach iN v ls) rt = do
     v' <- solveValueWithType (ListT AnyT) v
     ~(ListT t) <- getValueType v'
-    setNewVariableType t iN
+    setNewVariableType iN t
     ls' <- solveSentenceLines ls rt
     removeVariableType iN
     return $ ForEach iN v' ls'

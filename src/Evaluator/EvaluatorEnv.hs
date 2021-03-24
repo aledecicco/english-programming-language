@@ -4,9 +4,6 @@ module EvaluatorEnv (
     Error
     ) where
 
-import Control.Monad.Trans.State ( runStateT )
-import Control.Monad.Trans.Except ( runExceptT )
-
 import Env
 import AST
 
@@ -41,6 +38,6 @@ getFunctionSentences :: FunctionId -> EvaluatorEnv (Maybe [SentenceLine])
 getFunctionSentences = getFunction
 
 runEvaluatorEnv :: EvaluatorEnv r -> EvaluatorState -> IO (Either Error (r, EvaluatorState))
-runEvaluatorEnv f e = runExceptT (runStateT f e)
+runEvaluatorEnv = runEnv
 
 --

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 7796c74acf07561e28d899abd60f3f28037e1d8c95d581aa77d51dc07c026473
+-- hash: a7ec22fa35a126cba0ac4c9735fd14caf76ea5ac52cad3763fd63317ff3e4ca8
 
 name:           english-programming-language
 version:        0.1.0.0
@@ -68,6 +68,8 @@ test-suite english-programming-language-test
   other-modules:
       FuzzyParserTest
       MatcherTest
+      SolverTest
+      TestUtils
       Paths_english_programming_language
   hs-source-dirs:
       test

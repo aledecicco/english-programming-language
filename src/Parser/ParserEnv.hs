@@ -7,8 +7,6 @@ module ParserEnv (
     ) where
 
 import Control.Monad.Identity ( runIdentity, Identity )
-import Control.Monad.Trans.State ( runStateT )
-import Control.Monad.Trans.Except ( runExceptT )
 
 import Env
 import AST
@@ -34,6 +32,6 @@ getFunctions :: ParserEnv [Function]
 getFunctions = map snd <$> getFunEnv
 
 runParserEnv :: ParserEnv r -> ParserState -> Either Error (r, ParserState)
-runParserEnv f e = runIdentity $ runExceptT (runStateT f e)
+runParserEnv f e = runIdentity $ runEnv f e
 
 --

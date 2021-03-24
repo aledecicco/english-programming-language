@@ -1,7 +1,7 @@
 module Env where
 
-import Control.Monad.Trans.State ( gets, modify, StateT )
-import Control.Monad.Trans.Except ( ExceptT )
+import Control.Monad.Trans.State ( gets, modify, runStateT, StateT )
+import Control.Monad.Trans.Except ( runExceptT, ExceptT )
 import Data.Bifunctor ( first, second )
 import Data.List ( find, intercalate )
 
@@ -42,6 +42,9 @@ getLineNumber = gets (\(_, _, ln) -> ln)
 
 setLineNumber :: Monad m => LineNumber -> Env a b m ()
 setLineNumber ln = modify (\(fE, vE, _) -> (fE, vE, ln))
+
+runEnv :: Env a b m r -> EnvData a b -> m (Either Error (r, EnvData a b))
+runEnv f e = runExceptT $ runStateT f e
 
 --
 
