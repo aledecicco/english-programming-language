@@ -12,4 +12,4 @@ main :: IO ()
 main = defaultMain tests
 
 tests :: TestTree
-tests = testGroup "Tests" [FuzzyParserTest.tests]--, MatcherTest.tests]
+tests = testGroup "Tests" [FuzzyParserTest.tests, MatcherTest.tests]

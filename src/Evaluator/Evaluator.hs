@@ -98,17 +98,9 @@ evaluateProcedure fid vs = do
     ss <- fromJust <$> getFunctionSentences fid
     void $ evaluateSentenceLines ss
 
---
-
-
--- Main
-
-runEvaluator :: EvaluatorEnv r -> EvaluatorState -> IO (Either Error (r, EvaluatorState))
-runEvaluator = runEvaluatorEnv
-
 evaluateProgram :: Program -> ParserState -> IO EvaluatorState
 evaluateProgram p s = do
-    r <- runEvaluator evaluateProgram' (translateState p s)
+    r <- runEvaluatorEnv evaluateProgram' (translateState p s)
     case r of
         Left e -> error e
         Right r -> return $ snd r

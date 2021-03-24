@@ -22,6 +22,16 @@ operators =
                 Operator (\[tM, tN] -> if tM == FloatT || tN == FloatT then FloatT else IntT)
         ),
         (
+            "%_times_%",
+            Function
+                [
+                    TitleParam ["m"] FloatT,
+                    TitleWords ["times"],
+                    TitleParam ["n"] FloatT
+                ] $
+                Operator (\[tM, tN] -> if tM == FloatT || tN == FloatT then FloatT else IntT)
+        ),
+        (
             "the_first_element_of_%",
             Function
                 [

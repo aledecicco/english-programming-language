@@ -15,6 +15,7 @@ getFunctionId :: Title -> FunctionId
 getFunctionId t = intercalate "_" (getFunctionIdParts t)
     where
         getFunctionIdParts :: Title -> [FunctionId]
+        getFunctionIdParts [] = []
         getFunctionIdParts (TitleWords w : ts) = w ++ getFunctionIdParts ts
         getFunctionIdParts (TitleParam {} : ts) = "%" : getFunctionIdParts ts
 

@@ -31,6 +31,8 @@ splits (x:xs) = splits' [x] xs
 
 -- Returns all the ways a list of matchables can be used to fill the gaps (parameters) of a title
 sepByTitle :: [MatchablePart] -> Title -> [[[MatchablePart]]]
+sepByTitle [] [] = [[]]
+sepByTitle _ [] = []
 sepByTitle ps (TitleWords ws : ts) =
     let (isP, rest) = ws `isPrefix` ps
     in if isP then sepByTitle rest ts else []
@@ -44,10 +46,12 @@ sepByTitle ps (TitleParam {} : ts) = do
 
 -- Auxiliary matchers
 
-matchAsName :: [MatchablePart] -> Maybe Name
-matchAsName [WordP w] = Just [w]
-matchAsName (WordP w : ps) = (w:) <$> matchAsName ps
-matchAsName _ = Nothing
+matchAsName :: [MatchablePart] -> ParserEnv (Maybe Name)
+matchAsName [WordP w] = return $ Just [w]
+matchAsName (WordP w : ps) = do
+    ws <- matchAsName ps
+    return $ (w:) <$> ws
+matchAsName _ = return Nothing
 
 matchAsFunctionCall :: [MatchablePart] -> ParserEnv (Maybe (FunctionId, [Value]))
 matchAsFunctionCall ps = do
@@ -77,11 +81,12 @@ matchAsPrimitive [WordP w]
 matchAsPrimitive _ = return Nothing
 
 matchAsVariable :: [MatchablePart] -> ParserEnv (Maybe Value)
-matchAsVariable ps =
-    case matchAsName ps of
+matchAsVariable ps = do
+    r <- matchAsName ps
+    case r of
         Just n -> do
-            r <- variableIsDefined n
-            return $ if r then Just (VarV n) else Nothing
+            isDef <- variableIsDefined n
+            return $ if isDef then Just (VarV n) else Nothing
         Nothing -> return Nothing
 
 matchAsOperatorCall :: [MatchablePart] -> ParserEnv (Maybe Value)

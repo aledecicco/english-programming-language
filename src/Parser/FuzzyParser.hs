@@ -359,8 +359,8 @@ matchablePart =
 -- Main
 
 -- Parses a string using a specific parser and returns its result or the error it yielded
-runParser :: FuzzyParser a -> String -> Either String a
-runParser p s =
+runFuzzyParser :: FuzzyParser a -> String -> Either String a
+runFuzzyParser p s =
     case parse p "" s of
         Left e -> Left $ errorBundlePretty e
         Right a -> Right a
@@ -368,7 +368,7 @@ runParser p s =
 -- Returns the program parsed from a given source code
 parseProgram :: String -> Program
 parseProgram s =
-    case FuzzyParser.runParser parseProgram' s of
+    case FuzzyParser.runFuzzyParser parseProgram' s of
         Left e -> error e
         Right r -> r
     where

@@ -14,7 +14,7 @@ import qualified AST as T
 -- Asserts that a parser yields a specific result when parsing a given string
 expectedResult :: (HasCallStack, Eq a, Show a) => P.FuzzyParser a -> String -> a -> Assertion
 expectedResult p s r =
-    case P.runParser p s of
+    case P.runFuzzyParser p s of
         Left e -> assertFailure $ "Parser failed, the error was:\n" ++ e
         Right r' ->
             if r == r'
@@ -22,16 +22,16 @@ expectedResult p s r =
             else assertFailure $ "The result was:\n" ++ show r' ++ "\nBut was expecting:\n" ++ show r
 
 -- Asserts that a parser succeeds when parsing a given string
-expectedSuccess :: (HasCallStack, Eq a, Show a) => P.FuzzyParser a -> String -> Assertion
+expectedSuccess :: HasCallStack => P.FuzzyParser a -> String -> Assertion
 expectedSuccess p s =
-    case P.runParser p s of
+    case P.runFuzzyParser p s of
         Left e -> assertFailure $ "Parser failed, the error was:\n" ++ e
         Right _ -> return ()
 
 -- Asserts that a parser fails to parse a given string
-expectedFailure :: (HasCallStack, Eq a, Show a) => P.FuzzyParser a -> String -> Assertion
+expectedFailure :: (HasCallStack, Show a) => P.FuzzyParser a -> String -> Assertion
 expectedFailure p s =
-    case P.runParser p s of
+    case P.runFuzzyParser p s of
         Left _ -> return ()
         Right r -> assertFailure $ "Parser didn't fail, the result was " ++ show r
 

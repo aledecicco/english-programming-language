@@ -176,17 +176,9 @@ solveSentenceLines ss rt = mapM (\s -> solveSentenceLine s rt) ss
 solveBlock :: Block -> ParserEnv Block
 solveBlock (FunDef t rt ss) = FunDef t rt <$> solveSentenceLines ss rt
 
---
-
-
--- Main
-
-runSolver :: ParserEnv r -> ParserState -> Either Error (r, ParserState)
-runSolver = runParserEnv
-
 solveProgram :: Program -> (Program, ParserState)
 solveProgram p =
-    case runSolver (solveProgram' p) initialState of
+    case runParserEnv (solveProgram' p) initialState of
         Left e -> error e
         Right r -> r
     where
