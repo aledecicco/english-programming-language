@@ -4,7 +4,6 @@ import Test.Tasty ( testGroup, TestTree )
 import Test.Tasty.HUnit ( testCase, (@?=) )
 
 import TestUtils
-import qualified ParserEnv as E
 import qualified Matcher as M
 import qualified AST as T
 

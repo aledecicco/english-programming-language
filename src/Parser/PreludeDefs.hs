@@ -5,9 +5,8 @@ import AST
 --
 
 
--- Definitions
+--
 
--- List of predefined operators (functions that return a value)
 operators :: [(String, Function)]
 operators =
     [
@@ -52,7 +51,6 @@ operators =
         )
     ]
 
--- List of predefined procedures (functions that have no return value)
 procedures :: [(String, Function)]
 procedures =
     [

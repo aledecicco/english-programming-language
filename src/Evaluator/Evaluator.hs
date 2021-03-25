@@ -6,6 +6,7 @@ import Control.Monad ( void )
 import Control.Applicative ( (<|>) )
 
 import EvaluatorEnv
+import PreludeEval
 import ParserEnv ( ParserState )
 import Utils ( firstNotNull )
 import Errors
@@ -23,10 +24,14 @@ translateState p (fE, _, _) =
     where
         translateFunction :: Program -> (FunctionId, Function) -> (FunctionId, [SentenceLine])
         translateFunction p (fid, Function t _) =
-            let (FunDef _ _ ss) = findDefinition p t
-            in (fid, ss)
-        findDefinition :: Program -> Title -> Block
-        findDefinition p t = fromJust $ find (\(FunDef (Line _ t') _ _) -> t == t') p
+            case findDefinition p t of
+                (Just (FunDef _ _ ss)) -> (fid, ss)
+                Nothing -> (fid, [])
+        findDefinition :: Program -> Title -> Maybe Block
+        findDefinition p t = find (\(FunDef (Line _ t') _ _) -> t == t') p
+
+isPreludeFunction :: FunctionId -> Bool
+isPreludeFunction fid = fid `elem` ["print_%", "%_plus_%", "%_times_%", "the_first_element_of_%", "%_appended_to_%"]
 
 --
 
@@ -34,12 +39,13 @@ translateState p (fE, _, _) =
 -- Evaluators
 
 evaluateValue :: Value -> EvaluatorEnv Value
+evaluateValue (VarV vn) = fromJust <$> getVariableValue vn
 evaluateValue (ListV t es) = do
     es' <- mapM evaluateValue es
     return $ ListV t es'
 evaluateValue (OperatorCall fid vs) = do
     vs' <- mapM evaluateValue vs
-    evaluateOperator fid vs'
+    Evaluator.evaluateOperator fid vs'
 evaluateValue v = return v
 
 evaluateSentenceLines :: [SentenceLine] -> EvaluatorEnv (Maybe Value)
@@ -82,21 +88,25 @@ evaluateSentence (Result v) = do
     return $ Just v'
 evaluateSentence (ProcedureCall fid vs) = do
     vs' <- mapM evaluateValue vs
-    evaluateProcedure fid vs'
+    Evaluator.evaluateProcedure fid vs'
     return Nothing
 
 evaluateOperator :: FunctionId -> [Value] -> EvaluatorEnv Value
-evaluateOperator fid vs = do
-    ss <- fromJust <$> getFunctionSentences fid
-    r <- evaluateSentenceLines ss
-    case r of
-        Just v -> return v
-        Nothing -> expectedResultError
+evaluateOperator fid vs
+    | isPreludeFunction fid = PreludeEval.evaluateOperator fid vs
+    | otherwise = do
+        ss <- fromJust <$> getFunctionSentences fid
+        r <- evaluateSentenceLines ss
+        case r of
+            Just v -> return v
+            Nothing -> expectedResultError
 
 evaluateProcedure :: FunctionId -> [Value] -> EvaluatorEnv ()
-evaluateProcedure fid vs = do
-    ss <- fromJust <$> getFunctionSentences fid
-    void $ evaluateSentenceLines ss
+evaluateProcedure fid vs
+    | isPreludeFunction fid = PreludeEval.evaluateProcedure fid vs
+    | otherwise = do
+        ss <- fromJust <$> getFunctionSentences fid
+        void $ evaluateSentenceLines ss
 
 evaluateProgram :: Program -> ParserState -> IO EvaluatorState
 evaluateProgram p s = do
@@ -106,6 +116,6 @@ evaluateProgram p s = do
         Right r -> return $ snd r
     where
         evaluateProgram' :: EvaluatorEnv ()
-        evaluateProgram' = evaluateProcedure "run" []
+        evaluateProgram' = Evaluator.evaluateProcedure "run" []
 
 --

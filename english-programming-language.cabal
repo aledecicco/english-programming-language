@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: a7ec22fa35a126cba0ac4c9735fd14caf76ea5ac52cad3763fd63317ff3e4ca8
+-- hash: c374ab819f9d1ff049e10b307515b3bad8fc2165080bc9a67e4f7067ca6b44a0
 
 name:           english-programming-language
 version:        0.1.0.0
@@ -21,11 +21,11 @@ library
       AST
       Env
       Errors
-      PreludeDefs
       Utils
       FuzzyParser
       Matcher
       ParserEnv
+      PreludeDefs
       Solver
       Evaluator
       EvaluatorEnv
@@ -66,6 +66,7 @@ test-suite english-programming-language-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      EvaluatorTest
       FuzzyParserTest
       MatcherTest
       SolverTest

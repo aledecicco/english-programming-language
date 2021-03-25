@@ -56,10 +56,15 @@ setNewVariableType vn t' = do
         then alreadyDefinedVariableError vn
         else setVariableType vn t'
 
+checkValueType :: Value -> Type -> ParserEnv ()
+checkValueType v t = do
+    t' <- getValueType v
+    unless (t' `satisfiesType` t) $ wrongTypeValueError v t
+
 -- Validates that a value is correctly formed
 checkValueIntegrity :: Value -> ParserEnv ()
 checkValueIntegrity (OperatorCall fid vs) = checkFunctionCallIntegrity (fid, vs)
-checkValueIntegrity (ListV t vs) = mapM_ checkValueIntegrity vs
+checkValueIntegrity (ListV t vs) = mapM_ (\v -> checkValueIntegrity v >> checkValueType v t) vs
 checkValueIntegrity _ = return ()
 
 checkFunctionCallIntegrity :: (FunctionId, [Value]) -> ParserEnv ()
@@ -105,7 +110,7 @@ registerFunctions = mapM_ registerFunction
 
 solveValue :: Value -> ParserEnv Value
 solveValue (ListV t es) = do
-    es' <- mapM solveValue es
+    es' <- mapM (solveValueWithType t) es
     return $ ListV t es'
 solveValue (ValueM ps) = do
     r <- matchAsValue ps
@@ -117,10 +122,8 @@ solveValue v = return v
 solveValueWithType :: Type -> Value -> ParserEnv Value
 solveValueWithType t v = do
     v' <- solveValue v
-    t' <- getValueType v'
-    if t' `satisfiesType` t
-        then return v'
-        else wrongTypeValueError v' t
+    checkValueType v' t
+    return v'
 
 solveSentence :: Sentence -> Maybe Type -> ParserEnv Sentence
 solveSentence (VarDef vNs v) _ = do

@@ -50,3 +50,8 @@ resultInProcedureError = customError ["Found unexpected result statement in proc
 
 expectedResultError :: Monad m => Env a b m r
 expectedResultError = customError ["Expected a result statement before end of operator"]
+
+emptyListError :: Monad m => Env a b m r
+emptyListError = customError ["Expected a list with at least one element"]
+
+--
