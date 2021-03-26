@@ -85,7 +85,7 @@ identifier = do
 word :: String -> FuzzyParser String
 word w = lexeme $ string' w <* notFollowedBy alphaNumChar
 
-integer :: FuzzyParser Integer
+integer :: FuzzyParser Int
 integer = lexeme $ L.signed (return ()) L.decimal <* notFollowedBy alphaNumChar
 
 float :: FuzzyParser Float

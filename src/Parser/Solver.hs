@@ -18,7 +18,6 @@ import Errors
 satisfiesType :: Type -> Type -> Bool
 satisfiesType _ AnyT = True
 satisfiesType IntT FloatT = True
-satisfiesType FloatT IntT = True
 satisfiesType (ListT t1) (ListT t2) = t1 `satisfiesType` t2
 satisfiesType t1 t2 = t1 == t2
 

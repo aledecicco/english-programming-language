@@ -54,4 +54,7 @@ expectedResultError = customError ["Expected a result statement before end of op
 emptyListError :: Monad m => Env a b m r
 emptyListError = customError ["Expected a list with at least one element"]
 
+outOfBoundsIndexError :: Monad m => Int -> Env a b m r
+outOfBoundsIndexError n = customError ["Tried to access a list at index", show n, ", which is out of bounds"]
+
 --

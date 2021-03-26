@@ -3,8 +3,8 @@ module FuzzyParserTest ( tests ) where
 import Test.Tasty ( testGroup, TestTree )
 import Test.Tasty.HUnit ( HasCallStack, testCase, assertFailure, Assertion, (@?=) )
 
-import qualified FuzzyParser as P
-import qualified AST as T
+import FuzzyParser
+import AST
 
 --
 
@@ -12,23 +12,23 @@ import qualified AST as T
 -- Assertions
 
 -- Asserts that a parser yields a specific result when parsing a given string
-expectedResult :: (HasCallStack, Eq a, Show a) => P.FuzzyParser a -> String -> a -> Assertion
+expectedResult :: (HasCallStack, Eq a, Show a) => FuzzyParser a -> String -> a -> Assertion
 expectedResult p s r =
-    case P.runFuzzyParser p s of
+    case runFuzzyParser p s of
         Left e -> assertFailure $ "Parser failed, the error was:\n" ++ e
         Right r' -> r' @?= r
 
 -- Asserts that a parser succeeds when parsing a given string
-expectedSuccess :: HasCallStack => P.FuzzyParser a -> String -> Assertion
+expectedSuccess :: HasCallStack => FuzzyParser a -> String -> Assertion
 expectedSuccess p s =
-    case P.runFuzzyParser p s of
+    case runFuzzyParser p s of
         Left e -> assertFailure $ "Parser failed, the error was:\n" ++ e
         Right _ -> return ()
 
 -- Asserts that a parser fails to parse a given string
-expectedFailure :: (HasCallStack, Show a) => P.FuzzyParser a -> String -> Assertion
+expectedFailure :: (HasCallStack, Show a) => FuzzyParser a -> String -> Assertion
 expectedFailure p s =
-    case P.runFuzzyParser p s of
+    case runFuzzyParser p s of
         Left _ -> return ()
         Right r -> assertFailure $ "Parser didn't fail, the result was " ++ show r
 
@@ -42,30 +42,30 @@ anyWordTests = testGroup "Any word"
     [
         testCase "Single word" $
             expectedResult
-                P.anyWord
+                anyWord
                 "word"
                 "word",
 
         testCase "Reserved word" $
             expectedResult
-                P.anyWord
+                anyWord
                 "be"
                 "be",
 
         testCase "Many words" $
             expectedResult
-                P.anyWord
+                anyWord
                 "word and another word"
                 "word",
 
         testCase "Followed by symbol" $
             expectedResult
-                P.anyWord
+                anyWord
                 "word, another word"
                 "word",
 
         testCase "Followed by number" $
-            expectedFailure P.anyWord "word1"
+            expectedFailure anyWord "word1"
     ]
 
 nameTests :: TestTree
@@ -73,36 +73,36 @@ nameTests = testGroup "Name"
     [
         testCase "Single word" $
             expectedResult
-                P.name
+                name
                 "word"
                 ["word"],
 
         testCase "Not reserved word" $
             expectedResult
-                P.name
+                name
                 "become"
                 ["become"],
 
         testCase "Many words with reserved" $
             expectedResult
-                P.name
+                name
                 "word be another word"
                 ["word"],
 
         testCase "Many words without reserved" $
             expectedResult
-                P.name
+                name
                 "word another word"
                 ["word", "another", "word"],
 
         testCase "Reserved word" $
             expectedFailure
-                P.name
+                name
                 "be",
 
         testCase "All caps reserved word" $
             expectedFailure
-                P.name
+                name
                 "BE"
     ]
 
@@ -112,51 +112,51 @@ typeNameTests = testGroup "Type name"
     [
         testCase "Integer" $
             expectedResult
-                (P.typeName False)
+                (typeName False)
                 "integer"
-                T.IntT,
+                IntT,
 
         testCase "Integers" $
             expectedResult
-                (P.typeName True)
+                (typeName True)
                 "integers"
-                T.IntT,
+                IntT,
 
         testCase "List" $
             expectedResult
-                (P.typeName False)
+                (typeName False)
                 "list of integers"
-                (T.ListT T.IntT),
+                (ListT IntT),
 
         testCase "List of lists" $
             expectedResult
-                (P.typeName False)
+                (typeName False)
                 "list of lists of integers"
-                (T.ListT (T.ListT T.IntT)),
+                (ListT (ListT IntT)),
 
         testCase "List without element" $
             expectedFailure
-                (P.typeName False)
+                (typeName False)
                 "list",
 
         testCase "List of lists without element" $
             expectedFailure
-                (P.typeName False)
+                (typeName False)
                 "list of lists",
 
         testCase "Integers without plural" $
             expectedFailure
-                (P.typeName True)
+                (typeName True)
                 "integer",
 
         testCase "Integer with plural" $
             expectedFailure
-                (P.typeName False)
+                (typeName False)
                 "integers",
 
         testCase "List without plural element" $
             expectedFailure
-                (P.typeName False)
+                (typeName False)
                 "list of integer"
     ]
 
@@ -165,46 +165,46 @@ identifierTests = testGroup "Identifier"
     [
         testCase "Single word" $
             expectedResult
-                P.identifier
+                identifier
                 "word"
                 "word",
 
         testCase "Not reserved word" $
             expectedResult
-                P.identifier
+                identifier
                 "become"
                 "become",
 
         testCase "Many words with reserved" $
             expectedResult
-                 P.identifier
+                 identifier
                 "word be another word"
                 "word",
 
         testCase "Reserved word" $
-            expectedFailure P.identifier "be"
+            expectedFailure identifier "be"
     ]
 
 reservedTests :: TestTree
 reservedTests = testGroup "Reserved"
     [
         testCase "Single word" $
-            expectedSuccess (P.word "word") "word",
+            expectedSuccess (word "word") "word",
 
         testCase "Reserved word" $
-            expectedSuccess (P.word "be") "be",
+            expectedSuccess (word "be") "be",
 
         testCase "Many words" $
-            expectedSuccess (P.word "word") "word be another word",
+            expectedSuccess (word "word") "word be another word",
 
         testCase "Mismatching word" $
-            expectedFailure (P.word "another") "word",
+            expectedFailure (word "another") "word",
 
         testCase "Longer word" $
-            expectedFailure (P.word "become") "be",
+            expectedFailure (word "become") "be",
 
         testCase "Not reserved word" $
-            expectedFailure (P.word "be") "become"
+            expectedFailure (word "be") "become"
     ]
 
 integerTests :: TestTree
@@ -212,45 +212,45 @@ integerTests = testGroup "Integer"
     [
         testCase "Number" $
             expectedResult
-                P.integer
+                integer
                 "11"
                 11,
 
         testCase "Negative" $
             expectedResult
-                P.integer
+                integer
                 "-11"
                 (-11),
 
         testCase "Followed by symbol" $
             expectedResult
-                P.integer
+                integer
                 "11: 12"
                 11,
 
         testCase "Many numbers" $
             expectedResult
-                P.integer
+                integer
                 "11 12"
                 11,
 
         testCase "Not a float" $
             expectedResult
-                P.integer
+                integer
                 "11.a"
                 11,
 
         testCase "A float" $
             expectedResult
-                P.integer
+                integer
                 "11.12"
                 11,
 
         testCase "Word" $
-            expectedFailure P.integer "word",
+            expectedFailure integer "word",
 
         testCase "Negative with space" $
-            expectedFailure P.integer "- 11"
+            expectedFailure integer "- 11"
     ]
 
 
@@ -259,39 +259,39 @@ floatTests = testGroup "Integer"
     [
         testCase "Number" $
             expectedResult
-                P.float
+                float
                 "11.12"
                 11.12,
 
         testCase "Negative" $
             expectedResult
-                P.float
+                float
                 "-11.12"
                 (-11.12),
 
         testCase "Many numbers" $
             expectedResult
-                P.float
+                float
                 "11.12 12.13"
                 11.12,
 
         testCase "Not a float" $
-            expectedFailure P.float "11.a",
+            expectedFailure float "11.a",
 
         testCase "An integer" $
-            expectedFailure P.float "11",
+            expectedFailure float "11",
 
         testCase "Word" $
-            expectedFailure P.float "word",
+            expectedFailure float "word",
 
         testCase "With space after dot" $
-            expectedFailure P.float "11. 12",
+            expectedFailure float "11. 12",
 
         testCase "With space before dot" $
-            expectedFailure P.float "11 .12",
+            expectedFailure float "11 .12",
 
         testCase "Negative with space" $
-            expectedFailure P.float "- 11.12"
+            expectedFailure float "- 11.12"
     ]
 
 parensTests :: TestTree
@@ -299,18 +299,18 @@ parensTests = testGroup "Parens"
     [
         testCase "Number" $
             expectedResult
-                (P.parens P.integer)
+                (parens integer)
                 "(11)"
                 11,
 
         testCase "Without parenthesis" $
-            expectedFailure (P.parens P.integer) "11",
+            expectedFailure (parens integer) "11",
 
         testCase "Followed by symbol" $
-            expectedFailure (P.parens P.integer) "(11,)",
+            expectedFailure (parens integer) "(11,)",
 
         testCase "Not closed" $
-            expectedFailure (P.parens P.integer) "(11"
+            expectedFailure (parens integer) "(11"
     ]
 
 seriesTests :: TestTree
@@ -318,47 +318,47 @@ seriesTests = testGroup "Series"
     [
         testCase "One number" $
             expectedResult
-                (P.series P.integer)
+                (series integer)
                 "11"
                 [11],
 
         testCase "Two numbers" $
             expectedResult
-                (P.series P.integer)
+                (series integer)
                 "11, and 12"
                 [11, 12],
 
         testCase "Three numbers" $
             expectedResult
-                (P.series P.integer)
+                (series integer)
                 "11, 12, and 13"
                 [11, 12, 13],
 
 
         testCase "Without commas" $
             expectedResult
-                (P.series P.integer)
+                (series integer)
                 "11 12 and 13"
                 [11],
 
         testCase "Double and" $
         expectedResult
-            (P.series P.valueMatchable)
+            (series valueMatchable)
             "11, 12 and 13, and 14"
             [
-                T.ValueM [T.IntP 11],
-                T.ValueM [T.IntP 12, T.WordP "and", T.IntP 13],
-                T.ValueM [T.IntP 14]
+                ValueM [IntP 11],
+                ValueM [IntP 12, WordP "and", IntP 13],
+                ValueM [IntP 14]
             ],
 
         testCase "Without last comma" $
-            expectedFailure (P.series P.integer) "11, 12 13",
+            expectedFailure (series integer) "11, 12 13",
 
         testCase "Without and" $
-            expectedFailure (P.series P.integer) "11, 12, 13",
+            expectedFailure (series integer) "11, 12, 13",
 
         testCase "Not and" $
-            expectedFailure (P.series P.integer) "11, 12, android 13"
+            expectedFailure (series integer) "11, 12, android 13"
     ]
 
 intercalatedTests :: TestTree
@@ -366,36 +366,36 @@ intercalatedTests = testGroup "Intercalated"
     [
         testCase "Single correct element" $
             expectedResult
-                (P.intercalated P.identifier P.anyWord)
+                (intercalated identifier anyWord)
                 "word"
                 ["word"],
 
         testCase "Even elements" $
             expectedResult
-                (P.intercalated P.identifier P.anyWord)
+                (intercalated identifier anyWord)
                 "word be another be"
                 ["word", "be", "another", "be"],
 
         testCase "Odd elements" $
             expectedResult
-                (P.intercalated P.identifier P.anyWord)
+                (intercalated identifier anyWord)
                 "word be another be word"
                 ["word", "be", "another", "be", "word"],
 
         testCase "Repeated even element" $
             expectedResult
-                (P.intercalated P.identifier P.anyWord)
+                (intercalated identifier anyWord)
                 "word be be another be"
                 ["word", "be"],
 
         testCase "Repeated odd element" $
             expectedResult
-                (P.intercalated P.identifier P.anyWord)
+                (intercalated identifier anyWord)
                 "word be another another be"
                 ["word", "be", "another", "another"],
 
         testCase "Single incorrect element" $
-            expectedFailure (P.intercalated P.identifier P.anyWord) "be"
+            expectedFailure (intercalated identifier anyWord) "be"
     ]
 
 functionDefinitionTests :: TestTree
@@ -403,55 +403,55 @@ functionDefinitionTests = testGroup "Function definition"
     [
         testCase "Operator" $
             expectedResult
-                P.functionDefinition
+                functionDefinition
                 "The double of an integer (m), which results in an integer:\n  Let r be m times 2.\n  The result is r."
-                (T.FunDef
-                    (T.Line 1 [T.TitleWords ["The", "double", "of"], T.TitleParam ["m"] T.IntT])
-                    (Just T.IntT)
+                (FunDef
+                    (Line 1 [TitleWords ["The", "double", "of"], TitleParam ["m"] IntT])
+                    (Just IntT)
                     [
-                        T.Line 2 (T.VarDef [["r"]] (T.ValueM [T.WordP "m", T.WordP "times", T.IntP 2])),
-                        T.Line 3 (T.Result (T.ValueM [T.WordP "r"]))
+                        Line 2 (VarDef [["r"]] (ValueM [WordP "m", WordP "times", IntP 2])),
+                        Line 3 (Result (ValueM [WordP "r"]))
                     ]
                 ),
 
         testCase "Procedure" $
             expectedResult
-                P.functionDefinition
+                functionDefinition
                 "To double an integer (m):\n  Let r be m times 2."
-                (T.FunDef
-                    (T.Line 1 [T.TitleWords ["double"], T.TitleParam ["m"] T.IntT])
+                (FunDef
+                    (Line 1 [TitleWords ["double"], TitleParam ["m"] IntT])
                     Nothing
                     [
-                        T.Line 2 (T.VarDef [["r"]] (T.ValueM [T.WordP "m", T.WordP "times", T.IntP 2]))
+                        Line 2 (VarDef [["r"]] (ValueM [WordP "m", WordP "times", IntP 2]))
                     ]
                 ),
 
 
         testCase "Predicate" $
             expectedResult
-                P.functionDefinition
+                functionDefinition
                 "Whether an integer (m) is whole:\n  The result is true."
-                (T.FunDef
-                    (T.Line 1 [T.TitleParam ["m"] T.IntT, T.TitleWords ["is", "whole"]])
-                    (Just T.BoolT)
+                (FunDef
+                    (Line 1 [TitleParam ["m"] IntT, TitleWords ["is", "whole"]])
+                    (Just BoolT)
                     [
-                        T.Line 2 (T.Result (T.ValueM [T.WordP "true"]))
+                        Line 2 (Result (ValueM [WordP "true"]))
                     ]
                 ),
 
         testCase "Consecutive arguments in title" $
             expectedFailure
-                P.functionDefinition
+                functionDefinition
                 "The double of an integer (m) an integer (n):\n  The result is m times n.",
 
         testCase "Operator without return type" $
             expectedFailure
-                P.functionDefinition
+                functionDefinition
                 "The double of an integer (m):\n  Let r be m times 2.\n  The result is r.",
 
         testCase "Procedure with return type" $
             expectedFailure
-                P.functionDefinition
+                functionDefinition
                 "To double an integer (m), which results in an integer:\n  Let r be m times 2.\n  The result is r."
     ]
 
@@ -460,32 +460,32 @@ titleTests = testGroup "Title"
     [
         testCase "Words" $
             expectedResult
-                P.title
+                title
                 "Function definition"
-                (T.Line 1 [T.TitleWords ["Function", "definition"]]),
+                (Line 1 [TitleWords ["Function", "definition"]]),
 
         testCase "Many parts" $
             expectedResult
-                P.title
+                title
                 "Definition with an integer (m) and an integer (n)"
-                (T.Line 1 [
-                    T.TitleWords ["Definition", "with"],
-                    T.TitleParam ["m"] T.IntT,
-                    T.TitleWords ["and"],
-                    T.TitleParam ["n"] T.IntT
+                (Line 1 [
+                    TitleWords ["Definition", "with"],
+                    TitleParam ["m"] IntT,
+                    TitleWords ["and"],
+                    TitleParam ["n"] IntT
                 ]),
 
         testCase "Consecutive arguments" $
             expectedResult
-                P.title
+                title
                 "Definition with an integer (m) an integer (n)"
-                (T.Line 1 [
-                    T.TitleWords ["Definition", "with"],
-                    T.TitleParam ["m"] T.IntT
+                (Line 1 [
+                    TitleWords ["Definition", "with"],
+                    TitleParam ["m"] IntT
                 ]),
 
         testCase "Missing name" $
-            expectedFailure P.title "Definition with an integer"
+            expectedFailure title "Definition with an integer"
     ]
 
 titleWordsTests :: TestTree
@@ -493,27 +493,27 @@ titleWordsTests = testGroup "Title words"
     [
         testCase "Words" $
             expectedResult
-                P.titleWords
+                titleWords
                 "Function definition"
-                (T.TitleWords ["Function", "definition"]),
+                (TitleWords ["Function", "definition"]),
 
         testCase "Words followed by reserved word" $
             expectedResult
-                P.titleWords
+                titleWords
                 "Function definition be"
-                (T.TitleWords ["Function", "definition", "be"]),
+                (TitleWords ["Function", "definition", "be"]),
 
         testCase "Words followed by parameter" $
             expectedResult
-                P.titleWords
+                titleWords
                 "Function definition an integer"
-                (T.TitleWords ["Function", "definition"]),
+                (TitleWords ["Function", "definition"]),
 
         testCase "Reserved word first" $
             expectedResult
-                P.titleWords
+                titleWords
                 "Be function definition"
-                (T.TitleWords ["Be", "function", "definition"])
+                (TitleWords ["Be", "function", "definition"])
     ]
 
 titleParamTests :: TestTree
@@ -521,27 +521,27 @@ titleParamTests = testGroup "Title parameter"
     [
         testCase "Named" $
             expectedResult
-                P.titleParam
+                titleParam
                 "An integer (m)"
-                (T.TitleParam ["m"] T.IntT),
+                (TitleParam ["m"] IntT),
 
         testCase "Followed by words" $
             expectedResult
-                P.titleParam
+                titleParam
                 "An integer (m ) function definition"
-                (T.TitleParam ["m"] T.IntT),
+                (TitleParam ["m"] IntT),
 
         testCase "Two parameters" $
             expectedResult
-                P.titleParam
+                titleParam
                 "An integer (m) an integer (n)"
-                (T.TitleParam ["m"] T.IntT),
+                (TitleParam ["m"] IntT),
 
         testCase "Missing name" $
-            expectedFailure P.titleParam "An integer",
+            expectedFailure titleParam "An integer",
 
         testCase "Missing article" $
-            expectedFailure P.titleParam "integer (m)"
+            expectedFailure titleParam "integer (m)"
     ]
 
 listWithHeaderTests :: TestTree
@@ -567,7 +567,7 @@ listWithHeaderTests = testGroup "ListWithHeader"
 
         testCase "Nested lists" $
             expectedResult
-                (P.listWithHeader P.anyWord integerItems)
+                (listWithHeader anyWord integerItems)
                 "Lists:\n  First:\n    11.\n    12.\n  Second:\n    13.\n    14."
                 ("Lists", [("First", [11, 12]), ("Second", [13, 14])]),
 
@@ -587,17 +587,17 @@ listWithHeaderTests = testGroup "ListWithHeader"
             expectedFailure integerItems "Integers:\n  11.\n  12"
     ]
     where
-        integerItems :: P.FuzzyParser (String, [Integer])
-        integerItems = P.listWithHeader P.anyWord (P.integer <* P.dot)
+        integerItems :: FuzzyParser (String, [Int])
+        integerItems = listWithHeader anyWord (integer <* dot)
 
 valueTests :: TestTree
 valueTests = testGroup "Value"
     [
          testCase "List" $
             expectedResult
-                P.value
+                value
                 "A list of integers containing a, b, and c"
-                (T.ListV T.IntT [T.ValueM [T.WordP "a"], T.ValueM [T.WordP "b"], T.ValueM [T.WordP "c"]])
+                (ListV IntT [ValueM [WordP "a"], ValueM [WordP "b"], ValueM [WordP "c"]])
     ]
 
 --

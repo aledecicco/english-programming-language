@@ -3,9 +3,9 @@ module Evaluator where
 import Data.List ( find )
 import Data.Maybe ( fromJust )
 import Control.Monad ( void )
-import Control.Applicative ( (<|>) )
 
 import EvaluatorEnv
+import PreludeDefs
 import PreludeEval
 import ParserEnv ( ParserState )
 import Utils ( firstNotNull )
@@ -30,9 +30,6 @@ translateState p (fE, _, _) =
         findDefinition :: Program -> Title -> Maybe Block
         findDefinition p t = find (\(FunDef (Line _ t') _ _) -> t == t') p
 
-isPreludeFunction :: FunctionId -> Bool
-isPreludeFunction fid = fid `elem` ["print_%", "%_plus_%", "%_times_%", "the_first_element_of_%", "%_appended_to_%"]
-
 --
 
 
@@ -45,7 +42,7 @@ evaluateValue (ListV t es) = do
     return $ ListV t es'
 evaluateValue (OperatorCall fid vs) = do
     vs' <- mapM evaluateValue vs
-    Evaluator.evaluateOperator fid vs'
+    evaluateOperator fid vs'
 evaluateValue v = return v
 
 evaluateSentenceLines :: [SentenceLine] -> EvaluatorEnv (Maybe Value)
@@ -77,11 +74,19 @@ evaluateSentence s@(Until bv ls) = do
     (BoolV v') <- evaluateValue bv
     if v'
         then return Nothing
-        else evaluateSentenceLines ls <|> evaluateSentence s
+        else  do
+            r <- evaluateSentenceLines ls
+            case r of
+                (Just v'') -> return $ Just v''
+                Nothing -> evaluateSentence s
 evaluateSentence s@(While bv ls) = do
     (BoolV v') <- evaluateValue bv
     if v'
-        then evaluateSentenceLines ls <|> evaluateSentence s
+        then do
+            r <- evaluateSentenceLines ls
+            case r of
+                (Just v'') -> return $ Just v''
+                Nothing -> evaluateSentence s
         else return Nothing
 evaluateSentence (Result v) = do
     v' <- evaluateValue v
@@ -93,7 +98,7 @@ evaluateSentence (ProcedureCall fid vs) = do
 
 evaluateOperator :: FunctionId -> [Value] -> EvaluatorEnv Value
 evaluateOperator fid vs
-    | isPreludeFunction fid = PreludeEval.evaluateOperator fid vs
+    | isPreludeFunction fid = evaluatePreludeOperator fid vs
     | otherwise = do
         ss <- fromJust <$> getFunctionSentences fid
         r <- evaluateSentenceLines ss
@@ -103,7 +108,7 @@ evaluateOperator fid vs
 
 evaluateProcedure :: FunctionId -> [Value] -> EvaluatorEnv ()
 evaluateProcedure fid vs
-    | isPreludeFunction fid = PreludeEval.evaluateProcedure fid vs
+    | isPreludeFunction fid = evaluatePreludeProcedure fid vs
     | otherwise = do
         ss <- fromJust <$> getFunctionSentences fid
         void $ evaluateSentenceLines ss
@@ -116,6 +121,6 @@ evaluateProgram p s = do
         Right r -> return $ snd r
     where
         evaluateProgram' :: EvaluatorEnv ()
-        evaluateProgram' = Evaluator.evaluateProcedure "run" []
+        evaluateProgram' = evaluateProcedure "run" []
 
 --

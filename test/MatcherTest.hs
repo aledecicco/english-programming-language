@@ -3,9 +3,9 @@ module MatcherTest ( tests ) where
 import Test.Tasty ( testGroup, TestTree )
 import Test.Tasty.HUnit ( testCase, (@?=) )
 
-import TestUtils
-import qualified Matcher as M
-import qualified AST as T
+import ParserTestUtils
+import Matcher
+import AST
 
 --
 
@@ -16,25 +16,25 @@ splitsTests :: TestTree
 splitsTests = testGroup "Splits"
     [
         testCase "Addition" $
-            M.splits [T.IntP 2, T.WordP "plus", T.IntP 3]
+            splits [IntP 2, WordP "plus", IntP 3]
             @?=
             [
-                ([T.IntP 2], [T.WordP "plus", T.IntP 3]),
-                ([T.IntP 2, T.WordP "plus"], [T.IntP 3]),
-                ([T.IntP 2, T.WordP "plus", T.IntP 3], [])
+                ([IntP 2], [WordP "plus", IntP 3]),
+                ([IntP 2, WordP "plus"], [IntP 3]),
+                ([IntP 2, WordP "plus", IntP 3], [])
             ],
 
         testCase "Addition with recursive arguments" $
-            M.splits [T.IntP 2, T.WordP "times", T.IntP 3, T.WordP "plus", T.IntP 4, T.WordP "times", T.IntP 5]
+            splits [IntP 2, WordP "times", IntP 3, WordP "plus", IntP 4, WordP "times", IntP 5]
             @?=
             [
-                ([T.IntP 2], [T.WordP "times", T.IntP 3, T.WordP "plus", T.IntP 4, T.WordP "times", T.IntP 5]),
-                ([T.IntP 2, T.WordP "times"], [T.IntP 3, T.WordP "plus", T.IntP 4, T.WordP "times", T.IntP 5]),
-                ([T.IntP 2, T.WordP "times", T.IntP 3], [T.WordP "plus", T.IntP 4, T.WordP "times", T.IntP 5]),
-                ([T.IntP 2, T.WordP "times", T.IntP 3, T.WordP "plus"], [T.IntP 4, T.WordP "times", T.IntP 5]),
-                ([T.IntP 2, T.WordP "times", T.IntP 3, T.WordP "plus", T.IntP 4], [T.WordP "times", T.IntP 5]),
-                ([T.IntP 2, T.WordP "times", T.IntP 3, T.WordP "plus", T.IntP 4, T.WordP "times"], [T.IntP 5]),
-                ([T.IntP 2, T.WordP "times", T.IntP 3, T.WordP "plus", T.IntP 4, T.WordP "times", T.IntP 5], [])
+                ([IntP 2], [WordP "times", IntP 3, WordP "plus", IntP 4, WordP "times", IntP 5]),
+                ([IntP 2, WordP "times"], [IntP 3, WordP "plus", IntP 4, WordP "times", IntP 5]),
+                ([IntP 2, WordP "times", IntP 3], [WordP "plus", IntP 4, WordP "times", IntP 5]),
+                ([IntP 2, WordP "times", IntP 3, WordP "plus"], [IntP 4, WordP "times", IntP 5]),
+                ([IntP 2, WordP "times", IntP 3, WordP "plus", IntP 4], [WordP "times", IntP 5]),
+                ([IntP 2, WordP "times", IntP 3, WordP "plus", IntP 4, WordP "times"], [IntP 5]),
+                ([IntP 2, WordP "times", IntP 3, WordP "plus", IntP 4, WordP "times", IntP 5], [])
             ]
     ]
 
@@ -42,27 +42,27 @@ sepByTitleTests :: TestTree
 sepByTitleTests = testGroup "Sep by title"
     [
         testCase "Addition" $
-            M.sepByTitle
-                [T.IntP 2, T.WordP "plus", T.IntP 3]
-                [T.TitleParam ["m"] T.FloatT, T.TitleWords ["plus"], T.TitleParam ["n"] T.FloatT]
+            sepByTitle
+                [IntP 2, WordP "plus", IntP 3]
+                [TitleParam ["m"] FloatT, TitleWords ["plus"], TitleParam ["n"] FloatT]
             @?=
-            [[[T.IntP 2], [T.IntP 3]]],
+            [[[IntP 2], [IntP 3]]],
 
         testCase "Addition with recursive arguments" $
-            M.sepByTitle
-                [T.IntP 2, T.WordP "times", T.IntP 3, T.WordP "plus", T.IntP 4, T.WordP "times", T.IntP 5]
-                [T.TitleParam ["m"] T.FloatT, T.TitleWords ["plus"], T.TitleParam ["n"] T.FloatT]
+            sepByTitle
+                [IntP 2, WordP "times", IntP 3, WordP "plus", IntP 4, WordP "times", IntP 5]
+                [TitleParam ["m"] FloatT, TitleWords ["plus"], TitleParam ["n"] FloatT]
             @?=
-            [[[T.IntP 2, T.WordP "times", T.IntP 3],[T.IntP 4, T.WordP "times", T.IntP 5]]],
+            [[[IntP 2, WordP "times", IntP 3],[IntP 4, WordP "times", IntP 5]]],
 
         testCase "Multiplication with recursive arguments" $
-            M.sepByTitle
-                [T.IntP 2, T.WordP "times", T.IntP 3, T.WordP "plus", T.IntP 4, T.WordP "times", T.IntP 5]
-                [T.TitleParam ["m"] T.FloatT, T.TitleWords ["times"], T.TitleParam ["n"] T.FloatT]
+            sepByTitle
+                [IntP 2, WordP "times", IntP 3, WordP "plus", IntP 4, WordP "times", IntP 5]
+                [TitleParam ["m"] FloatT, TitleWords ["times"], TitleParam ["n"] FloatT]
             @?=
             [
-                [[T.IntP 2], [T.IntP 3, T.WordP "plus", T.IntP 4, T.WordP "times", T.IntP 5]],
-                [[T.IntP 2, T.WordP "times", T.IntP 3, T.WordP "plus", T.IntP 4], [T.IntP 5]]
+                [[IntP 2], [IntP 3, WordP "plus", IntP 4, WordP "times", IntP 5]],
+                [[IntP 2, WordP "times", IntP 3, WordP "plus", IntP 4], [IntP 5]]
             ]
     ]
 
@@ -71,13 +71,13 @@ asNameTests = testGroup "As name"
     [
         testCase "Many words" $
             expectedResult
-                (M.matchAsName [T.WordP "short", T.WordP "name"])
+                (matchAsName [WordP "short", WordP "name"])
                 emptyEnv
                 (Just ["short", "name"]),
 
         testCase "Followed by number part" $
             expectedResult
-                (M.matchAsName [T.WordP "short", T.WordP "name", T.IntP 1])
+                (matchAsName [WordP "short", WordP "name", IntP 1])
                 emptyEnv
                 Nothing
     ]
@@ -87,27 +87,27 @@ asFunctionCallTests = testGroup "As function call"
     [
         testCase "Arguments at beggining and end" $
             expectedResult
-                (M.matchAsFunctionCall [T.IntP 2, T.WordP "plus", T.IntP 3])
+                (matchAsFunctionCall [IntP 2, WordP "plus", IntP 3])
                 envWithFunctions
-                (Just ("%_plus_%", [T.IntV 2, T.IntV 3])),
+                (Just ("%_plus_%", [IntV 2, IntV 3])),
 
         testCase "Addition and multiplication associativity" $
             expectedResult
-                (M.matchAsFunctionCall [T.IntP 2, T.WordP "times", T.IntP 3, T.WordP "plus", T.IntP 4, T.WordP "times", T.IntP 5])
+                (matchAsFunctionCall [IntP 2, WordP "times", IntP 3, WordP "plus", IntP 4, WordP "times", IntP 5])
                 envWithFunctions
-                (Just ("%_plus_%", [T.OperatorCall "%_times_%" [T.IntV 2, T.IntV 3], T.OperatorCall "%_times_%" [T.IntV 4, T.IntV 5]])),
+                (Just ("%_plus_%", [OperatorCall "%_times_%" [IntV 2, IntV 3], OperatorCall "%_times_%" [IntV 4, IntV 5]])),
 
         testCase "Forced associativity with parenthesis" $
             expectedResult
-                (M.matchAsFunctionCall [T.ParensP [T.IntP 2, T.WordP "times", T.IntP 3, T.WordP "plus", T.IntP 4], T.WordP "times", T.IntP 5])
+                (matchAsFunctionCall [ParensP [IntP 2, WordP "times", IntP 3, WordP "plus", IntP 4], WordP "times", IntP 5])
                 envWithFunctions
-                (Just ("%_times_%", [T.OperatorCall "%_plus_%" [T.OperatorCall "%_times_%" [T.IntV 2, T.IntV 3], T.IntV 4], T.IntV 5])),
+                (Just ("%_times_%", [OperatorCall "%_plus_%" [OperatorCall "%_times_%" [IntV 2, IntV 3], IntV 4], IntV 5])),
 
         testCase "Wrong type arguments" $
             expectedResult
-                (M.matchAsFunctionCall [T.WordP "true", T.WordP "plus", T.WordP "false"])
+                (matchAsFunctionCall [WordP "true", WordP "plus", WordP "false"])
                 envWithFunctions
-                (Just ("%_plus_%", [T.BoolV True, T.BoolV False]))
+                (Just ("%_plus_%", [BoolV True, BoolV False]))
     ]
 
 --
