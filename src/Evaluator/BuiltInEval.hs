@@ -1,13 +1,13 @@
 {-# LANGUAGE RankNTypes #-}
 
-module PreludeEval where
+module BuiltInEval where
 
 import Control.Monad.Trans.Class ( lift )
 import Data.List ( intercalate )
 
 import EvaluatorEnv
 import Errors
-import AST ( FunctionId, Value(ListV, BoolV, FloatV, IntV) )
+import AST
 
 --
 
@@ -39,20 +39,20 @@ relationalOperation op (IntV n1) (IntV n2) = BoolV $ n1 `op` n2
 
 -- Evaluators
 
-evaluatePreludeOperator :: FunctionId -> [Value] -> EvaluatorEnv Value
-evaluatePreludeOperator "%_plus_%" [v1, v2] = evaluatePlus v1 v2
-evaluatePreludeOperator "%_times_%" [v1, v2] = evaluateTimes v1 v2
-evaluatePreludeOperator "%_minus_%" [v1, v2] = evaluateMinus v1 v2
-evaluatePreludeOperator "%_divided_by_%" [v1, v2] = evaluateDividedBy v1 v2
-evaluatePreludeOperator "%_is_less_than_%" [v1, v2] = evaluateIsLessThan v1 v2
-evaluatePreludeOperator "%_is_less_than_or_equal_to_%" [v1, v2] = evaluateIsLessThanOrEqualTo v1 v2
-evaluatePreludeOperator "%_is_greater_than_%" [v1, v2] = evaluateIsGreaterThan v1 v2
-evaluatePreludeOperator "%_is_greater_than_or_equal_to_%" [v1, v2] = evaluateIsGreaterThanOrEqualTo v1 v2
-evaluatePreludeOperator "the_element_of_%_at_position_%" [l, v] = evaluateElementOfListAtPosition l v
-evaluatePreludeOperator "%_appended_to_%" [l1, l2] = evaluateListAppendedToList l1 l2
+evaluateBuiltInOperator :: FunctionId -> [Value] -> EvaluatorEnv Value
+evaluateBuiltInOperator "%_plus_%" [v1, v2] = evaluatePlus v1 v2
+evaluateBuiltInOperator "%_times_%" [v1, v2] = evaluateTimes v1 v2
+evaluateBuiltInOperator "%_minus_%" [v1, v2] = evaluateMinus v1 v2
+evaluateBuiltInOperator "%_divided_by_%" [v1, v2] = evaluateDividedBy v1 v2
+evaluateBuiltInOperator "%_is_less_than_%" [v1, v2] = evaluateIsLessThan v1 v2
+evaluateBuiltInOperator "%_is_less_than_or_equal_to_%" [v1, v2] = evaluateIsLessThanOrEqualTo v1 v2
+evaluateBuiltInOperator "%_is_greater_than_%" [v1, v2] = evaluateIsGreaterThan v1 v2
+evaluateBuiltInOperator "%_is_greater_than_or_equal_to_%" [v1, v2] = evaluateIsGreaterThanOrEqualTo v1 v2
+evaluateBuiltInOperator "the_element_of_%_at_position_%" [l, v] = evaluateElementOfListAtPosition l v
+evaluateBuiltInOperator "%_appended_to_%" [l1, l2] = evaluateListAppendedToList l1 l2
 
-evaluatePreludeProcedure :: FunctionId -> [Value] -> EvaluatorEnv ()
-evaluatePreludeProcedure "print_%" [v] = evaluatePrint v
+evaluateBuiltInProcedure :: FunctionId -> [Value] -> EvaluatorEnv ()
+evaluateBuiltInProcedure "print_%" [v] = evaluatePrint v
 
 evaluatePrint :: Value -> EvaluatorEnv ()
 evaluatePrint v = io . putStr $ evaluatePrint' v

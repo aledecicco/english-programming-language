@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 9b603bbcee27281f0a92980ffa306efacf21fed16065d5e129e8ebaa81a6642b
+-- hash: 7179208cd48949fb017cb715f059ffac474fe469544b777ae8672ef2ca987394
 
 name:           english-programming-language
 version:        0.1.0.0
@@ -19,17 +19,17 @@ extra-source-files:
 library
   exposed-modules:
       AST
+      BuiltInDefs
       Env
       Errors
-      PreludeDefs
       Utils
       FuzzyParser
       Matcher
       ParserEnv
       Solver
+      BuiltInEval
       Evaluator
       EvaluatorEnv
-      PreludeEval
   other-modules:
       Paths_english_programming_language
   hs-source-dirs:

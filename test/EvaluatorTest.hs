@@ -3,7 +3,7 @@ module EvaluatorTest ( tests ) where
 import Test.Tasty ( testGroup, TestTree )
 import Test.Tasty.HUnit ( HasCallStack, testCase, assertFailure, Assertion, (@?=) )
 
-import PreludeDefs
+import BuiltInDefs
 import EvaluatorEnv
 import Evaluator
 import AST
@@ -74,7 +74,7 @@ sentenceTests = testGroup "sentence"
                             Line 3 $ Result (VarV ["x"])
                         ]
                 )
-                ([("%_is_less_than_%", []), ("%_plus_%", [])], [(["x"], IntV (-1))], 0)
+                ([("%_is_less_than_%", []), ("%_plus_%", [])], [(["x"], IntV 0)], 0)
                 (IntV 3)
     ]
 

@@ -1,4 +1,4 @@
-module PreludeDefs where
+module BuiltInDefs where
 
 import AST
 import Utils (getFunctionId)
@@ -22,8 +22,8 @@ relationalType = Operator (\[_, _] -> BoolT)
 
 --
 
-operators :: [(FunctionId, Function)]
-operators = map functionFromTuple
+builtInOperators :: [(FunctionId, Function)]
+builtInOperators = map functionFromTuple
     [
         (
             [TitleParam ["m"] FloatT, TitleWords ["plus"], TitleParam ["n"] FloatT],
@@ -67,8 +67,8 @@ operators = map functionFromTuple
         )
     ]
 
-procedures :: [(FunctionId, Function)]
-procedures = map functionFromTuple
+builtInProcedures :: [(FunctionId, Function)]
+builtInProcedures = map functionFromTuple
     [
         (
             [TitleWords ["print"], TitleParam ["v"] AnyT],
@@ -76,7 +76,7 @@ procedures = map functionFromTuple
         )
     ]
 
-isPreludeFunction :: FunctionId -> Bool
-isPreludeFunction fid =
-    let preludeIds = map fst (operators ++ procedures)
-    in fid `elem` preludeIds
+isBuiltInFunction :: FunctionId -> Bool
+isBuiltInFunction fid =
+    let builtInIds = map fst (builtInOperators ++ builtInProcedures)
+    in fid `elem` builtInIds

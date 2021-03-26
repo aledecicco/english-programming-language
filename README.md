@@ -6,4 +6,4 @@
 - Decide on a variable declaration scope mode
 - Check for casing at beggining of sentences, taking title parameters into account
 - Add names to "AnyT" types and check them in the solver
-- Should prelude functions be stored as functions without sentences in the evaluator env?
+- Should built in functions be stored as functions without sentences in the evaluator env?

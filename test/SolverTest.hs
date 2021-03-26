@@ -4,7 +4,7 @@ import Test.Tasty ( testGroup, TestTree )
 import Test.Tasty.HUnit ( testCase, (@?=) )
 
 import ParserTestUtils
-import PreludeDefs
+import BuiltInDefs
 import ParserEnv
 import Solver
 import AST

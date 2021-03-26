@@ -2,7 +2,7 @@ module ParserTestUtils where
 
 import Test.Tasty.HUnit ( HasCallStack, assertFailure, Assertion, (@?=) )
 
-import PreludeDefs ( operators, procedures )
+import BuiltInDefs
 import ParserEnv
 
 --
@@ -14,7 +14,7 @@ emptyEnv :: ParserState
 emptyEnv = ([], [], 0)
 
 envWithFunctions :: ParserState
-envWithFunctions = (operators ++ procedures, [], 0)
+envWithFunctions = (builtInOperators ++ builtInProcedures, [], 0)
 
 -- Asserts that a parser action yields a specific result with the given environment
 expectedResult :: (HasCallStack, Eq a, Show a) => ParserEnv a -> ParserState -> a -> Assertion

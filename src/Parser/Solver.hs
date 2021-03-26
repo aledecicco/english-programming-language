@@ -4,7 +4,7 @@ import Data.Maybe ( fromJust, isNothing )
 import Control.Monad ( unless, when )
 
 import Utils (getFunctionId)
-import PreludeDefs
+import BuiltInDefs
 import Matcher
 import ParserEnv
 import AST
@@ -87,7 +87,7 @@ checkFunctionCallIntegrity (fid, vs) = do
 -- Auxiliary
 
 initialState :: ParserState
-initialState = (operators ++ procedures, [], 0)
+initialState = (builtInOperators ++ builtInProcedures, [], 0)
 
 registerFunctions :: Program -> ParserEnv ()
 registerFunctions = mapM_ registerFunction

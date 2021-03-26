@@ -5,8 +5,8 @@ import Data.Maybe ( fromJust )
 import Control.Monad ( void )
 
 import EvaluatorEnv
-import PreludeDefs
-import PreludeEval
+import BuiltInDefs
+import BuiltInEval
 import ParserEnv ( ParserState )
 import Utils ( firstNotNull )
 import Errors
@@ -93,12 +93,12 @@ evaluateSentence (Result v) = do
     return $ Just v'
 evaluateSentence (ProcedureCall fid vs) = do
     vs' <- mapM evaluateValue vs
-    Evaluator.evaluateProcedure fid vs'
+    evaluateProcedure fid vs'
     return Nothing
 
 evaluateOperator :: FunctionId -> [Value] -> EvaluatorEnv Value
 evaluateOperator fid vs
-    | isPreludeFunction fid = evaluatePreludeOperator fid vs
+    | isBuiltInFunction fid = evaluateBuiltInOperator fid vs
     | otherwise = do
         ss <- fromJust <$> getFunctionSentences fid
         r <- evaluateSentenceLines ss
@@ -108,7 +108,7 @@ evaluateOperator fid vs
 
 evaluateProcedure :: FunctionId -> [Value] -> EvaluatorEnv ()
 evaluateProcedure fid vs
-    | isPreludeFunction fid = evaluatePreludeProcedure fid vs
+    | isBuiltInFunction fid = evaluateBuiltInProcedure fid vs
     | otherwise = do
         ss <- fromJust <$> getFunctionSentences fid
         void $ evaluateSentenceLines ss
