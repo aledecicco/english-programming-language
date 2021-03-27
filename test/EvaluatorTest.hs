@@ -60,8 +60,8 @@ valueTests = testGroup "Value"
 
     ]
 
-sentenceTests :: TestTree
-sentenceTests = testGroup "sentence"
+sentenceLineTests :: TestTree
+sentenceLineTests = testGroup "sentence"
     [
         testCase "While" $
             expectedResult
@@ -75,7 +75,35 @@ sentenceTests = testGroup "sentence"
                         ]
                 )
                 ([("%_is_less_than_%", []), ("%_plus_%", [])], [(["x"], IntV 0)], 0)
-                (IntV 3)
+                (IntV 3),
+
+        testCase "Variable in scope after if" $
+            expectedResult
+                (
+                    evaluateSentenceLines
+                        [
+                            Line 0 $ If
+                                (BoolV True)
+                                [Line 1 (VarDef [["x"]] (IntV 3))],
+                            Line 3 $ Result (VarV ["x"])
+                        ]
+                )
+                ([], [], 0)
+                (IntV 3),
+
+        testCase "Variable not in scope after if" $
+            expectedFailure
+                (
+                    evaluateSentenceLines
+                        [
+                            Line 0 $ If
+                                (BoolV False)
+                                [Line 1 (VarDef [["x"]] (IntV 3))],
+                            Line 3 $ Result (VarV ["x"])
+                        ]
+                )
+                ([], [], 0)
+
     ]
 
 --
@@ -87,7 +115,7 @@ tests :: TestTree
 tests = testGroup "Evaluator"
     [
         valueTests,
-        sentenceTests
+        sentenceLineTests
     ]
 
 --

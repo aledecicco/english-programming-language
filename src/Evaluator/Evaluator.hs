@@ -36,7 +36,11 @@ translateState p (fE, _, _) =
 -- Evaluators
 
 evaluateValue :: Value -> EvaluatorEnv Value
-evaluateValue (VarV vn) = fromJust <$> getVariableValue vn
+evaluateValue (VarV vn) = do
+    r <- getVariableValue vn
+    case r of
+        Just v -> return v
+        Nothing -> undefinedVariableError vn
 evaluateValue (ListV t es) = do
     es' <- mapM evaluateValue es
     return $ ListV t es'

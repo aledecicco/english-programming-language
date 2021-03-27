@@ -42,6 +42,9 @@ alreadyDefinedFunctionError t = customError ["Funcion", quote t, "is already def
 alreadyDefinedVariableError :: Monad m => Name -> Env a b m r
 alreadyDefinedVariableError n = customError ["Expected variable", quote n, "to be new but it was already defined"]
 
+undefinedVariableError :: Monad m => Name -> Env a b m r
+undefinedVariableError n = customError ["Variable", quote n, "is not defined"]
+
 mismatchingTypeAssignedError :: Monad m => Name -> Type -> Type -> Env a b m r
 mismatchingTypeAssignedError n t t' = customError ["Could not assign value of type", quote t, "to variable", show n, "of type", quote t']
 
