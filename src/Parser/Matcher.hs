@@ -60,12 +60,12 @@ matchAsFunctionCall ps = do
     where
         matchAsFunctionCall' :: Function -> ParserEnv (Maybe (FunctionId, [Value]))
         matchAsFunctionCall' (Function ft _) = do
-            let posArgs = sepByTitle ps ft
+            let posParams = sepByTitle ps ft
                 fid = getFunctionId ft
-            r <- firstNotNull matchAllArgs posArgs
+            r <- firstNotNull matchAllParams posParams
             return $ (fid, ) <$> r
-        matchAllArgs :: [[MatchablePart]] -> ParserEnv (Maybe [Value])
-        matchAllArgs = allOrNone matchAsValue
+        matchAllParams :: [[MatchablePart]] -> ParserEnv (Maybe [Value])
+        matchAllParams = allOrNone matchAsValue
 
 --
 

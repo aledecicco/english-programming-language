@@ -1,0 +1,8 @@
+The sum of a list of floats (L), which results in a float:
+    Let r be 0.
+    For each element in L, let r be r plus element.
+    The result is r.
+
+To run:
+    Let L be a list containing 1, 2 and 3.5.
+    Print the sum of L.

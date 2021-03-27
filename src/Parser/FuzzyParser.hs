@@ -61,7 +61,7 @@ typeName True =
             word "of"
             eT <- typeName True
             return $ ListT eT)
-    <?> "singular type"
+    <?> "plural type"
 typeName False =
     (word "integer" >> return IntT)
     <|> (word "float" >> return FloatT)
@@ -71,7 +71,7 @@ typeName False =
             word "of"
             eT <- typeName True
             return $ ListT eT)
-    <?> "plural type"
+    <?> "singular type"
 
 -- Parses any word and checks that it's not reserved
 identifier :: FuzzyParser String
@@ -117,7 +117,7 @@ getCurrentLineNumber = unPos . sourceLine <$> getSourcePos
 -- Parses a series of a given parser (such as "a, b and c")
 series :: FuzzyParser a -> FuzzyParser [a]
 series p = do
-    x <- p;
+    x <- p
     xs <- series' p <|> return []
     return $ x:xs
     where

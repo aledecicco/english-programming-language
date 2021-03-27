@@ -102,6 +102,11 @@ registerFunctions = mapM_ registerFunction
                     Nothing -> Procedure
             setFunction fid $ Function ft frt
 
+registerParameters :: Title -> ParserEnv ()
+registerParameters [] = return ()
+registerParameters (TitleParam vn t : ts) = setNewVariableType vn t >> registerParameters ts
+registerParameters (_ : ts) = registerParameters ts
+
 --
 
 
@@ -176,7 +181,10 @@ solveSentenceLines :: [Line Sentence] -> Maybe Type -> ParserEnv [Line Sentence]
 solveSentenceLines ss rt = mapM (\s -> solveSentenceLine s rt) ss
 
 solveBlock :: Block -> ParserEnv Block
-solveBlock (FunDef t rt ss) = FunDef t rt <$> solveSentenceLines ss rt
+solveBlock (FunDef tl@(Line ln t) rt ss) = do
+    setLineNumber ln
+    registerParameters t
+    FunDef tl rt <$> solveSentenceLines ss rt
 
 solveProgram :: Program -> (Program, ParserState)
 solveProgram p =

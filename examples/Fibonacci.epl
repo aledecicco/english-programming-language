@@ -1,0 +1,11 @@
+The nth fibonacci number, which results in a number:
+    Let x and i be 0.
+    Let y be 1.
+    While i is less than n:
+        Let z be x.
+        Let x be y.
+        Let y be y plus z.
+    The result is x.
+
+To run:
+    Print the 5th fibonacci number.
