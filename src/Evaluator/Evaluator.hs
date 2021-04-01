@@ -3,7 +3,6 @@ module Evaluator where
 import Data.List ( find )
 import Data.Maybe ( fromJust )
 import Control.Monad ( void )
-import Control.Monad.Trans.Class ( lift )
 
 import EvaluatorEnv
 import BuiltInDefs
@@ -115,7 +114,6 @@ evaluateProcedure :: FunctionId -> [Value] -> EvaluatorEnv ()
 evaluateProcedure fid vs
     | isBuiltInFunction fid = evaluateBuiltInProcedure fid vs
     | otherwise = do
-        (lift . lift) (putStrLn fid)
         r <- getFunctionSentences fid
         case r of
             Just ss -> void $ evaluateSentenceLines ss

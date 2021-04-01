@@ -95,15 +95,16 @@ nameTests = testGroup "Name"
                 "word another word"
                 ["word", "another", "word"],
 
+        testCase "All caps reserved word" $
+            expectedResult
+                name
+                "BE"
+                ["BE"],
+
         testCase "Reserved word" $
             expectedFailure
                 name
-                "be",
-
-        testCase "All caps reserved word" $
-            expectedFailure
-                name
-                "BE"
+                "be"
     ]
 
 
@@ -493,25 +494,25 @@ titleWordsTests = testGroup "Title words"
     [
         testCase "Words" $
             expectedResult
-                titleWords
+                (titleWords True)
                 "Function definition"
                 (TitleWords ["Function", "definition"]),
 
         testCase "Words followed by reserved word" $
             expectedResult
-                titleWords
+                (titleWords True)
                 "Function definition be"
                 (TitleWords ["Function", "definition", "be"]),
 
         testCase "Words followed by parameter" $
             expectedResult
-                titleWords
+                (titleWords True)
                 "Function definition an integer"
                 (TitleWords ["Function", "definition"]),
 
         testCase "Reserved word first" $
             expectedResult
-                titleWords
+                (titleWords True)
                 "Be function definition"
                 (TitleWords ["Be", "function", "definition"])
     ]
@@ -521,27 +522,30 @@ titleParamTests = testGroup "Title parameter"
     [
         testCase "Named" $
             expectedResult
-                titleParam
+                (titleParam True)
                 "An integer (m)"
                 (TitleParam ["m"] IntT),
 
         testCase "Followed by words" $
             expectedResult
-                titleParam
+                (titleParam True)
                 "An integer (m ) function definition"
                 (TitleParam ["m"] IntT),
 
         testCase "Two parameters" $
             expectedResult
-                titleParam
+                (titleParam True)
                 "An integer (m) an integer (n)"
                 (TitleParam ["m"] IntT),
 
         testCase "Missing name" $
-            expectedFailure titleParam "An integer",
+            expectedFailure (titleParam True) "An integer",
 
-        testCase "Missing article" $
-            expectedFailure titleParam "integer (m)"
+        testCase "Missing article uppercase" $
+            expectedFailure (titleParam True) "integer (m)",
+
+        testCase "Missing article lowercase" $
+            expectedFailure (titleParam False) "integer (m)"
     ]
 
 listWithHeaderTests :: TestTree
@@ -596,7 +600,7 @@ valueTests = testGroup "Value"
          testCase "List" $
             expectedResult
                 value
-                "A list of integers containing a, b, and c"
+                "a list of integers containing a, b, and c"
                 (ListV IntT [ValueM [WordP "a"], ValueM [WordP "b"], ValueM [WordP "c"]])
     ]
 

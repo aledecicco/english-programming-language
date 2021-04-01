@@ -86,8 +86,17 @@ matchAsVariable ps = do
     case r of
         Just n -> do
             isDef <- variableIsDefined n
-            return $ if isDef then Just (VarV n) else Nothing
+            matchAsVariable' n isDef
         Nothing -> return Nothing
+    where
+        matchAsVariable' :: Name -> Bool -> ParserEnv (Maybe Value)
+        matchAsVariable' n True = return $ Just (VarV n)
+        matchAsVariable' ("the":n) False = do
+            isDef <- variableIsDefined n
+            if isDef
+                then return $ Just (VarV n)
+                else return Nothing
+        matchAsVariable' _ _ = return Nothing
 
 matchAsOperatorCall :: [MatchablePart] -> ParserEnv (Maybe Value)
 matchAsOperatorCall ps = do
