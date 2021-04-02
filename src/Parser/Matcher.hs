@@ -2,6 +2,9 @@
 
 module Matcher where
 
+import Data.Char ( isUpper, toLower )
+
+
 import Utils ( getFunctionId, firstNotNull, allOrNone )
 import ParserEnv
 import AST
@@ -115,7 +118,16 @@ matchAsValue ps = firstNotNull (\matcher -> matcher ps) [matchAsPrimitive, match
 matchAsProcedureCall :: [MatchablePart] -> ParserEnv (Maybe Sentence)
 matchAsProcedureCall ps = do
     r <- matchAsFunctionCall ps
-    return $ uncurry ProcedureCall <$> r
+    matchAsProcedureCall' ps r
+    where
+        matchAsProcedureCall' :: [MatchablePart] -> Maybe (FunctionId, [Value]) -> ParserEnv (Maybe Sentence)
+        matchAsProcedureCall' (WordP (x:xs) : ps) Nothing
+            | isUpper x = do
+                r <- matchAsFunctionCall $ WordP (toLower x : xs) : ps
+                return $ uncurry ProcedureCall <$> r
+            | otherwise = return Nothing
+        matchAsProcedureCall' _ r = return $ uncurry ProcedureCall <$> r
+
 
 matchAsSentence :: [MatchablePart] -> ParserEnv (Maybe Sentence)
 matchAsSentence [ParensP ps] = matchAsSentence ps

@@ -216,17 +216,17 @@ sentence :: FuzzyParser SentenceLine
 sentence = do
     lookAhead upperChar
     variablesDefinition <* dot
-    <|> (simpleIf <* dot)
-    <|> ifBlock
-    <|> (simpleForEach <* dot)
-    <|> forEachBlock
-    <|> (simpleUntil <* dot)
-    <|> untilBlock
-    <|> (simpleWhile <* dot)
-    <|> whileBlock
-    <|> (result <* dot)
-    <|> (sentenceMatchable <* dot)
-    <?> "sentence"
+        <|> (simpleIf <* dot)
+        <|> ifBlock
+        <|> (simpleForEach <* dot)
+        <|> forEachBlock
+        <|> (simpleUntil <* dot)
+        <|> untilBlock
+        <|> (simpleWhile <* dot)
+        <|> whileBlock
+        <|> (result <* dot)
+        <|> (sentenceMatchable <* dot)
+        <?> "sentence"
 
 -- Parses a sentence that can be used inside a simple statement
 simpleSentence :: FuzzyParser SentenceLine
