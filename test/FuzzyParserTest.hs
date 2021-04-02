@@ -405,9 +405,9 @@ functionDefinitionTests = testGroup "Function definition"
         testCase "Operator" $
             expectedResult
                 functionDefinition
-                "The double of a number (m), which results in a number:\n  Let r be m times 2.\n  The result is r."
+                "A number equal to the double of a number (m):\n  Let r be m times 2.\n  The result is r."
                 (FunDef
-                    (Line 1 [TitleWords ["The", "double", "of"], TitleParam ["m"] IntT])
+                    (Line 1 [TitleWords ["the", "double", "of"], TitleParam ["m"] IntT])
                     (Just IntT)
                     [
                         Line 2 (VarDef [["r"]] (ValueM [WordP "m", WordP "times", IntP 2])),
@@ -443,17 +443,12 @@ functionDefinitionTests = testGroup "Function definition"
         testCase "Consecutive arguments in title" $
             expectedFailure
                 functionDefinition
-                "The double of a number (m) a number (n):\n  The result is m times n.",
+                "A number equal to the double of a number (m) a number (n):\n  The result is m times n.",
 
         testCase "Operator without return type" $
             expectedFailure
                 functionDefinition
-                "The double of a number (m):\n  Let r be m times 2.\n  The result is r.",
-
-        testCase "Procedure with return type" $
-            expectedFailure
-                functionDefinition
-                "To double a number (m), which results in a number:\n  Let r be m times 2.\n  The result is r."
+                "The double of a number (m):\n  Let r be m times 2.\n  The result is r."
     ]
 
 titleTests :: TestTree

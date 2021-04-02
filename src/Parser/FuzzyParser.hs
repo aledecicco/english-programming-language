@@ -169,34 +169,26 @@ functionDefinition = do
     where
         functionHeader :: FuzzyParser (TitleLine, Maybe Type)
         functionHeader = do
+            rt <- inferReturnType
             (Line ln fT) <- title
-            (fT', rt) <- inferTypeFromTitle fT
-            return (Line ln fT', rt)
+            return (Line ln fT, rt)
 
--- Tries to find clues in the title of a function for its return type.
--- If no clues are found, it requires the type to be specified
--- Can modify the title after a clue is found, if applicable
-inferTypeFromTitle :: Title -> FuzzyParser (Title, Maybe Type)
-inferTypeFromTitle fT@(TitleWords (w:ws) : ts)
-    | w == "Whether" = return (removeFirstWord fT, Just BoolT)
-    | w == "To" = return (removeFirstWord fT, Nothing)
-    | otherwise = (do
-        comma
-        word "which"
-        word "results"
-        word "in"
-        word "a"
-        t <- typeName False
-        return (fT, Just t)) <?> "return type"
-    where
-        removeFirstWord :: Title -> Title
-        removeFirstWord (TitleWords [w] : ts) = ts
-        removeFirstWord (TitleWords (w:ws) : ts) = TitleWords ws : ts
+-- Finds clues before the title of a function for its return type
+inferReturnType :: FuzzyParser (Maybe Type)
+inferReturnType =
+    (word "Whether" >> return (Just BoolT))
+    <|> (word "To" >> return Nothing)
+    <|> do
+        word "A"
+        rt <- typeName False
+        word "equal"
+        word "to"
+        return $ Just rt
+    <?> "return type"
 
 title :: FuzzyParser TitleLine
 title = do
     ln <- getCurrentLineNumber
-    lookAhead upperChar
     x <- titleParam True <|> titleWords
     xs <- case x of
         TitleWords _ -> intercalated (titleParam False) titleWords <|> return []
