@@ -17,7 +17,7 @@ data MatchablePart = IntP Int | FloatP Float | WordP String | ParensP [Matchable
 
 -- Program structure
 
-data Type = IntT | FloatT | BoolT | ListT Type | AnyT
+data Type = IntT | FloatT | BoolT | ListT Type | AnyT String
     deriving (Eq, Show)
 
 data Value =

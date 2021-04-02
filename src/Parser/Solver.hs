@@ -16,7 +16,7 @@ import Errors
 -- Types information
 
 satisfiesType :: Type -> Type -> Bool
-satisfiesType _ AnyT = True
+satisfiesType _ (AnyT _) = True
 satisfiesType IntT FloatT = True
 satisfiesType (ListT t1) (ListT t2) = t1 `satisfiesType` t2
 satisfiesType t1 t2 = t1 == t2
@@ -145,7 +145,7 @@ solveSentence (IfElse v lsT lsF) rt = do
     lsF' <- solveSentenceLines lsF rt
     return $ IfElse v' lsT' lsF'
 solveSentence (ForEach iN v ls) rt = do
-    v' <- solveValueWithType (ListT AnyT) v
+    v' <- solveValueWithType (ListT $ AnyT "a") v
     ~(ListT t) <- getValueType v'
     setNewVariableType iN t
     ls' <- solveSentenceLines ls rt

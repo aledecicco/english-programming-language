@@ -111,28 +111,28 @@ nameTests = testGroup "Name"
 typeNameTests :: TestTree
 typeNameTests = testGroup "Type name"
     [
-        testCase "Integer" $
+        testCase "Number" $
             expectedResult
                 (typeName False)
-                "integer"
+                "number"
                 IntT,
 
-        testCase "Integers" $
+        testCase "Numbers" $
             expectedResult
                 (typeName True)
-                "integers"
+                "numbers"
                 IntT,
 
         testCase "List" $
             expectedResult
                 (typeName False)
-                "list of integers"
+                "list of numbers"
                 (ListT IntT),
 
         testCase "List of lists" $
             expectedResult
                 (typeName False)
-                "list of lists of integers"
+                "list of lists of numbers"
                 (ListT (ListT IntT)),
 
         testCase "List without element" $
@@ -145,20 +145,20 @@ typeNameTests = testGroup "Type name"
                 (typeName False)
                 "list of lists",
 
-        testCase "Integers without plural" $
+        testCase "Numbers without plural" $
             expectedFailure
                 (typeName True)
-                "integer",
+                "number",
 
-        testCase "Integer with plural" $
+        testCase "Number with plural" $
             expectedFailure
                 (typeName False)
-                "integers",
+                "numbers",
 
         testCase "List without plural element" $
             expectedFailure
                 (typeName False)
-                "list of integer"
+                "list of number"
     ]
 
 identifierTests :: TestTree
@@ -211,7 +211,7 @@ reservedTests = testGroup "Reserved"
 integerTests :: TestTree
 integerTests = testGroup "Integer"
     [
-        testCase "Number" $
+        testCase "Positive" $
             expectedResult
                 integer
                 "11"
@@ -256,9 +256,9 @@ integerTests = testGroup "Integer"
 
 
 floatTests :: TestTree
-floatTests = testGroup "Integer"
+floatTests = testGroup "Float"
     [
-        testCase "Number" $
+        testCase "Positive" $
             expectedResult
                 float
                 "11.12"
@@ -270,7 +270,7 @@ floatTests = testGroup "Integer"
                 "-11.12"
                 (-11.12),
 
-        testCase "Many numbers" $
+        testCase "Many floats" $
             expectedResult
                 float
                 "11.12 12.13"
@@ -279,7 +279,7 @@ floatTests = testGroup "Integer"
         testCase "Not a float" $
             expectedFailure float "11.a",
 
-        testCase "An integer" $
+        testCase "A number" $
             expectedFailure float "11",
 
         testCase "Word" $
@@ -405,7 +405,7 @@ functionDefinitionTests = testGroup "Function definition"
         testCase "Operator" $
             expectedResult
                 functionDefinition
-                "The double of an integer (m), which results in an integer:\n  Let r be m times 2.\n  The result is r."
+                "The double of a number (m), which results in a number:\n  Let r be m times 2.\n  The result is r."
                 (FunDef
                     (Line 1 [TitleWords ["The", "double", "of"], TitleParam ["m"] IntT])
                     (Just IntT)
@@ -418,7 +418,7 @@ functionDefinitionTests = testGroup "Function definition"
         testCase "Procedure" $
             expectedResult
                 functionDefinition
-                "To double an integer (m):\n  Let r be m times 2."
+                "To double a number (m):\n  Let r be m times 2."
                 (FunDef
                     (Line 1 [TitleWords ["double"], TitleParam ["m"] IntT])
                     Nothing
@@ -431,7 +431,7 @@ functionDefinitionTests = testGroup "Function definition"
         testCase "Predicate" $
             expectedResult
                 functionDefinition
-                "Whether an integer (m) is whole:\n  The result is true."
+                "Whether a number (m) is whole:\n  The result is true."
                 (FunDef
                     (Line 1 [TitleParam ["m"] IntT, TitleWords ["is", "whole"]])
                     (Just BoolT)
@@ -443,17 +443,17 @@ functionDefinitionTests = testGroup "Function definition"
         testCase "Consecutive arguments in title" $
             expectedFailure
                 functionDefinition
-                "The double of an integer (m) an integer (n):\n  The result is m times n.",
+                "The double of a number (m) a number (n):\n  The result is m times n.",
 
         testCase "Operator without return type" $
             expectedFailure
                 functionDefinition
-                "The double of an integer (m):\n  Let r be m times 2.\n  The result is r.",
+                "The double of a number (m):\n  Let r be m times 2.\n  The result is r.",
 
         testCase "Procedure with return type" $
             expectedFailure
                 functionDefinition
-                "To double an integer (m), which results in an integer:\n  Let r be m times 2.\n  The result is r."
+                "To double a number (m), which results in a number:\n  Let r be m times 2.\n  The result is r."
     ]
 
 titleTests :: TestTree
@@ -468,7 +468,7 @@ titleTests = testGroup "Title"
         testCase "Many parts" $
             expectedResult
                 title
-                "Definition with an integer (m) and an integer (n)"
+                "Definition with a number (m) and a number (n)"
                 (Line 1 [
                     TitleWords ["Definition", "with"],
                     TitleParam ["m"] IntT,
@@ -479,14 +479,14 @@ titleTests = testGroup "Title"
         testCase "Consecutive arguments" $
             expectedResult
                 title
-                "Definition with an integer (m) an integer (n)"
+                "Definition with a number (m) a number (n)"
                 (Line 1 [
                     TitleWords ["Definition", "with"],
                     TitleParam ["m"] IntT
                 ]),
 
         testCase "Missing name" $
-            expectedFailure title "Definition with an integer"
+            expectedFailure title "Definition with a number"
     ]
 
 titleWordsTests :: TestTree
@@ -494,25 +494,25 @@ titleWordsTests = testGroup "Title words"
     [
         testCase "Words" $
             expectedResult
-                (titleWords True)
+                titleWords
                 "Function definition"
                 (TitleWords ["Function", "definition"]),
 
         testCase "Words followed by reserved word" $
             expectedResult
-                (titleWords True)
+                titleWords
                 "Function definition be"
                 (TitleWords ["Function", "definition", "be"]),
 
         testCase "Words followed by parameter" $
             expectedResult
-                (titleWords True)
-                "Function definition an integer"
+                titleWords
+                "Function definition a number"
                 (TitleWords ["Function", "definition"]),
 
         testCase "Reserved word first" $
             expectedResult
-                (titleWords True)
+                titleWords
                 "Be function definition"
                 (TitleWords ["Be", "function", "definition"])
     ]
@@ -523,29 +523,29 @@ titleParamTests = testGroup "Title parameter"
         testCase "Named" $
             expectedResult
                 (titleParam True)
-                "An integer (m)"
+                "A number (m)"
                 (TitleParam ["m"] IntT),
 
         testCase "Followed by words" $
             expectedResult
                 (titleParam True)
-                "An integer (m ) function definition"
+                "A number (m) function definition"
                 (TitleParam ["m"] IntT),
 
         testCase "Two parameters" $
             expectedResult
                 (titleParam True)
-                "An integer (m) an integer (n)"
+                "A number (m) a number (n)"
                 (TitleParam ["m"] IntT),
 
         testCase "Missing name" $
-            expectedFailure (titleParam True) "An integer",
+            expectedFailure (titleParam True) "A number",
 
         testCase "Missing article uppercase" $
-            expectedFailure (titleParam True) "integer (m)",
+            expectedFailure (titleParam True) "number (m)",
 
         testCase "Missing article lowercase" $
-            expectedFailure (titleParam False) "integer (m)"
+            expectedFailure (titleParam False) "number (m)"
     ]
 
 listWithHeaderTests :: TestTree
@@ -597,11 +597,18 @@ listWithHeaderTests = testGroup "ListWithHeader"
 valueTests :: TestTree
 valueTests = testGroup "Value"
     [
-         testCase "List" $
+        testCase "List" $
             expectedResult
                 value
-                "a list of integers containing a, b, and c"
-                (ListV IntT [ValueM [WordP "a"], ValueM [WordP "b"], ValueM [WordP "c"]])
+                "a list of numbers containing a, b, and c"
+                (ListV IntT [ValueM [WordP "a"], ValueM [WordP "b"], ValueM [WordP "c"]]),
+
+
+        testCase "Empty ist" $
+            expectedResult
+                value
+                "a list of numbers"
+                (ListV IntT [])
     ]
 
 --

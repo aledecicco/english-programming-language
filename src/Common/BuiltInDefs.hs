@@ -58,11 +58,11 @@ builtInOperators = map functionFromTuple
             relationalType
         ),
         (
-            [TitleWords ["The", "element", "of"], TitleParam ["l"] (ListT AnyT), TitleWords ["at", "position"], TitleParam ["m"] IntT],
+            [TitleWords ["The", "element", "of"], TitleParam ["l"] (ListT $ AnyT "a"), TitleWords ["at", "position"], TitleParam ["m"] IntT],
             Operator (\[ListT t, IntT] -> t)
         ),
         (
-            [TitleParam ["n"] (ListT AnyT), TitleWords ["appended", "to"], TitleParam ["m"] (ListT AnyT)],
+            [TitleParam ["n"] (ListT $ AnyT "a"), TitleWords ["appended", "to"], TitleParam ["m"] (ListT $ AnyT "a")],
             Operator (\[ListT t, ListT _] -> ListT t)
         )
     ]
@@ -71,7 +71,7 @@ builtInProcedures :: [(FunctionId, Function)]
 builtInProcedures = map functionFromTuple
     [
         (
-            [TitleWords ["print"], TitleParam ["v"] AnyT],
+            [TitleWords ["print"], TitleParam ["v"] $ AnyT "a"],
             Procedure
         )
     ]

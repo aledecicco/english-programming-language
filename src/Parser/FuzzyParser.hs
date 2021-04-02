@@ -44,16 +44,6 @@ reservedWords = ["be", "in", "is", "an", "a", "containing"]
 
 -- Auxiliary
 
-firstWord :: FuzzyParser String
-firstWord = lexeme (do
-    l <- upperChar
-    ls <- some letterChar
-    notFollowedBy alphaNumChar
-    return $ l:ls) <?> "first word"
-
-anyWord :: FuzzyParser String
-anyWord = lexeme (some letterChar <* notFollowedBy alphaNumChar) <?> "word"
-
 -- Parses a name (list of words that are not reserved)
 name :: FuzzyParser Name
 name = (some . try) identifier <?> "name"
@@ -61,7 +51,7 @@ name = (some . try) identifier <?> "name"
 -- Parses a type by its name
 typeName :: Bool -> FuzzyParser Type
 typeName True =
-    (word "integers" >> return IntT)
+    (word "numbers" >> return IntT)
     <|> (word "floats" >> return FloatT)
     <|> (word "booleans" >> return BoolT)
     <|> (do
@@ -71,7 +61,7 @@ typeName True =
             return $ ListT eT)
     <?> "plural type"
 typeName False =
-    (word "integer" >> return IntT)
+    (word "number" >> return IntT)
     <|> (word "float" >> return FloatT)
     <|> (word "boolean" >> return BoolT)
     <|> (do
@@ -93,10 +83,12 @@ identifier = do
 word :: String -> FuzzyParser String
 word w = lexeme $ string w <* notFollowedBy alphaNumChar
 
--- Parses a specific word with the possibility that it is the first word in a sentence
-wordIfFirst :: String -> Bool -> FuzzyParser String
-wordIfFirst (x:xs) True = word $ toUpper x : xs
-wordIfFirst w False = word w
+-- Parses a keyword that can have its first letter in uppercase
+firstWord :: String -> FuzzyParser String
+firstWord w@(x:xs) = word w <|> word (toUpper x : xs)
+
+anyWord :: FuzzyParser String
+anyWord = lexeme (some letterChar <* notFollowedBy alphaNumChar) <?> "word"
 
 integer :: FuzzyParser Int
 integer = lexeme $ L.signed (return ()) L.decimal <* notFollowedBy alphaNumChar
@@ -115,9 +107,6 @@ colon = symbol ":" <?> "colon"
 
 parens :: FuzzyParser a -> FuzzyParser a
 parens = between (symbol "(") (symbol ")")
-
-indefiniteArticle :: Bool -> FuzzyParser String
-indefiniteArticle isFirst = wordIfFirst "an" isFirst <|> wordIfFirst "a" isFirst
 
 getCurrentLineNumber :: FuzzyParser Int
 getCurrentLineNumber = unPos . sourceLine <$> getSourcePos
@@ -196,7 +185,7 @@ inferTypeFromTitle fT@(TitleWords (w:ws) : ts)
         word "which"
         word "results"
         word "in"
-        indefiniteArticle False
+        word "a"
         t <- typeName False
         return (fT, Just t)) <?> "return type"
     where
@@ -207,24 +196,21 @@ inferTypeFromTitle fT@(TitleWords (w:ws) : ts)
 title :: FuzzyParser TitleLine
 title = do
     ln <- getCurrentLineNumber
-    x <- titleParam True <|> titleWords True
+    lookAhead upperChar
+    x <- titleParam True <|> titleWords
     xs <- case x of
-        TitleWords _ -> intercalated (titleParam False) (titleWords False) <|> return []
-        _ -> intercalated (titleWords False) (titleParam False)
+        TitleWords _ -> intercalated (titleParam False) titleWords <|> return []
+        _ -> intercalated titleWords (titleParam False)
     return $ Line ln (x:xs)
 
 -- Parses words for an identifying part of a function's title
-titleWords :: Bool -> FuzzyParser TitlePart
-titleWords False = TitleWords <$> some (notFollowedBy (indefiniteArticle False) >> anyWord)
-titleWords True = do
-    w <- notFollowedBy (indefiniteArticle True) >> firstWord
-    ws <- many (notFollowedBy (indefiniteArticle False) >> anyWord)
-    return $ TitleWords (w:ws)
+titleWords :: FuzzyParser TitlePart
+titleWords = TitleWords <$> some (notFollowedBy (word "a") >> anyWord)
 
 -- Parses a parameter of a function's title
 titleParam :: Bool -> FuzzyParser TitlePart
 titleParam isFirst = do
-    indefiniteArticle isFirst
+    if isFirst then firstWord "a" else word "a"
     t <- typeName False
     a <- parens name <?> "parameter name"
     return $ TitleParam a t
@@ -235,36 +221,37 @@ titleParam isFirst = do
 -- Sentences
 
 sentence :: FuzzyParser SentenceLine
-sentence =
-    (variablesDefinition True <* dot)
-    <|> (simpleIf True <* dot)
+sentence = do
+    lookAhead upperChar
+    variablesDefinition <* dot
+    <|> (simpleIf <* dot)
     <|> ifBlock
-    <|> (simpleForEach True <* dot)
+    <|> (simpleForEach <* dot)
     <|> forEachBlock
-    <|> (simpleUntil True <* dot)
+    <|> (simpleUntil <* dot)
     <|> untilBlock
-    <|> (simpleWhile True <* dot)
+    <|> (simpleWhile <* dot)
     <|> whileBlock
-    <|> (result True <* dot)
+    <|> (result <* dot)
     <|> (sentenceMatchable <* dot)
     <?> "sentence"
 
 -- Parses a sentence that can be used inside a simple statement
 simpleSentence :: FuzzyParser SentenceLine
-simpleSentence = variablesDefinition False <|> sentenceMatchable <?> "simple sentence"
+simpleSentence = variablesDefinition <|> sentenceMatchable <?> "simple sentence"
 
 -- Parses the definition of one or more variables with the same value
-variablesDefinition :: Bool -> FuzzyParser SentenceLine
-variablesDefinition isFirst = do
-    wordIfFirst "let" isFirst
+variablesDefinition :: FuzzyParser SentenceLine
+variablesDefinition = do
+    firstWord "let"
     ns <- series name
     word "be"
     ln <- getCurrentLineNumber
     Line ln . VarDef ns <$> value
 
-simpleIf :: Bool -> FuzzyParser SentenceLine
-simpleIf isFirst = do
-    c <- try $ wordIfFirst "if" isFirst >> condition <* comma
+simpleIf :: FuzzyParser SentenceLine
+simpleIf = do
+    c <- try $ firstWord "if" >> condition <* comma
     ln <- getCurrentLineNumber
     s <- simpleSentence
     Line ln <$> ((IfElse c [s] <$> simpleElse) <|> return (If c [s]))
@@ -278,61 +265,61 @@ simpleIf isFirst = do
 
 ifBlock :: FuzzyParser SentenceLine
 ifBlock = do
-    (c, ln, ss) <- blockSentence (word "If" >> condition)
+    (c, ln, ss) <- blockSentence (firstWord "if" >> condition)
     Line ln <$> ((IfElse c ss <$> elseBlock) <|> return (If c ss))
     where
         elseBlock :: FuzzyParser [SentenceLine]
         elseBlock = snd <$> listWithHeader (word "otherwise") sentence
 
-simpleForEach :: Bool -> FuzzyParser SentenceLine
-simpleForEach isFirst = do
-    (n, l) <- try $ forEachHeader isFirst <* comma
+simpleForEach :: FuzzyParser SentenceLine
+simpleForEach = do
+    (n, l) <- try $ forEachHeader <* comma
     ln <- getCurrentLineNumber
     s <- simpleSentence
     return $ Line ln (ForEach n l [s])
 
 forEachBlock :: FuzzyParser SentenceLine
 forEachBlock = do
-    ((n, l), ln, ss) <- blockSentence (forEachHeader False)
+    ((n, l), ln, ss) <- blockSentence forEachHeader
     return $ Line ln (ForEach n l ss)
 
-forEachHeader :: Bool -> FuzzyParser (Name, Value)
-forEachHeader isFirst = do
-    wordIfFirst "for" isFirst
+forEachHeader :: FuzzyParser (Name, Value)
+forEachHeader = do
+    firstWord "for"
     word "each"
     n <- name
     word "in"
     l <- value
     return (n, l)
 
-simpleUntil :: Bool -> FuzzyParser SentenceLine
-simpleUntil isFirst = do
-    c <- try $ wordIfFirst "until" isFirst >> condition <* comma
+simpleUntil :: FuzzyParser SentenceLine
+simpleUntil = do
+    c <- try $ firstWord "until" >> condition <* comma
     ln <- getCurrentLineNumber
     s <- simpleSentence
     return $ Line ln (Until c [s])
 
 untilBlock :: FuzzyParser SentenceLine
 untilBlock = do
-    (c, ln, ss) <- blockSentence (word "Until" >> condition)
+    (c, ln, ss) <- blockSentence (firstWord "until" >> condition)
     return $ Line ln (Until c ss)
 
-simpleWhile :: Bool -> FuzzyParser SentenceLine
-simpleWhile isFirst = do
-    c <- try $ wordIfFirst "while" isFirst >> condition <* comma
+simpleWhile :: FuzzyParser SentenceLine
+simpleWhile = do
+    c <- try $ firstWord "while" >> condition <* comma
     ln <- getCurrentLineNumber
     s <- simpleSentence
     return $ Line ln (While c [s])
 
 whileBlock :: FuzzyParser SentenceLine
 whileBlock = do
-    (c, ln, ss) <- blockSentence (word "While" >> condition)
+    (c, ln, ss) <- blockSentence (firstWord "while" >> condition)
     return $ Line ln (While c ss)
 
 -- Parses a return statement
-result :: Bool -> FuzzyParser SentenceLine
-result isFirst = do
-    try $ wordIfFirst "the" isFirst >> word "result"
+result :: FuzzyParser SentenceLine
+result = do
+    try $ firstWord "the" >> word "result"
     ln <- getCurrentLineNumber
     word "is"
     Line ln . Result <$> value
@@ -340,8 +327,8 @@ result isFirst = do
 sentenceMatchable :: FuzzyParser SentenceLine
 sentenceMatchable = do
     ln <- getCurrentLineNumber
-    p <- matchablePart True
-    ps <- many $ matchablePart False
+    p <- matchablePart
+    ps <- many matchablePart
     return $ Line ln (SentenceM $ p:ps)
 
 --
@@ -362,17 +349,17 @@ listValue = do
     return $ ListV t l
 
 valueMatchable :: FuzzyParser Value
-valueMatchable = ValueM <$> some (matchablePart False)
+valueMatchable = ValueM <$> some matchablePart
 
 condition :: FuzzyParser Value
 condition = valueMatchable
 
-matchablePart :: Bool -> FuzzyParser MatchablePart
-matchablePart isFirst =
+matchablePart :: FuzzyParser MatchablePart
+matchablePart =
     try (FloatP <$> float)
     <|> IntP <$> integer
-    <|> WordP <$> (if isFirst then firstWord else anyWord)
-    <|> ParensP <$> parens (some $ matchablePart False)
+    <|> WordP <$> anyWord
+    <|> ParensP <$> parens (some matchablePart)
     <?> "valid term"
 
 --
