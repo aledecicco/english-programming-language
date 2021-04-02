@@ -1,6 +1,7 @@
 module Solver where
 
 import Data.Maybe ( fromJust, isNothing )
+import Data.List ( find )
 import Control.Monad ( unless, when )
 
 import Utils (getFunctionId)
@@ -70,16 +71,30 @@ checkFunctionCallIntegrity :: (FunctionId, [Value]) -> ParserEnv ()
 checkFunctionCallIntegrity (fid, vs) = do
     mapM_ checkValueIntegrity vs
     ~(Just (Function ft _)) <- getFunction fid
-    checkParameterTypes ft vs
+    checkParameterTypes [] ft vs
     where
-        checkParameterTypes :: Title -> [Value] -> ParserEnv ()
-        checkParameterTypes _ [] = return ()
-        checkParameterTypes (TitleWords {} : ts) vs = checkParameterTypes ts vs
-        checkParameterTypes (TitleParam n t : ts) (v:vs)  = do
+        checkParameterTypes :: [(String, Type)] -> Title -> [Value] -> ParserEnv ()
+        checkParameterTypes _ _ [] = return ()
+        checkParameterTypes bts (TitleWords {} : ts) vs = checkParameterTypes bts ts vs
+        checkParameterTypes bts (TitleParam n t : ts) (v:vs) = do
             t' <- getValueType v
-            if t' `satisfiesType` t
-                then checkParameterTypes ts vs
-                else wrongTypeParameterError v t n
+            case findBindableType t of
+                Just tid ->
+                    case find (\bt -> fst bt == tid) bts of
+                        Just (_, t) ->
+                            if t' `satisfiesType` t
+                                then checkParameterTypes bts ts vs
+                                else wrongTypeParameterError v t n
+                        Nothing -> checkParameterTypes ((tid, t'):bts) ts vs
+                Nothing ->
+                    if t' `satisfiesType` t
+                        then checkParameterTypes bts ts vs
+                        else wrongTypeParameterError v t n
+
+        findBindableType :: Type -> Maybe String
+        findBindableType (ListT t) = findBindableType t
+        findBindableType (AnyT tid) = Just tid
+        findBindableType _ = Nothing
 
 --
 

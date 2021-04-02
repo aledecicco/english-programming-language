@@ -57,9 +57,29 @@ checkValueIntegrityTests = testGroup "Check value integrity"
                 (checkValueIntegrity $ OperatorCall "%_plus_%" [IntV 2, FloatV 3.0])
                 envWithFunctions,
 
+        testCase "Correct bound types" $
+            expectedSuccess
+                (checkValueIntegrity $ OperatorCall "%_appended_to_%" [ListV IntT [IntV 1, IntV 2], ListV IntT [IntV 3, IntV 4]])
+                envWithFunctions,
+
+        testCase "Satisfiable bound types" $
+            expectedSuccess
+                (checkValueIntegrity $ OperatorCall "%_appended_to_%" [ListV FloatT [FloatV 1, IntV 2], ListV IntT [IntV 3, IntV 4]])
+                envWithFunctions,
+
+        testCase "Wrong bound types" $
+            expectedFailure
+                (checkValueIntegrity $ OperatorCall "%_appended_to_%" [ListV BoolT [BoolV True, BoolV False], ListV IntT [IntV 3, IntV 4]])
+                envWithFunctions,
+
         testCase "Wrong type arguments" $
             expectedFailure
                 (checkValueIntegrity $ OperatorCall "%_plus_%" [BoolV True, BoolV False])
+                envWithFunctions,
+
+        testCase "Ill-formed arguments" $
+            expectedFailure
+                (checkValueIntegrity $ OperatorCall "%_appended_to_%" [ListV IntT [BoolV True, BoolV False], ListV IntT [IntV 3, IntV 4]])
                 envWithFunctions
     ]
 
@@ -82,7 +102,6 @@ solveValueTests = testGroup "Solve value"
             expectedFailure
                 (solveValue (ListV IntT [BoolV True, BoolV False]))
                 emptyEnv
-
     ]
 
 

@@ -86,7 +86,7 @@ resetVariables = setVarEnv []
 
 getFunction :: Monad m => FunctionId -> Env a b m (Maybe a)
 getFunction fid = do
-    r <- find (\(fid', _) -> fid == fid') <$> getFunEnv
+    r <- find (\fd -> fst fd == fid) <$> getFunEnv
     case r of
         Just (_, f) -> return $ Just f
         Nothing -> return Nothing

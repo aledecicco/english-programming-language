@@ -63,7 +63,7 @@ builtInOperators = map functionFromTuple
         ),
         (
             [TitleParam ["n"] (ListT $ AnyT "a"), TitleWords ["appended", "to"], TitleParam ["m"] (ListT $ AnyT "a")],
-            Operator (\[ListT t, ListT _] -> ListT t)
+            Operator (\[ListT t1, ListT t2] -> if t1 == FloatT || t2 == FloatT then ListT FloatT else ListT t1)
         )
     ]
 

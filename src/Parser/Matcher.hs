@@ -8,6 +8,14 @@ import Data.Char ( isUpper, toLower )
 import Utils ( getFunctionId, firstNotNull, allOrNone )
 import ParserEnv
 import AST
+    ( Function(..),
+      FunctionId,
+      MatchablePart(..),
+      Name,
+      Sentence(ProcedureCall),
+      Title,
+      TitlePart(TitleParam, TitleWords),
+      Value(IntV, FloatV, BoolV, VarV, OperatorCall) )
 
 --
 
