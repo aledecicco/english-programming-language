@@ -78,7 +78,7 @@ checkFunctionCallIntegrity (fid, vs) = do
         checkParameterTypes bts (TitleWords {} : ts) vs = checkParameterTypes bts ts vs
         checkParameterTypes bts (TitleParam n t : ts) (v:vs) = do
             t' <- getValueType v
-            case findBindableType t of
+            case findTypeToBind t of
                 Just tid ->
                     case find (\bt -> fst bt == tid) bts of
                         Just (_, t) ->
@@ -91,10 +91,10 @@ checkFunctionCallIntegrity (fid, vs) = do
                         then checkParameterTypes bts ts vs
                         else wrongTypeParameterError v t n
 
-        findBindableType :: Type -> Maybe String
-        findBindableType (ListT t) = findBindableType t
-        findBindableType (AnyT tid) = Just tid
-        findBindableType _ = Nothing
+        findTypeToBind :: Type -> Maybe String
+        findTypeToBind (ListT t) = findTypeToBind t
+        findTypeToBind (AnyT tid) = Just tid
+        findTypeToBind _ = Nothing
 
 --
 

@@ -37,7 +37,7 @@ symbol :: String -> FuzzyParser ()
 symbol = void . L.symbol sc
 
 reservedWords :: [String]
-reservedWords = ["be", "in", "is", "an", "a", "containing"]
+reservedWords = ["be", "in"]
 
 --
 
@@ -169,13 +169,12 @@ functionDefinition = do
     where
         functionHeader :: FuzzyParser (TitleLine, Maybe Type)
         functionHeader = do
-            rt <- inferReturnType
+            rt <- returnType
             (Line ln fT) <- title
             return (Line ln fT, rt)
 
--- Finds clues before the title of a function for its return type
-inferReturnType :: FuzzyParser (Maybe Type)
-inferReturnType =
+returnType :: FuzzyParser (Maybe Type)
+returnType =
     (word "Whether" >> return (Just BoolT))
     <|> (word "To" >> return Nothing)
     <|> do
@@ -213,9 +212,8 @@ titleParam isFirst = do
 -- Sentences
 
 sentence :: FuzzyParser SentenceLine
-sentence = do
-    lookAhead upperChar
-    variablesDefinition <* dot
+sentence = lookAhead upperChar >> do
+        variablesDefinition <* dot
         <|> (simpleIf <* dot)
         <|> ifBlock
         <|> (simpleForEach <* dot)
@@ -230,7 +228,7 @@ sentence = do
 
 -- Parses a sentence that can be used inside a simple statement
 simpleSentence :: FuzzyParser SentenceLine
-simpleSentence = variablesDefinition <|> sentenceMatchable <?> "simple sentence"
+simpleSentence = variablesDefinition <|> result <|> sentenceMatchable <?> "simple sentence"
 
 -- Parses the definition of one or more variables with the same value
 variablesDefinition :: FuzzyParser SentenceLine
@@ -241,9 +239,12 @@ variablesDefinition = do
     ln <- getCurrentLineNumber
     Line ln . VarDef ns <$> value
 
+conditionalHeader :: String -> FuzzyParser Value
+conditionalHeader w = firstWord w >> condition
+
 simpleIf :: FuzzyParser SentenceLine
 simpleIf = do
-    c <- try $ firstWord "if" >> condition <* comma
+    c <- try $ conditionalHeader "if" <* comma
     ln <- getCurrentLineNumber
     s <- simpleSentence
     Line ln <$> ((IfElse c [s] <$> simpleElse) <|> return (If c [s]))
@@ -257,11 +258,45 @@ simpleIf = do
 
 ifBlock :: FuzzyParser SentenceLine
 ifBlock = do
-    (c, ln, ss) <- blockSentence (firstWord "if" >> condition)
+    (c, ln, ss) <- blockSentence $ conditionalHeader "if"
     Line ln <$> ((IfElse c ss <$> elseBlock) <|> return (If c ss))
     where
         elseBlock :: FuzzyParser [SentenceLine]
-        elseBlock = snd <$> listWithHeader (word "otherwise") sentence
+        elseBlock = snd <$> listWithHeader (word "Otherwise") sentence
+
+
+simpleUntil :: FuzzyParser SentenceLine
+simpleUntil = do
+    c <- try $ conditionalHeader "until" <* comma
+    ln <- getCurrentLineNumber
+    s <- simpleSentence
+    return $ Line ln (Until c [s])
+
+untilBlock :: FuzzyParser SentenceLine
+untilBlock = do
+    (c, ln, ss) <- blockSentence $ conditionalHeader "until"
+    return $ Line ln (Until c ss)
+
+simpleWhile :: FuzzyParser SentenceLine
+simpleWhile = do
+    c <- try $ conditionalHeader "while" <* comma
+    ln <- getCurrentLineNumber
+    s <- simpleSentence
+    return $ Line ln (While c [s])
+
+whileBlock :: FuzzyParser SentenceLine
+whileBlock = do
+    (c, ln, ss) <- blockSentence $ conditionalHeader "while"
+    return $ Line ln (While c ss)
+
+forEachHeader :: FuzzyParser (Name, Value)
+forEachHeader = do
+    firstWord "for"
+    word "each"
+    n <- name
+    word "in"
+    l <- value
+    return (n, l)
 
 simpleForEach :: FuzzyParser SentenceLine
 simpleForEach = do
@@ -274,39 +309,6 @@ forEachBlock :: FuzzyParser SentenceLine
 forEachBlock = do
     ((n, l), ln, ss) <- blockSentence forEachHeader
     return $ Line ln (ForEach n l ss)
-
-forEachHeader :: FuzzyParser (Name, Value)
-forEachHeader = do
-    firstWord "for"
-    word "each"
-    n <- name
-    word "in"
-    l <- value
-    return (n, l)
-
-simpleUntil :: FuzzyParser SentenceLine
-simpleUntil = do
-    c <- try $ firstWord "until" >> condition <* comma
-    ln <- getCurrentLineNumber
-    s <- simpleSentence
-    return $ Line ln (Until c [s])
-
-untilBlock :: FuzzyParser SentenceLine
-untilBlock = do
-    (c, ln, ss) <- blockSentence (firstWord "until" >> condition)
-    return $ Line ln (Until c ss)
-
-simpleWhile :: FuzzyParser SentenceLine
-simpleWhile = do
-    c <- try $ firstWord "while" >> condition <* comma
-    ln <- getCurrentLineNumber
-    s <- simpleSentence
-    return $ Line ln (While c [s])
-
-whileBlock :: FuzzyParser SentenceLine
-whileBlock = do
-    (c, ln, ss) <- blockSentence (firstWord "while" >> condition)
-    return $ Line ln (While c ss)
 
 -- Parses a return statement
 result :: FuzzyParser SentenceLine
