@@ -9,7 +9,7 @@ type Name = [String]
 
 type FunctionId = String
 
-data MatchablePart = IntP Int | FloatP Float | WordP String | ParensP [MatchablePart]
+data MatchablePart = IntP Int | FloatP Float | CharP Char | StringP String | WordP String | ParensP [MatchablePart]
     deriving (Eq, Show)
 
 --
@@ -17,12 +17,12 @@ data MatchablePart = IntP Int | FloatP Float | WordP String | ParensP [Matchable
 
 -- Program structure
 
-data Type = IntT | FloatT | BoolT | ListT Type | AnyT String
+data Type = IntT | FloatT | BoolT | CharT | ListT Type | AnyT String
     deriving (Eq, Show)
 
 data Value =
     ValueM [MatchablePart]
-    | IntV Int | FloatV Float | BoolV Bool
+    | IntV Int | FloatV Float | BoolV Bool | CharV Char
     | ListV Type [Value] | VarV Name
     | OperatorCall FunctionId [Value]
     deriving (Eq, Show)

@@ -5,4 +5,7 @@ A float equal to the sum of a list of floats (L):
 
 To run:
     Let L be a list of floats containing 1, 2, and 3.5.
+    Print "The sum of ".
+    Print L.
+    Print " is ".
     Print the sum of L.

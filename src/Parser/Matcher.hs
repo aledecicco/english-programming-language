@@ -8,14 +8,6 @@ import Data.Char ( isUpper, toLower )
 import Utils ( getFunctionId, firstNotNull, allOrNone )
 import ParserEnv
 import AST
-    ( Function(..),
-      FunctionId,
-      MatchablePart(..),
-      Name,
-      Sentence(ProcedureCall),
-      Title,
-      TitlePart(TitleParam, TitleWords),
-      Value(IntV, FloatV, BoolV, VarV, OperatorCall) )
 
 --
 
@@ -86,6 +78,8 @@ matchAsFunctionCall ps = do
 matchAsPrimitive :: [MatchablePart] -> ParserEnv (Maybe Value)
 matchAsPrimitive [IntP n] = return $ Just (IntV n)
 matchAsPrimitive [FloatP n] = return $ Just (FloatV n)
+matchAsPrimitive [CharP c] = return $ Just (CharV c)
+matchAsPrimitive [StringP s] = return $ Just (ListV CharT $ map CharV s)
 matchAsPrimitive [WordP w]
     | w == "true" = return $ Just (BoolV True)
     | w == "false" = return $ Just (BoolV False)

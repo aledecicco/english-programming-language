@@ -54,6 +54,8 @@ typeName True =
     (word "numbers" >> return IntT)
     <|> (word "floats" >> return FloatT)
     <|> (word "booleans" >> return BoolT)
+    <|> (word "chars" >> return CharT)
+    <|> (word "strings" >> return (ListT CharT))
     <|> (do
             word "lists"
             word "of"
@@ -64,6 +66,8 @@ typeName False =
     (word "number" >> return IntT)
     <|> (word "float" >> return FloatT)
     <|> (word "boolean" >> return BoolT)
+    <|> (word "char" >> return CharT)
+    <|> (word "string" >> return (ListT CharT))
     <|> (do
             word "list"
             word "of"
@@ -91,10 +95,16 @@ anyWord :: FuzzyParser String
 anyWord = lexeme (some letterChar <* notFollowedBy alphaNumChar) <?> "word"
 
 integer :: FuzzyParser Int
-integer = lexeme $ L.signed (return ()) L.decimal <* notFollowedBy alphaNumChar
+integer = lexeme (L.signed (return ()) L.decimal <* notFollowedBy alphaNumChar) <?> "number"
 
 float :: FuzzyParser Float
-float = lexeme $ L.signed (return ()) L.float <* notFollowedBy alphaNumChar
+float = lexeme (L.signed (return ()) L.float <* notFollowedBy alphaNumChar) <?> "float"
+
+charLiteral :: FuzzyParser Char
+charLiteral = lexeme (char '\'' >> L.charLiteral <* char '\'') <?> "char"
+
+stringLiteral :: FuzzyParser String
+stringLiteral = lexeme (char '"' >> manyTill L.charLiteral (char '"')) <?> "string"
 
 comma :: FuzzyParser ()
 comma = symbol "," <?> "comma"
@@ -352,6 +362,8 @@ matchablePart :: FuzzyParser MatchablePart
 matchablePart =
     try (FloatP <$> float)
     <|> IntP <$> integer
+    <|> CharP <$> charLiteral
+    <|> StringP <$> stringLiteral
     <|> WordP <$> anyWord
     <|> ParensP <$> parens (some matchablePart)
     <?> "valid term"

@@ -60,7 +60,9 @@ evaluatePrint v = io . putStr $ evaluatePrint' v
         evaluatePrint' :: Value -> String
         evaluatePrint' (IntV n) = show n
         evaluatePrint' (FloatV f) = show f
+        evaluatePrint' (CharV c) = [c]
         evaluatePrint' (BoolV b) = show b
+        evaluatePrint' (ListV CharT l) = concatMap evaluatePrint' l
         evaluatePrint' (ListV _ l) = "[" ++ intercalate ", " (map evaluatePrint' l) ++ "]"
 
 evaluatePlus :: Value -> Value -> EvaluatorEnv Value

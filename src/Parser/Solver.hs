@@ -26,6 +26,7 @@ getValueType :: Value -> ParserEnv Type
 getValueType (IntV _) = return IntT
 getValueType (FloatV _) = return FloatT
 getValueType (BoolV _) = return BoolT
+getValueType (CharV _) = return CharT
 getValueType (ListV t _) = return $ ListT t
 getValueType (VarV n) = fromJust <$> getVariableType n
 getValueType (OperatorCall fid vs) = do

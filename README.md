@@ -47,7 +47,7 @@ This shorthand allows defining questions such as `Whether something is true` tha
 Note that in all cases the words used in the return type part of the title, as well as the semicolons, are ignored when calling the function.
 
 ### Type names
-The possible names of primitive types are `boolean`, `number` and `float`. Also, `list of ...` is used for lists, which requires the type inside the list to be specified in plural: `list of booleans` or `list of lists of numbers`.
+The possible names of primitive types are `boolean`, `number`, `float`, `char`, and `string` (which are an alias for lists of chars). Also, `list of ...` is used for lists, which requires the type inside the list to be specified in plural: `list of booleans` or `list of lists of numbers`.
 
 ### Parameters
 ```
@@ -209,6 +209,12 @@ Numbers are used writing the numeric values, not the words.
 ### Floats
 Floats are written with a dot separating the decimal part. If a function takes a float and a number is given, it is converted to float implicitly.
 
+### Chars
+Char literals are written between single quotes.
+
+### Strings
+String literals are written between quotes.
+
 ### Lists
 An empty list:
 ```
@@ -219,7 +225,12 @@ A list with elements:
 ```
 a list of %plural type name% containing %list of values%
 ```
-The only way to declare a list by extension is inside a `Let` expression. Note that all values have to be of the same type as the one declared.
+
+A string literal:
+```
+"[%character%]"
+```
+The only way to declare a list by extension is inside a `Let` expression, except for string literals which can be used anywhere. Note that all values have to be of the same type as the one declared.
 
 ### Variables
 Variable names can be any series of words except for `be` and `in`, which are the only two reserved keywords. They are referenced using their names, which can optionally be preceded by the word `the`. This applies to all variables (declared in `let` expressions, passed as parameters to a function, or defined as iterators in a `for each` loop).
