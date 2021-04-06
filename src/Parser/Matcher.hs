@@ -56,9 +56,10 @@ matchAsName (WordP w : ps) = do
     return $ (w:) <$> ws
 matchAsName _ = return Nothing
 
-matchAsFunctionCall :: [MatchablePart] -> ParserEnv (Maybe (FunctionId, [Value]))
-matchAsFunctionCall ps = do
-    fs <- getFunctions
+-- Matches a list of matchables as a call to one of the functions returned by the given action
+matchAsFunctionCall :: [MatchablePart] -> ParserEnv [Function] -> ParserEnv (Maybe (FunctionId, [Value]))
+matchAsFunctionCall ps getFs = do
+    fs <- getFs
     firstNotNull matchAsFunctionCall' fs
     where
         matchAsFunctionCall' :: Function -> ParserEnv (Maybe (FunctionId, [Value]))
@@ -105,7 +106,7 @@ matchAsVariable ps = do
 
 matchAsOperatorCall :: [MatchablePart] -> ParserEnv (Maybe Value)
 matchAsOperatorCall ps = do
-    r <- matchAsFunctionCall ps
+    r <- matchAsFunctionCall ps getOperators
     return $ uncurry OperatorCall <$> r
 
 matchAsValue :: [MatchablePart] -> ParserEnv (Maybe Value)
@@ -119,13 +120,13 @@ matchAsValue ps = firstNotNull (\matcher -> matcher ps) [matchAsPrimitive, match
 
 matchAsProcedureCall :: [MatchablePart] -> ParserEnv (Maybe Sentence)
 matchAsProcedureCall ps = do
-    r <- matchAsFunctionCall ps
+    r <- matchAsFunctionCall ps getProcedures
     matchAsProcedureCall' ps r
     where
         matchAsProcedureCall' :: [MatchablePart] -> Maybe (FunctionId, [Value]) -> ParserEnv (Maybe Sentence)
         matchAsProcedureCall' (WordP (x:xs) : ps) Nothing
             | isUpper x = do
-                r <- matchAsFunctionCall $ WordP (toLower x : xs) : ps
+                r <- matchAsFunctionCall (WordP (toLower x : xs) : ps) getProcedures
                 return $ uncurry ProcedureCall <$> r
             | otherwise = return Nothing
         matchAsProcedureCall' _ r = return $ uncurry ProcedureCall <$> r

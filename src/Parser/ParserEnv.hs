@@ -28,8 +28,15 @@ getVariableType = getVariable
 removeVariableType :: Name -> ParserEnv ()
 removeVariableType = removeVariable
 
-getFunctions :: ParserEnv [Function]
-getFunctions = map snd <$> getFunEnv
+getOperators :: ParserEnv [Function]
+getOperators = do
+    fs <- map snd <$> getFunEnv
+    return $ [f | f@(Function _ (Operator _)) <- fs]
+
+getProcedures :: ParserEnv [Function]
+getProcedures = do
+    fs <- map snd <$> getFunEnv
+    return $ [f | f@(Function _ Procedure) <- fs]
 
 runParserEnv :: ParserEnv r -> ParserState -> Either Error (r, ParserState)
 runParserEnv f e = runIdentity $ runEnv f e

@@ -101,7 +101,12 @@ solveValueTests = testGroup "Solve value"
         testCase "List with wrong items" $
             expectedFailure
                 (solveValue (ListV IntT [BoolV True, BoolV False]))
-                emptyEnv
+                emptyEnv,
+
+        testCase "Matchable with wrong type arguments" $
+            expectedFailure
+                (solveValue (ValueM [WordP "true", WordP "plus", WordP "false"]))
+                envWithFunctions
     ]
 
 

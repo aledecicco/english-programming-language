@@ -4,6 +4,7 @@ import Test.Tasty ( testGroup, TestTree )
 import Test.Tasty.HUnit ( testCase, (@?=) )
 
 import ParserTestUtils
+import ParserEnv
 import Matcher
 import AST
 
@@ -87,27 +88,54 @@ asFunctionCallTests = testGroup "As function call"
     [
         testCase "Arguments at beggining and end" $
             expectedResult
-                (matchAsFunctionCall [IntP 2, WordP "plus", IntP 3])
+                (matchAsFunctionCall [IntP 2, WordP "plus", IntP 3] getOperators)
                 envWithFunctions
                 (Just ("%_plus_%", [IntV 2, IntV 3])),
 
         testCase "Addition and multiplication associativity" $
             expectedResult
-                (matchAsFunctionCall [IntP 2, WordP "times", IntP 3, WordP "plus", IntP 4, WordP "times", IntP 5])
+                (matchAsFunctionCall [IntP 2, WordP "times", IntP 3, WordP "plus", IntP 4, WordP "times", IntP 5] getOperators)
                 envWithFunctions
                 (Just ("%_plus_%", [OperatorCall "%_times_%" [IntV 2, IntV 3], OperatorCall "%_times_%" [IntV 4, IntV 5]])),
 
         testCase "Forced associativity with parenthesis" $
             expectedResult
-                (matchAsFunctionCall [ParensP [IntP 2, WordP "times", IntP 3, WordP "plus", IntP 4], WordP "times", IntP 5])
+                (matchAsFunctionCall [ParensP [IntP 2, WordP "times", IntP 3, WordP "plus", IntP 4], WordP "times", IntP 5] getOperators)
                 envWithFunctions
                 (Just ("%_times_%", [OperatorCall "%_plus_%" [OperatorCall "%_times_%" [IntV 2, IntV 3], IntV 4], IntV 5])),
 
         testCase "Wrong type arguments" $
             expectedResult
-                (matchAsFunctionCall [WordP "true", WordP "plus", WordP "false"])
+                (matchAsFunctionCall [WordP "true", WordP "plus", WordP "false"] getOperators)
                 envWithFunctions
-                (Just ("%_plus_%", [BoolV True, BoolV False]))
+                (Just ("%_plus_%", [BoolV True, BoolV False])),
+
+        testCase "Wrong functions category" $
+            expectedResult
+                (matchAsFunctionCall [IntP 2, WordP "plus", IntP 3] getProcedures)
+                envWithFunctions
+                Nothing
+    ]
+
+asOperatorCallTests :: TestTree
+asOperatorCallTests = testGroup "As operator call"
+    [
+        testCase "Procedure matchable" $
+            expectedResult
+                (matchAsOperatorCall [WordP "print", IntP 3])
+                envWithFunctions
+                Nothing
+    ]
+
+
+asProcedureCallTests :: TestTree
+asProcedureCallTests = testGroup "As procedure call"
+    [
+        testCase "Operator matchable" $
+            expectedResult
+                (matchAsProcedureCall [IntP 2, WordP "plus", IntP 3])
+                envWithFunctions
+                Nothing
     ]
 
 --
@@ -121,7 +149,9 @@ tests = testGroup "Matcher"
         splitsTests,
         sepByTitleTests,
         asNameTests,
-        asFunctionCallTests
+        asFunctionCallTests,
+        asOperatorCallTests,
+        asProcedureCallTests
     ]
 
 --
