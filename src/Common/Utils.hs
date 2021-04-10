@@ -11,13 +11,13 @@ import Env
 
 -- Functions
 
-getFunctionId :: Title -> FunctionId
-getFunctionId t = intercalate "_" (getFunctionIdParts t)
+getFunId :: Title -> FunId
+getFunId t = intercalate "_" (getFunIdParts t)
     where
-        getFunctionIdParts :: Title -> [FunctionId]
-        getFunctionIdParts [] = []
-        getFunctionIdParts (TitleWords w : ts) = w ++ getFunctionIdParts ts
-        getFunctionIdParts (TitleParam {} : ts) = "%" : getFunctionIdParts ts
+        getFunIdParts :: Title -> [FunId]
+        getFunIdParts [] = []
+        getFunIdParts (TitleWords w : ts) = w ++ getFunIdParts ts
+        getFunIdParts (TitleParam {} : ts) = "%" : getFunIdParts ts
 
 --
 

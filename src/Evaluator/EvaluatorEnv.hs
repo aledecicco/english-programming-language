@@ -1,5 +1,6 @@
 module EvaluatorEnv (
     module EvaluatorEnv,
+    emptyEnv,
     setLineNumber, getLineNumber,
     Error
     ) where
@@ -12,8 +13,8 @@ import AST
 
 --
 
-type EvaluatorEnv a = Env [SentenceLine] Value IO a
-type EvaluatorState = EnvData [SentenceLine] Value
+type EvaluatorEnv a = Env FunCallable Value IO a
+type EvaluatorState = EnvData FunCallable Value
 
 setVariableValue :: Name -> Value -> EvaluatorEnv ()
 setVariableValue = setVariable
@@ -24,18 +25,19 @@ getVariableValue = getVariable
 removeVariableValue :: Name -> EvaluatorEnv ()
 removeVariableValue = removeVariable
 
-withVariablesReset :: EvaluatorEnv a -> EvaluatorEnv a
-withVariablesReset action = do
-    vs <- getVarEnv
+withVariables :: EvaluatorEnv a -> [(Name, Value)] -> EvaluatorEnv a
+withVariables action newVars = do
+    currentVars <- getVarEnv
+    setVarEnv newVars
     r <- action
-    setVarEnv vs
+    setVarEnv currentVars
     return r
 
-setFunctionSentences :: FunctionId -> [SentenceLine] -> EvaluatorEnv ()
-setFunctionSentences = setFunction
+setFunctionCallable :: FunId -> FunCallable -> EvaluatorEnv ()
+setFunctionCallable = setFunction
 
-getFunctionSentences :: FunctionId -> EvaluatorEnv (Maybe [SentenceLine])
-getFunctionSentences = getFunction
+getFunctionCallable :: FunId -> EvaluatorEnv (Maybe FunCallable)
+getFunctionCallable = getFunction
 
 runEvaluatorEnv :: EvaluatorEnv r -> EvaluatorState -> IO (Either Error (r, EvaluatorState))
 runEvaluatorEnv = runEnv

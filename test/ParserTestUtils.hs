@@ -10,9 +10,6 @@ import ParserEnv
 
 -- Parser
 
-emptyEnv :: ParserState
-emptyEnv = ([], [], 0)
-
 envWithFunctions :: ParserState
 envWithFunctions = (builtInOperators ++ builtInProcedures, [], 0)
 

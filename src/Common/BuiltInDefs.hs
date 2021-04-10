@@ -1,20 +1,20 @@
 module BuiltInDefs where
 
 import AST
-import Utils (getFunctionId)
+import Utils (getFunId)
 
 --
 
 
 -- Auxiliary
 
-functionFromTuple :: (Title, ReturnType) -> (FunctionId, Function)
-functionFromTuple (ft, rt) = (getFunctionId ft, Function ft rt)
+functionFromTuple :: (Title, FunType) -> (FunId, FunSignature)
+functionFromTuple (ft, rt) = (getFunId ft, FunSignature ft rt)
 
-binaryType :: ReturnType
+binaryType :: FunType
 binaryType = Operator (\[tM, tN] -> if tM == FloatT || tN == FloatT then FloatT else IntT)
 
-relationalType :: ReturnType
+relationalType :: FunType
 relationalType = Operator (\[_, _] -> BoolT)
 
 --
@@ -22,7 +22,7 @@ relationalType = Operator (\[_, _] -> BoolT)
 
 --
 
-builtInOperators :: [(FunctionId, Function)]
+builtInOperators :: [(FunId, FunSignature)]
 builtInOperators = map functionFromTuple
     [
         (
@@ -58,7 +58,7 @@ builtInOperators = map functionFromTuple
             relationalType
         ),
         (
-            [TitleWords ["The", "element", "of"], TitleParam ["l"] (ListT $ AnyT "a"), TitleWords ["at", "position"], TitleParam ["m"] IntT],
+            [TitleWords ["the", "element", "of"], TitleParam ["l"] (ListT $ AnyT "a"), TitleWords ["at", "position"], TitleParam ["m"] IntT],
             Operator (\[ListT t, IntT] -> t)
         ),
         (
@@ -67,7 +67,7 @@ builtInOperators = map functionFromTuple
         )
     ]
 
-builtInProcedures :: [(FunctionId, Function)]
+builtInProcedures :: [(FunId, FunSignature)]
 builtInProcedures = map functionFromTuple
     [
         (
@@ -76,7 +76,7 @@ builtInProcedures = map functionFromTuple
         )
     ]
 
-isBuiltInFunction :: FunctionId -> Bool
+isBuiltInFunction :: FunId -> Bool
 isBuiltInFunction fid =
     let builtInIds = map fst (builtInOperators ++ builtInProcedures)
     in fid `elem` builtInIds

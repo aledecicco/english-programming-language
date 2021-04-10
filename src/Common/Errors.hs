@@ -39,7 +39,7 @@ unmatchableSentenceError ps = customError ["Could not understand", quote ps, "as
 alreadyDefinedFunctionError :: Monad m => Title -> Env a b m r
 alreadyDefinedFunctionError t = customError ["Funcion", quote t, "is already defined"]
 
-functionNotDefinedError :: Monad m => FunctionId -> Env a b m r
+functionNotDefinedError :: Monad m => FunId -> Env a b m r
 functionNotDefinedError fid = customError ["Function", quote fid, "is not defined"]
 
 alreadyDefinedVariableError :: Monad m => Name -> Env a b m r

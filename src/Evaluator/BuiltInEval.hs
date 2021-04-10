@@ -39,7 +39,7 @@ relationalOperation op (IntV n1) (IntV n2) = BoolV $ n1 `op` n2
 
 -- Evaluators
 
-evaluateBuiltInOperator :: FunctionId -> [Value] -> EvaluatorEnv Value
+evaluateBuiltInOperator :: FunId -> [Value] -> EvaluatorEnv Value
 evaluateBuiltInOperator "%_plus_%" [v1, v2] = evaluatePlus v1 v2
 evaluateBuiltInOperator "%_times_%" [v1, v2] = evaluateTimes v1 v2
 evaluateBuiltInOperator "%_minus_%" [v1, v2] = evaluateMinus v1 v2
@@ -51,7 +51,7 @@ evaluateBuiltInOperator "%_is_greater_than_or_equal_to_%" [v1, v2] = evaluateIsG
 evaluateBuiltInOperator "the_element_of_%_at_position_%" [l, v] = evaluateElementOfListAtPosition l v
 evaluateBuiltInOperator "%_appended_to_%" [l1, l2] = evaluateListAppendedToList l1 l2
 
-evaluateBuiltInProcedure :: FunctionId -> [Value] -> EvaluatorEnv ()
+evaluateBuiltInProcedure :: FunId -> [Value] -> EvaluatorEnv ()
 evaluateBuiltInProcedure "print_%" [v] = evaluatePrint v
 
 evaluatePrint :: Value -> EvaluatorEnv ()

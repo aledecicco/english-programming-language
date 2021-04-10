@@ -14,7 +14,7 @@ import AST
 
 type Error = String
 
-type FunEnv a = [(FunctionId, a)]
+type FunEnv a = [(FunId, a)]
 type VarEnv a = [(Name, a)]
 type EnvData a b = (FunEnv a, VarEnv b, LineNumber)
 
@@ -24,6 +24,9 @@ type Env a b m r = StateT (EnvData a b) (ExceptT Error m) r
 
 
 -- Env handlers
+
+emptyEnv :: EnvData a b
+emptyEnv = ([], [], 0)
 
 getVarEnv :: Monad m => Env a b m (VarEnv b)
 getVarEnv = gets (\(_, vE, _) -> vE)
@@ -84,27 +87,27 @@ resetVariables = setVarEnv []
 
 -- Functions
 
-getFunction :: Monad m => FunctionId -> Env a b m (Maybe a)
+getFunction :: Monad m => FunId -> Env a b m (Maybe a)
 getFunction fid = do
     r <- find (\fd -> fst fd == fid) <$> getFunEnv
     case r of
         Just (_, f) -> return $ Just f
         Nothing -> return Nothing
 
-setFunction :: Monad m => FunctionId -> a -> Env a b m ()
+setFunction :: Monad m => FunId -> a -> Env a b m ()
 setFunction fid f = do
     removeFunction fid
     fE <- getFunEnv
     setFunEnv $ (fid, f):fE
 
-functionIsDefined :: Monad m => FunctionId -> Env a b m Bool
+functionIsDefined :: Monad m => FunId -> Env a b m Bool
 functionIsDefined fid = do
     r <- getFunction fid
     case r of
         Just _ -> return True
         Nothing -> return False
 
-removeFunction :: Monad m => FunctionId -> Env a b m ()
+removeFunction :: Monad m => FunId -> Env a b m ()
 removeFunction fid = do
     fE <- getFunEnv
     let fE' = filter ((fid /=) . fst) fE

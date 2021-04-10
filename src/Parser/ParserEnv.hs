@@ -1,6 +1,7 @@
 module ParserEnv (
     module ParserEnv,
-    setFunction, getFunction, functionIsDefined,
+    emptyEnv,
+    functionIsDefined,
     variableIsDefined, resetVariables,
     setLineNumber, getLineNumber,
     Error
@@ -16,8 +17,8 @@ import AST
 
 --
 
-type ParserEnv a = Env Function Type Identity a
-type ParserState = EnvData Function Type
+type ParserEnv a = Env FunSignature Type Identity a
+type ParserState = EnvData FunSignature Type
 
 setVariableType :: Name -> Type -> ParserEnv ()
 setVariableType = setVariable
@@ -28,15 +29,21 @@ getVariableType = getVariable
 removeVariableType :: Name -> ParserEnv ()
 removeVariableType = removeVariable
 
-getOperators :: ParserEnv [Function]
-getOperators = do
-    fs <- map snd <$> getFunEnv
-    return $ [f | f@(Function _ (Operator _)) <- fs]
+setFunctionSignature :: FunId -> FunSignature -> ParserEnv ()
+setFunctionSignature = setFunction
 
-getProcedures :: ParserEnv [Function]
-getProcedures = do
+getFunctionSignature :: FunId -> ParserEnv (Maybe FunSignature)
+getFunctionSignature = getFunction
+
+getOperatorSignatures :: ParserEnv [FunSignature]
+getOperatorSignatures = do
     fs <- map snd <$> getFunEnv
-    return $ [f | f@(Function _ Procedure) <- fs]
+    return $ [f | f@(FunSignature _ (Operator _)) <- fs]
+
+getProcedureSignatures :: ParserEnv [FunSignature]
+getProcedureSignatures = do
+    fs <- map snd <$> getFunEnv
+    return $ [f | f@(FunSignature _ Procedure) <- fs]
 
 runParserEnv :: ParserEnv r -> ParserState -> Either Error (r, ParserState)
 runParserEnv f e = runIdentity $ runEnv f e

@@ -4,7 +4,7 @@ import Data.Maybe ( fromJust, isNothing )
 import Data.List ( find )
 import Control.Monad ( unless, when )
 
-import Utils (getFunctionId)
+import Utils (getFunId)
 import BuiltInDefs
 import Matcher
 import ParserEnv
@@ -33,9 +33,9 @@ getValueType (OperatorCall fid vs) = do
     vTs <- mapM getValueType vs
     getOperatorCallType fid vTs
     where
-        getOperatorCallType :: FunctionId -> [Type] -> ParserEnv Type
+        getOperatorCallType :: FunId -> [Type] -> ParserEnv Type
         getOperatorCallType fid vTs = do
-            ~(Function _ (Operator tFun)) <- fromJust <$> getFunction fid
+            ~(FunSignature _ (Operator tFun)) <- fromJust <$> getFunctionSignature fid
             return $ tFun vTs
 
 --
@@ -68,10 +68,10 @@ checkValueIntegrity (OperatorCall fid vs) = checkFunctionCallIntegrity (fid, vs)
 checkValueIntegrity (ListV t vs) = mapM_ (\v -> checkValueIntegrity v >> checkValueType v t) vs
 checkValueIntegrity _ = return ()
 
-checkFunctionCallIntegrity :: (FunctionId, [Value]) -> ParserEnv ()
+checkFunctionCallIntegrity :: (FunId, [Value]) -> ParserEnv ()
 checkFunctionCallIntegrity (fid, vs) = do
     mapM_ checkValueIntegrity vs
-    ~(Just (Function ft _)) <- getFunction fid
+    ~(FunSignature ft _) <- fromJust <$> getFunctionSignature fid
     checkParameterTypes [] ft vs
     where
         checkParameterTypes :: [(String, Type)] -> Title -> [Value] -> ParserEnv ()
@@ -110,13 +110,13 @@ registerFunctions = mapM_ registerFunction
     where
         registerFunction :: Block -> ParserEnv ()
         registerFunction (FunDef (Line _ ft) rt _) = do
-            let fid = getFunctionId ft
+            let fid = getFunId ft
             isDef <- functionIsDefined fid
             when isDef $ alreadyDefinedFunctionError ft
             let frt = case rt of
                     Just t -> Operator $ const t
                     Nothing -> Procedure
-            setFunction fid $ Function ft frt
+            setFunctionSignature fid $ FunSignature ft frt
 
 registerParameters :: Title -> ParserEnv ()
 registerParameters [] = return ()

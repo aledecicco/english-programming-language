@@ -1,7 +1,7 @@
 module Evaluator where
 
 import Data.List ( find )
-import Data.Maybe ( fromJust )
+import Data.Maybe ( fromJust, mapMaybe )
 import Control.Monad ( void )
 
 import EvaluatorEnv
@@ -17,18 +17,24 @@ import AST
 
 -- Auxiliary
 
-translateState :: Program -> ParserState -> EvaluatorState
-translateState p (fE, _, _) =
-    let funSentences = map (translateFunction p) fE
-    in (funSentences, [], 0)
+translateFunction :: Program -> (FunId, FunSignature) -> Maybe (FunId, FunCallable)
+translateFunction p (fid, FunSignature t _) =
+    case findDefinition p t of
+        (Just (FunDef _ _ ss)) -> Just (fid, FunCallable t ss)
+        Nothing -> Nothing
     where
-        translateFunction :: Program -> (FunctionId, Function) -> (FunctionId, [SentenceLine])
-        translateFunction p (fid, Function t _) =
-            case findDefinition p t of
-                (Just (FunDef _ _ ss)) -> (fid, ss)
-                Nothing -> (fid, [])
         findDefinition :: Program -> Title -> Maybe Block
         findDefinition p t = find (\(FunDef (Line _ t') _ _) -> t == t') p
+
+translateState :: Program -> ParserState -> EvaluatorState
+translateState p (fE, _, _) =
+    let funSentences = mapMaybe (translateFunction p) fE
+    in (funSentences, [], 0)
+
+variablesFromTitle :: Title -> [Value] -> [(Name, Value)]
+variablesFromTitle _ [] = []
+variablesFromTitle (TitleWords _ : ts) vs = variablesFromTitle ts vs
+variablesFromTitle (TitleParam n _ : ts) (v:vs) = (n, v) : variablesFromTitle ts vs
 
 --
 
@@ -100,24 +106,24 @@ evaluateSentence (ProcedureCall fid vs) = do
     evaluateProcedure fid vs'
     return Nothing
 
-evaluateOperator :: FunctionId -> [Value] -> EvaluatorEnv Value
+evaluateOperator :: FunId -> [Value] -> EvaluatorEnv Value
 evaluateOperator fid vs
     | isBuiltInFunction fid = evaluateBuiltInOperator fid vs
     | otherwise = do
-        ss <- fromJust <$> getFunctionSentences fid
-        r <- evaluateSentenceLines ss
-        case r of
-            Just v -> return v
-            Nothing -> expectedResultError
+        r <- evaluateUserDefinedFunction fid vs
+        maybe expectedResultError return r
 
-evaluateProcedure :: FunctionId -> [Value] -> EvaluatorEnv ()
+evaluateProcedure :: FunId -> [Value] -> EvaluatorEnv ()
 evaluateProcedure fid vs
     | isBuiltInFunction fid = evaluateBuiltInProcedure fid vs
-    | otherwise = do
-        r <- getFunctionSentences fid
-        case r of
-            Just ss -> void $ evaluateSentenceLines ss
-            Nothing -> functionNotDefinedError fid
+    | otherwise = void $ evaluateUserDefinedFunction fid vs
+
+evaluateUserDefinedFunction :: FunId -> [Value] -> EvaluatorEnv (Maybe Value)
+evaluateUserDefinedFunction fid vs = do
+    r <- getFunctionCallable fid
+    case r of
+        Just (FunCallable t ss) -> evaluateSentenceLines ss `withVariables` variablesFromTitle t vs
+        Nothing -> functionNotDefinedError fid
 
 evaluateProgram :: Program -> ParserState -> IO EvaluatorState
 evaluateProgram p s = do

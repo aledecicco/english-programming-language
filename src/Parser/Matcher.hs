@@ -5,7 +5,7 @@ module Matcher where
 import Data.Char ( isUpper, toLower )
 
 
-import Utils ( getFunctionId, firstNotNull, allOrNone )
+import Utils ( getFunId, firstNotNull, allOrNone )
 import ParserEnv
 import AST
 
@@ -56,16 +56,15 @@ matchAsName (WordP w : ps) = do
     return $ (w:) <$> ws
 matchAsName _ = return Nothing
 
--- Matches a list of matchables as a call to one of the functions returned by the given action
-matchAsFunctionCall :: [MatchablePart] -> ParserEnv [Function] -> ParserEnv (Maybe (FunctionId, [Value]))
-matchAsFunctionCall ps getFs = do
-    fs <- getFs
+-- Matches a list of matchables as a call to one of the given functions
+matchAsFunctionCall :: [MatchablePart] -> [FunSignature] -> ParserEnv (Maybe (FunId, [Value]))
+matchAsFunctionCall ps fs = do
     firstNotNull matchAsFunctionCall' fs
     where
-        matchAsFunctionCall' :: Function -> ParserEnv (Maybe (FunctionId, [Value]))
-        matchAsFunctionCall' (Function ft _) = do
+        matchAsFunctionCall' :: FunSignature -> ParserEnv (Maybe (FunId, [Value]))
+        matchAsFunctionCall' (FunSignature ft _) = do
             let posParams = sepByTitle ps ft
-                fid = getFunctionId ft
+                fid = getFunId ft
             r <- firstNotNull matchAllParams posParams
             return $ (fid, ) <$> r
         matchAllParams :: [[MatchablePart]] -> ParserEnv (Maybe [Value])
@@ -106,7 +105,8 @@ matchAsVariable ps = do
 
 matchAsOperatorCall :: [MatchablePart] -> ParserEnv (Maybe Value)
 matchAsOperatorCall ps = do
-    r <- matchAsFunctionCall ps getOperators
+    operators <- getOperatorSignatures
+    r <- matchAsFunctionCall ps operators
     return $ uncurry OperatorCall <$> r
 
 matchAsValue :: [MatchablePart] -> ParserEnv (Maybe Value)
@@ -120,16 +120,19 @@ matchAsValue ps = firstNotNull (\matcher -> matcher ps) [matchAsPrimitive, match
 
 matchAsProcedureCall :: [MatchablePart] -> ParserEnv (Maybe Sentence)
 matchAsProcedureCall ps = do
-    r <- matchAsFunctionCall ps getProcedures
-    matchAsProcedureCall' ps r
+    procedures <- getProcedureSignatures
+    r <- matchAsFunctionCall ps procedures
+    matchAsProcedureCall' ps procedures r
     where
-        matchAsProcedureCall' :: [MatchablePart] -> Maybe (FunctionId, [Value]) -> ParserEnv (Maybe Sentence)
-        matchAsProcedureCall' (WordP (x:xs) : ps) Nothing
+        -- Takes the result of matching as a function call, tries again if necessary, and returns a procedure call
+        matchAsProcedureCall' :: [MatchablePart] -> [FunSignature] -> Maybe (FunId, [Value]) -> ParserEnv (Maybe Sentence)
+        matchAsProcedureCall' (WordP (x:xs) : ps) procedures Nothing
             | isUpper x = do
-                r <- matchAsFunctionCall (WordP (toLower x : xs) : ps) getProcedures
+                let lowerCaseTitle = WordP (toLower x : xs) : ps
+                r <- matchAsFunctionCall lowerCaseTitle procedures
                 return $ uncurry ProcedureCall <$> r
             | otherwise = return Nothing
-        matchAsProcedureCall' _ r = return $ uncurry ProcedureCall <$> r
+        matchAsProcedureCall' _ _ r = return $ uncurry ProcedureCall <$> r
 
 
 matchAsSentence :: [MatchablePart] -> ParserEnv (Maybe Sentence)

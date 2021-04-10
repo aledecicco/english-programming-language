@@ -7,7 +7,7 @@ module AST where
 
 type Name = [String]
 
-type FunctionId = String
+type FunId = String
 
 data MatchablePart = IntP Int | FloatP Float | CharP Char | StringP String | WordP String | ParensP [MatchablePart]
     deriving (Eq, Show)
@@ -24,7 +24,7 @@ data Value =
     ValueM [MatchablePart]
     | IntV Int | FloatV Float | BoolV Bool | CharV Char
     | ListV Type [Value] | VarV Name
-    | OperatorCall FunctionId [Value]
+    | OperatorCall FunId [Value]
     deriving (Eq, Show)
 
 data Sentence =
@@ -33,7 +33,7 @@ data Sentence =
     | If Value [SentenceLine] | IfElse Value [SentenceLine] [SentenceLine]
     | ForEach Name Value [SentenceLine] | Until Value [SentenceLine] | While Value [SentenceLine]
     | Result Value
-    | ProcedureCall FunctionId [Value]
+    | ProcedureCall FunId [Value]
     deriving (Eq, Show)
 
 data TitlePart = TitleWords [String] | TitleParam Name Type
@@ -41,9 +41,11 @@ data TitlePart = TitleWords [String] | TitleParam Name Type
 
 type Title = [TitlePart]
 
-data Function = Function Title ReturnType
+data FunSignature = FunSignature Title FunType
 
-data ReturnType = Operator ([Type] -> Type) | Procedure
+data FunCallable = FunCallable Title [SentenceLine]
+
+data FunType = Operator ([Type] -> Type) | Procedure
 
 
 data Block = FunDef TitleLine (Maybe Type) [SentenceLine]

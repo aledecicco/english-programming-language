@@ -36,7 +36,8 @@ expectedFailure eval st = do
     r <- runEvaluatorEnv eval st
     case r of
         Left _ -> return ()
-        Right r -> assertFailure $ "Evaluator action didn't fail, the result was " ++ show r
+        Right (Nothing, _) -> assertFailure "Evaluator action didn't fail, and yielded no result"
+        Right (Just res, _) -> assertFailure $ "Evaluator action didn't fail, the result was " ++ show res
 
 --
 
@@ -49,7 +50,7 @@ valueTests = testGroup "Value"
         testCase "Operator call" $
             expectedResult
                 (Just <$> evaluateValue (OperatorCall "%_plus_%" [IntV 2, IntV 3]))
-                ([("%_plus_%", [])], [], 0)
+               emptyEnv
                 (IntV 5),
 
         testCase "Variable" $
@@ -68,13 +69,14 @@ sentenceLineTests = testGroup "sentence"
                 (
                     evaluateSentenceLines
                         [
-                            Line 0 $ While
+                            Line 0 $ VarDef [["x"]] (IntV 0),
+                            Line 1 $ While
                                 (OperatorCall "%_is_less_than_%" [VarV ["x"], IntV 3])
-                                [Line 1 (VarDef [["x"]] (OperatorCall "%_plus_%" [VarV ["x"], IntV 1]))],
+                                [Line 2 (VarDef [["x"]] (OperatorCall "%_plus_%" [VarV ["x"], IntV 1]))],
                             Line 3 $ Result (VarV ["x"])
                         ]
                 )
-                ([("%_is_less_than_%", []), ("%_plus_%", [])], [(["x"], IntV 0)], 0)
+                emptyEnv
                 (IntV 3),
 
         testCase "Variable in scope after if" $
@@ -88,7 +90,7 @@ sentenceLineTests = testGroup "sentence"
                             Line 3 $ Result (VarV ["x"])
                         ]
                 )
-                ([], [], 0)
+                emptyEnv
                 (IntV 3),
 
         testCase "Variable not in scope after if" $
@@ -102,7 +104,7 @@ sentenceLineTests = testGroup "sentence"
                             Line 3 $ Result (VarV ["x"])
                         ]
                 )
-                ([], [], 0)
+                emptyEnv
 
     ]
 
