@@ -5,6 +5,7 @@ module BuiltInEval where
 import Control.Monad.Trans.Class ( lift )
 import Data.List ( intercalate )
 
+import PrettyPrinter
 import EvaluatorEnv
 import Errors
 import AST
@@ -55,15 +56,7 @@ evaluateBuiltInProcedure :: FunId -> [Value] -> EvaluatorEnv ()
 evaluateBuiltInProcedure "print_%" [v] = evaluatePrint v
 
 evaluatePrint :: Value -> EvaluatorEnv ()
-evaluatePrint v = io . putStr $ evaluatePrint' v
-    where
-        evaluatePrint' :: Value -> String
-        evaluatePrint' (IntV n) = show n
-        evaluatePrint' (FloatV f) = show f
-        evaluatePrint' (CharV c) = [c]
-        evaluatePrint' (BoolV b) = show b
-        evaluatePrint' (ListV CharT l) = concatMap evaluatePrint' l
-        evaluatePrint' (ListV _ l) = "[" ++ intercalate ", " (map evaluatePrint' l) ++ "]"
+evaluatePrint = io . putStr . ppValue
 
 evaluatePlus :: Value -> Value -> EvaluatorEnv Value
 evaluatePlus v1 v2 = return $ binaryOperation (+) v1 v2
@@ -75,6 +68,8 @@ evaluateMinus :: Value -> Value -> EvaluatorEnv Value
 evaluateMinus v1 v2 = return $ binaryOperation (-) v1 v2
 
 evaluateDividedBy :: Value -> Value -> EvaluatorEnv Value
+evaluateDividedBy _ (IntV 0) = divisionByZeroError
+evaluateDividedBy _ (FloatV 0) = divisionByZeroError
 evaluateDividedBy v1 v2 = return $ floatOperation (/) v1 v2
 
 evaluateElementOfListAtPosition :: Value -> Value -> EvaluatorEnv Value

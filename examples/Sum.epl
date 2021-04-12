@@ -1,11 +1,11 @@
-A float equal to the sum of a list of floats (L):
+A number equal to the sum of a list of numbers (L):
     Let r be 0.
     For each element in L, let r be r plus the element.
     The result is r.
 
 To run:
-    Let L be a list of floats containing 1, 2, and 3.5.
+    Let L be a list of numbers containing 1, 2, and 3.5.
     Print "The sum of ".
     Print L.
     Print " is ".
-    Print the sum of L.
+    Print the sum of 2.

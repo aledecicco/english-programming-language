@@ -5,14 +5,12 @@ import Control.Monad.Trans.Class ( lift )
 
 import Env
 import AST
+import PrettyPrinter
 
 --
 
 
 -- Auxiliary
-
-quote :: Show a => a -> String
-quote x = "\"" ++ show x ++ "\""
 
 customError :: Monad m => [String] -> Env a b m r
 customError e = do
@@ -24,32 +22,32 @@ customError e = do
 
 -- Errors
 
-wrongTypeValueError :: Monad m => Value -> Type -> Env a b m r
-wrongTypeValueError v t = customError ["Expected value of type", quote t, ", but got", quote v, "instead"]
+wrongTypeValueError :: Monad m => Type -> Type -> Env a b m r
+wrongTypeValueError t t' = customError ["Expected a", ppType t False, "but got a", ppType t' False, "instead"]
 
-wrongTypeParameterError :: Monad m => Value -> Type -> Name -> Env a b m r
-wrongTypeParameterError v t n = customError ["Parameter", quote n, "expeceted value of type", quote t, ", but got", quote v, "instead"]
+wrongTypeParameterError :: Monad m => Type -> Type -> Name -> Env a b m r
+wrongTypeParameterError t t' n = customError ["Parameter", doubleQuote $ ppName n, "expected a", ppType t False, "but got a", ppType t' False, "instead"]
 
 unmatchableValueError :: Monad m => [MatchablePart] -> Env a b m r
-unmatchableValueError ps = customError ["Could not understand", quote ps, "as a value"]
+unmatchableValueError ps = customError ["Could not understand", doubleQuote $ ppMatchable ps, "as a value"]
 
 unmatchableSentenceError :: Monad m => [MatchablePart] -> Env a b m r
-unmatchableSentenceError ps = customError ["Could not understand", quote ps, "as a sentence"]
+unmatchableSentenceError ps = customError ["Could not understand", doubleQuote $ ppMatchable ps, "as a sentence"]
 
-alreadyDefinedFunctionError :: Monad m => Title -> Env a b m r
-alreadyDefinedFunctionError t = customError ["Funcion", quote t, "is already defined"]
+alreadyDefinedFunctionError :: Monad m => FunId -> Env a b m r
+alreadyDefinedFunctionError fid = customError ["Funcion", doubleQuote $ ppFunctionId fid, "is already defined"]
 
 functionNotDefinedError :: Monad m => FunId -> Env a b m r
-functionNotDefinedError fid = customError ["Function", quote fid, "is not defined"]
+functionNotDefinedError fid = customError ["Function", doubleQuote $ ppFunctionId fid, "is not defined"]
 
 alreadyDefinedVariableError :: Monad m => Name -> Env a b m r
-alreadyDefinedVariableError n = customError ["Expected variable", quote n, "to be new but it was already defined"]
+alreadyDefinedVariableError n = customError ["Expected variable", doubleQuote $ ppName n, "to be new but it was already defined"]
 
 undefinedVariableError :: Monad m => Name -> Env a b m r
-undefinedVariableError n = customError ["Variable", quote n, "is not defined"]
+undefinedVariableError n = customError ["Variable", doubleQuote $ ppName n, "is not defined"]
 
 mismatchingTypeAssignedError :: Monad m => Name -> Type -> Type -> Env a b m r
-mismatchingTypeAssignedError n t t' = customError ["Could not assign value of type", quote t, "to variable", show n, "of type", quote t']
+mismatchingTypeAssignedError n t t' = customError ["Could not assign a", ppType t False, "to variable", doubleQuote $ ppName n, "which is a", ppType t False]
 
 resultInProcedureError :: Monad m => Env a b m r
 resultInProcedureError = customError ["Found unexpected result statement in procedure"]
@@ -62,5 +60,8 @@ emptyListError = customError ["Expected a list with at least one element"]
 
 outOfBoundsIndexError :: Monad m => Int -> Env a b m r
 outOfBoundsIndexError n = customError ["Tried to access a list at index", show n, ", which is out of bounds"]
+
+divisionByZeroError :: Monad m => Env a b m r
+divisionByZeroError = customError ["Division by zero"]
 
 --

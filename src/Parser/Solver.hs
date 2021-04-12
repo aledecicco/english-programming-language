@@ -60,7 +60,7 @@ setNewVariableType vn t' = do
 checkValueType :: Value -> Type -> ParserEnv ()
 checkValueType v t = do
     t' <- getValueType v
-    unless (t' `satisfiesType` t) $ wrongTypeValueError v t
+    unless (t' `satisfiesType` t) $ wrongTypeValueError t t'
 
 -- Validates that a value is correctly formed
 checkValueIntegrity :: Value -> ParserEnv ()
@@ -85,12 +85,12 @@ checkFunctionCallIntegrity (fid, vs) = do
                         Just (_, t) ->
                             if t' `satisfiesType` t
                                 then checkParameterTypes bts ts vs
-                                else wrongTypeParameterError v t n
+                                else wrongTypeParameterError t t' n
                         Nothing -> checkParameterTypes ((tid, t'):bts) ts vs
                 Nothing ->
                     if t' `satisfiesType` t
                         then checkParameterTypes bts ts vs
-                        else wrongTypeParameterError v t n
+                        else wrongTypeParameterError t t' n
 
         findTypeToBind :: Type -> Maybe String
         findTypeToBind (ListT t) = findTypeToBind t
@@ -112,7 +112,7 @@ registerFunctions = mapM_ registerFunction
         registerFunction (FunDef (Line _ ft) rt _) = do
             let fid = getFunId ft
             isDef <- functionIsDefined fid
-            when isDef $ alreadyDefinedFunctionError ft
+            when isDef $ alreadyDefinedFunctionError fid
             let frt = case rt of
                     Just t -> Operator $ const t
                     Nothing -> Procedure

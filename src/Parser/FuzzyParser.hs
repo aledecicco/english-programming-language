@@ -50,23 +50,11 @@ name = (some . try) identifier <?> "name"
 
 -- Parses a type by its name
 typeName :: Bool -> FuzzyParser Type
-typeName True =
-    (word "numbers" >> return IntT)
-    <|> (word "floats" >> return FloatT)
-    <|> (word "booleans" >> return BoolT)
-    <|> (word "chars" >> return CharT)
-    <|> (word "strings" >> return (ListT CharT))
-    <|> (do
-            word "lists"
-            word "of"
-            eT <- typeName True
-            return $ ListT eT)
-    <?> "plural type"
 typeName False =
-    (word "number" >> return IntT)
-    <|> (word "float" >> return FloatT)
+    (word "whole" >> word "number" >> return IntT)
+    <|> (word "number" >> return FloatT)
     <|> (word "boolean" >> return BoolT)
-    <|> (word "char" >> return CharT)
+    <|> (word "character" >> return CharT)
     <|> (word "string" >> return (ListT CharT))
     <|> (do
             word "list"
@@ -74,6 +62,18 @@ typeName False =
             eT <- typeName True
             return $ ListT eT)
     <?> "singular type"
+typeName True =
+    (word "whole" >> word "numbers" >> return IntT)
+    <|> (word "numbers" >> return FloatT)
+    <|> (word "booleans" >> return BoolT)
+    <|> (word "characters" >> return CharT)
+    <|> (word "strings" >> return (ListT CharT))
+    <|> (do
+            word "lists"
+            word "of"
+            eT <- typeName True
+            return $ ListT eT)
+    <?> "plural type"
 
 -- Parses any word and checks that it's not reserved
 identifier :: FuzzyParser String

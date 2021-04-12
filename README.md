@@ -47,7 +47,7 @@ This shorthand allows defining questions such as `Whether something is true` tha
 Note that in all cases the words used in the return type part of the title, as well as the semicolons, are ignored when calling the function.
 
 ### Type names
-The possible names of primitive types are `boolean`, `number`, `float`, `char`, and `string` (which are an alias for lists of chars). Also, `list of ...` is used for lists, which requires the type inside the list to be specified in plural: `list of booleans` or `list of lists of numbers`.
+The possible names of primitive types are `boolean`, `whole number`, `number`, `character`, and `string`. Also, `list of ...` is used for lists, which requires the type inside the list to be specified in plural: `list of booleans` or `list of lists of numbers`. Note that `string` is an alias for `list of chars`.
 
 ### Parameters
 ```
@@ -264,3 +264,11 @@ It's important to note that, in order to work, a program must define the procedu
 To run:
     Print "Hello world!\n"
 ```
+
+# Possible improvements:
+- Clean up the methods that checks type bindings in the solver
+- Change the state so that ids are generated for each variable, and each variable name points to an id
+- Infer variable aliases from their types in titles
+- Allow passing by reference
+- Implement importing other files as libraries (without the `Run` procedure)
+- Prevent the `Run` procedure from being called explicitly

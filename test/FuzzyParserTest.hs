@@ -111,28 +111,28 @@ nameTests = testGroup "Name"
 typeNameTests :: TestTree
 typeNameTests = testGroup "Type name"
     [
-        testCase "Number" $
+        testCase "Whole number" $
             expectedResult
                 (typeName False)
-                "number"
+                "whole number"
                 IntT,
 
-        testCase "Numbers" $
+        testCase "Whole numbers" $
             expectedResult
                 (typeName True)
-                "numbers"
+                "whole numbers"
                 IntT,
 
         testCase "List" $
             expectedResult
                 (typeName False)
-                "list of numbers"
+                "list of whole numbers"
                 (ListT IntT),
 
         testCase "List of lists" $
             expectedResult
                 (typeName False)
-                "list of lists of numbers"
+                "list of lists of whole numbers"
                 (ListT (ListT IntT)),
 
         testCase "List without element" $
@@ -145,20 +145,20 @@ typeNameTests = testGroup "Type name"
                 (typeName False)
                 "list of lists",
 
-        testCase "Numbers without plural" $
+        testCase "Whole numbers without plural" $
             expectedFailure
                 (typeName True)
-                "number",
+                "whole number",
 
-        testCase "Number with plural" $
+        testCase "Whole number with plural" $
             expectedFailure
                 (typeName False)
-                "numbers",
+                "whole numbers",
 
         testCase "List without plural element" $
             expectedFailure
                 (typeName False)
-                "list of number"
+                "list of whole number"
     ]
 
 identifierTests :: TestTree
@@ -407,8 +407,8 @@ functionDefinitionTests = testGroup "Function definition"
                 functionDefinition
                 "A number equal to the double of a number (m):\n  Let r be m times 2.\n  The result is r."
                 (FunDef
-                    (Line 1 [TitleWords ["the", "double", "of"], TitleParam ["m"] IntT])
-                    (Just IntT)
+                    (Line 1 [TitleWords ["the", "double", "of"], TitleParam ["m"] FloatT])
+                    (Just FloatT)
                     [
                         Line 2 (VarDef [["r"]] (ValueM [WordP "m", WordP "times", IntP 2])),
                         Line 3 (Result (ValueM [WordP "r"]))
@@ -420,7 +420,7 @@ functionDefinitionTests = testGroup "Function definition"
                 functionDefinition
                 "To double a number (m):\n  Let r be m times 2."
                 (FunDef
-                    (Line 1 [TitleWords ["double"], TitleParam ["m"] IntT])
+                    (Line 1 [TitleWords ["double"], TitleParam ["m"] FloatT])
                     Nothing
                     [
                         Line 2 (VarDef [["r"]] (ValueM [WordP "m", WordP "times", IntP 2]))
@@ -433,7 +433,7 @@ functionDefinitionTests = testGroup "Function definition"
                 functionDefinition
                 "Whether a number (m) is whole:\n  The result is true."
                 (FunDef
-                    (Line 1 [TitleParam ["m"] IntT, TitleWords ["is", "whole"]])
+                    (Line 1 [TitleParam ["m"] FloatT, TitleWords ["is", "whole"]])
                     (Just BoolT)
                     [
                         Line 2 (Result (ValueM [WordP "true"]))
@@ -466,9 +466,9 @@ titleTests = testGroup "Title"
                 "Definition with a number (m) and a number (n)"
                 (Line 1 [
                     TitleWords ["Definition", "with"],
-                    TitleParam ["m"] IntT,
+                    TitleParam ["m"] FloatT,
                     TitleWords ["and"],
-                    TitleParam ["n"] IntT
+                    TitleParam ["n"] FloatT
                 ]),
 
         testCase "Consecutive arguments" $
@@ -477,7 +477,7 @@ titleTests = testGroup "Title"
                 "Definition with a number (m) a number (n)"
                 (Line 1 [
                     TitleWords ["Definition", "with"],
-                    TitleParam ["m"] IntT
+                    TitleParam ["m"] FloatT
                 ]),
 
         testCase "Missing name" $
@@ -519,19 +519,19 @@ titleParamTests = testGroup "Title parameter"
             expectedResult
                 (titleParam True)
                 "A number (m)"
-                (TitleParam ["m"] IntT),
+                (TitleParam ["m"] FloatT),
 
         testCase "Followed by words" $
             expectedResult
                 (titleParam True)
                 "A number (m) function definition"
-                (TitleParam ["m"] IntT),
+                (TitleParam ["m"] FloatT),
 
         testCase "Two parameters" $
             expectedResult
                 (titleParam True)
                 "A number (m) a number (n)"
-                (TitleParam ["m"] IntT),
+                (TitleParam ["m"] FloatT),
 
         testCase "Missing name" $
             expectedFailure (titleParam True) "A number",
@@ -596,14 +596,14 @@ valueTests = testGroup "Value"
             expectedResult
                 value
                 "a list of numbers containing a, b, and c"
-                (ListV IntT [ValueM [WordP "a"], ValueM [WordP "b"], ValueM [WordP "c"]]),
+                (ListV FloatT [ValueM [WordP "a"], ValueM [WordP "b"], ValueM [WordP "c"]]),
 
 
-        testCase "Empty ist" $
+        testCase "Empty list" $
             expectedResult
                 value
                 "a list of numbers"
-                (ListV IntT [])
+                (ListV FloatT [])
     ]
 
 --
