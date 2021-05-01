@@ -1,51 +1,115 @@
-module ParserEnv (
-    module ParserEnv,
-    emptyEnv,
-    functionIsDefined,
-    variableIsDefined, resetVariables,
-    setLineNumber, getLineNumber,
-    Error
-    ) where
+module ParserEnv ( module ParserEnv, setCurrentLocation, withLocation, initialLocation ) where
 
-import Control.Monad.Identity ( runIdentity, Identity )
+import Data.List ( find )
+import Data.Bifunctor ( first, second )
+import Control.Monad.Trans.Class ( lift )
+import Control.Monad.Trans.State ( get, gets, modify, runStateT, StateT )
+import Control.Monad.Trans.Except ( throwE, runExcept, Except )
 
-import Env
+import PrettyPrinter ( ppError )
+import Location
 import AST
 
 --
 
 
+-- Type definition
+
+type ParserData = ([(FunId, FunSignature)], [(Name, Type)])
+type ParserEnv a = LocationT (StateT ParserData (Except String)) a
+
+runParserEnv :: ParserEnv a -> ParserData -> Location -> Either String ((a, Location), ParserData)
+runParserEnv f d s = runExcept $ runStateT (runLocationT f s) d
+
+initialState :: ParserData
+initialState = ([], [])
+
 --
 
-type ParserEnv a = Env FunSignature Type Identity a
-type ParserState = EnvData FunSignature Type
 
-setVariableType :: Name -> Type -> ParserEnv ()
-setVariableType = setVariable
+-- Errors
+
+throw :: [String] -> ParserEnv a
+throw ps = do
+    l <- getCurrentLocation
+    lift . lift . throwE $ ppError ps l
+
+--
+
+
+-- Auxiliary
+
+changeFunctions :: ([(FunId, FunSignature)] -> [(FunId, FunSignature)]) -> ParserEnv ()
+changeFunctions m = lift $ modify (first m)
+
+changeVariables :: ([(Name, Type)] -> [(Name, Type)]) -> ParserEnv ()
+changeVariables m = lift $ modify (second m)
+
+
+--
+
+
+-- Variables
 
 getVariableType :: Name -> ParserEnv (Maybe Type)
-getVariableType = getVariable
+getVariableType vn = lift $ gets (lookup vn . snd)
+
+setVariableType :: Name -> Type -> ParserEnv ()
+setVariableType vn t = do
+    removeVariableType vn
+    lift $ modify (second ((vn, t):))
 
 removeVariableType :: Name -> ParserEnv ()
-removeVariableType = removeVariable
+removeVariableType vn =
+    let removeVn = filter (\vd -> fst vd /= vn)
+    in changeVariables removeVn
 
-setFunctionSignature :: FunId -> FunSignature -> ParserEnv ()
-setFunctionSignature = setFunction
+variableIsDefined :: Name -> ParserEnv Bool
+variableIsDefined vn = do
+    r <- getVariableType vn
+    case r of
+        Just _ -> return True
+        _ -> return False
+
+resetVariables :: ParserEnv ()
+resetVariables = changeVariables $ const []
+
+--
+
+
+-- Functions
 
 getFunctionSignature :: FunId -> ParserEnv (Maybe FunSignature)
-getFunctionSignature = getFunction
+getFunctionSignature fid = lift $ gets (lookup fid .fst)
+
+setFunctionSignature :: FunId -> FunSignature -> ParserEnv ()
+setFunctionSignature fid s = do
+    removeFunctionSignature fid
+    changeFunctions ((fid, s):)
+
+removeFunctionSignature :: FunId -> ParserEnv ()
+removeFunctionSignature fid =
+    let removeFid = filter (\fd -> fst fd /= fid)
+    in changeFunctions removeFid
 
 getOperatorSignatures :: ParserEnv [FunSignature]
 getOperatorSignatures = do
-    fs <- map snd <$> getFunEnv
-    return $ [f | f@(FunSignature _ (Operator _)) <- fs]
+    fs <- fst <$> lift get
+    return $ [f | (_, f@(FunSignature _ (Operator _))) <- fs]
 
 getProcedureSignatures :: ParserEnv [FunSignature]
 getProcedureSignatures = do
-    fs <- map snd <$> getFunEnv
-    return $ [f | f@(FunSignature _ Procedure) <- fs]
+    fs <- fst <$> lift get
+    return $ [f | (_, f@(FunSignature _ Procedure)) <- fs]
 
-runParserEnv :: ParserEnv r -> ParserState -> Either Error (r, ParserState)
-runParserEnv f e = runIdentity $ runEnv f e
+functionIsDefined :: FunId -> ParserEnv Bool
+functionIsDefined fid = do
+    r <- getFunctionSignature fid
+    case r of
+        Just _ -> return True
+        _ -> return False
+
+setFunctions :: [(FunId, FunSignature)] -> ParserEnv ()
+setFunctions = changeFunctions . const
 
 --

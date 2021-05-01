@@ -8,8 +8,8 @@ import Utils (getFunId)
 
 -- Auxiliary
 
-functionFromTuple :: (Title, FunType) -> (FunId, FunSignature)
-functionFromTuple (ft, rt) = (getFunId ft, FunSignature ft rt)
+functionFromTuple :: ([Bare TitlePart], FunType) -> (FunId, FunSignature)
+functionFromTuple (ft, rt) = (getFunId ft, FunSignature (Title () ft) rt)
 
 binaryType :: FunType
 binaryType = Operator (\[tM, tN] -> if tM == FloatT || tN == FloatT then FloatT else IntT)
@@ -26,43 +26,43 @@ builtInOperators :: [(FunId, FunSignature)]
 builtInOperators = map functionFromTuple
     [
         (
-            [TitleParam ["m"] FloatT, TitleWords ["plus"], TitleParam ["n"] FloatT],
+            [TitleParam () ["m"] FloatT, TitleWords () ["plus"], TitleParam () ["n"] FloatT],
             binaryType
         ),
         (
-            [TitleParam ["m"] FloatT, TitleWords ["times"], TitleParam ["n"] FloatT],
+            [TitleParam () ["m"] FloatT, TitleWords () ["times"], TitleParam () ["n"] FloatT],
             binaryType
         ),
         (
-            [TitleParam ["m"] FloatT, TitleWords ["minus"], TitleParam ["n"] FloatT],
+            [TitleParam () ["m"] FloatT, TitleWords () ["minus"], TitleParam () ["n"] FloatT],
             binaryType
         ),
         (
-            [TitleParam ["m"] FloatT, TitleWords ["divided", "by"], TitleParam ["n"] FloatT],
+            [TitleParam () ["m"] FloatT, TitleWords () ["divided", "by"], TitleParam () ["n"] FloatT],
             binaryType
         ),
         (
-            [TitleParam ["m"] FloatT, TitleWords ["is", "less", "than"], TitleParam ["n"] FloatT],
+            [TitleParam () ["m"] FloatT, TitleWords () ["is", "less", "than"], TitleParam () ["n"] FloatT],
             relationalType
         ),
         (
-            [TitleParam ["m"] FloatT, TitleWords ["is", "less", "than", "or", "equal", "to"], TitleParam ["n"] FloatT],
+            [TitleParam () ["m"] FloatT, TitleWords () ["is", "less", "than", "or", "equal", "to"], TitleParam () ["n"] FloatT],
             relationalType
         ),
         (
-            [TitleParam ["m"] FloatT, TitleWords ["is", "greater", "than"], TitleParam ["n"] FloatT],
+            [TitleParam () ["m"] FloatT, TitleWords () ["is", "greater", "than"], TitleParam () ["n"] FloatT],
             relationalType
         ),
         (
-            [TitleParam ["m"] FloatT, TitleWords ["is", "greater", "than", "or", "equal", "to"], TitleParam ["n"] FloatT],
+            [TitleParam () ["m"] FloatT, TitleWords () ["is", "greater", "than", "or", "equal", "to"], TitleParam () ["n"] FloatT],
             relationalType
         ),
         (
-            [TitleWords ["the", "element", "of"], TitleParam ["l"] (ListT $ AnyT "a"), TitleWords ["at", "position"], TitleParam ["m"] IntT],
+            [TitleWords () ["the", "element", "of"], TitleParam () ["l"] (ListT $ AnyT "a"), TitleWords () ["at", "position"], TitleParam () ["m"] IntT],
             Operator (\[ListT t, IntT] -> t)
         ),
         (
-            [TitleParam ["n"] (ListT $ AnyT "a"), TitleWords ["appended", "to"], TitleParam ["m"] (ListT $ AnyT "a")],
+            [TitleParam () ["n"] (ListT $ AnyT "a"), TitleWords () ["appended", "to"], TitleParam () ["m"] (ListT $ AnyT "a")],
             Operator (\[ListT t1, ListT t2] -> if t1 == FloatT || t2 == FloatT then ListT FloatT else ListT t1)
         )
     ]
@@ -71,7 +71,7 @@ builtInProcedures :: [(FunId, FunSignature)]
 builtInProcedures = map functionFromTuple
     [
         (
-            [TitleWords ["print"], TitleParam ["v"] $ AnyT "a"],
+            [TitleWords () ["print"], TitleParam () ["v"] $ AnyT "a"],
             Procedure
         )
     ]

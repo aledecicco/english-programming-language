@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 1fb4c0c2f90c5c31609a90696f4527c9c3c27596488f27e3e2af00c483b74093
+-- hash: 5c7bf24f5d1f40d8259f81ef2f49469458e903a1efef776b7305eccd0751f9ed
 
 name:           english-programming-language
 version:        0.1.0.0
@@ -20,8 +20,8 @@ library
   exposed-modules:
       AST
       BuiltInDefs
-      Env
       Errors
+      Location
       PrettyPrinter
       Utils
       FuzzyParser

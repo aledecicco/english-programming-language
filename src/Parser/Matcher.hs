@@ -15,10 +15,10 @@ import AST
 -- Auxiliary
 
 -- Returns whether a list of words is a prefix of the given matchable, and the unmatched sufix
-isPrefix :: [String] -> [MatchablePart] -> (Bool, [MatchablePart])
+isPrefix :: [String] -> [Annotated MatchablePart] -> (Bool, [Annotated MatchablePart])
 isPrefix [] ms = (True, ms)
 isPrefix _ [] = (False, [])
-isPrefix (t:ts) ms@(WordP w : ps)
+isPrefix (t:ts) ms@(WordP _ w : ps)
     | t == w = isPrefix ts ps
     | otherwise = (False, ms)
 isPrefix _ ms = (False, ms)
@@ -33,10 +33,10 @@ splits (x:xs) = splits' [x] xs
         splits' l (r:rs) = (l, r:rs) : splits' (l++[r]) rs
 
 -- Returns all the ways a list of matchables can be used to fill the gaps (parameters) of a title
-sepByTitle :: [MatchablePart] -> Title -> [[[MatchablePart]]]
+sepByTitle :: [Annotated MatchablePart] -> [TitlePart a] -> [[[Annotated MatchablePart]]]
 sepByTitle [] [] = [[]]
 sepByTitle _ [] = []
-sepByTitle ps (TitleWords ws : ts) =
+sepByTitle ps (TitleWords _ ws : ts) =
     let (isP, rest) = ws `isPrefix` ps
     in if isP then sepByTitle rest ts else []
 sepByTitle ps (TitleParam {} : ts) = do
@@ -49,25 +49,27 @@ sepByTitle ps (TitleParam {} : ts) = do
 
 -- Auxiliary matchers
 
-matchAsName :: [MatchablePart] -> ParserEnv (Maybe Name)
-matchAsName [WordP w] = return $ Just [w]
-matchAsName (WordP w : ps) = do
-    ws <- matchAsName ps
-    return $ (w:) <$> ws
+matchAsName :: [Annotated MatchablePart] -> ParserEnv (Maybe Name)
+matchAsName [WordP _ w] = return $ Just [w]
+matchAsName (WordP _ w : ps) = do
+    r <- matchAsName ps
+    case r of
+        Just ws -> return $ Just (w : ws)
+        Nothing -> return Nothing
 matchAsName _ = return Nothing
 
 -- Matches a list of matchables as a call to one of the given functions
-matchAsFunctionCall :: [MatchablePart] -> [FunSignature] -> ParserEnv (Maybe (FunId, [Value]))
+matchAsFunctionCall :: [Annotated MatchablePart] -> [FunSignature] -> ParserEnv (Maybe (FunId, [Annotated Value]))
 matchAsFunctionCall ps fs = do
     firstNotNull matchAsFunctionCall' fs
     where
-        matchAsFunctionCall' :: FunSignature -> ParserEnv (Maybe (FunId, [Value]))
-        matchAsFunctionCall' (FunSignature ft _) = do
+        matchAsFunctionCall' :: FunSignature -> ParserEnv (Maybe (FunId, [Annotated Value]))
+        matchAsFunctionCall' (FunSignature (Title _ ft) _) = do
             let posParams = sepByTitle ps ft
                 fid = getFunId ft
             r <- firstNotNull matchAllParams posParams
             return $ (fid, ) <$> r
-        matchAllParams :: [[MatchablePart]] -> ParserEnv (Maybe [Value])
+        matchAllParams :: [[Annotated MatchablePart]] -> ParserEnv (Maybe [Annotated Value])
         matchAllParams = allOrNone matchAsValue
 
 --
@@ -75,41 +77,48 @@ matchAsFunctionCall ps fs = do
 
 -- Value matchers
 
-matchAsPrimitive :: [MatchablePart] -> ParserEnv (Maybe Value)
-matchAsPrimitive [IntP n] = return $ Just (IntV n)
-matchAsPrimitive [FloatP n] = return $ Just (FloatV n)
-matchAsPrimitive [CharP c] = return $ Just (CharV c)
-matchAsPrimitive [StringP s] = return $ Just (ListV CharT $ map CharV s)
-matchAsPrimitive [WordP w]
-    | w == "true" = return $ Just (BoolV True)
-    | w == "false" = return $ Just (BoolV False)
+matchAsPrimitive :: [Annotated MatchablePart] -> ParserEnv (Maybe (Annotated Value))
+matchAsPrimitive [IntP ann n] = return $ Just (IntV ann n)
+matchAsPrimitive [FloatP ann n] = return $ Just (FloatV ann n)
+matchAsPrimitive [CharP ann c] = return $ Just (CharV ann c)
+matchAsPrimitive [StringP ann@(ln, cn) s] =
+    let cns = [cn+1 ..]
+        lvs = zip s cns
+        locateC = \(c, cn') -> CharV (ln, cn') c
+    in return $ Just (ListV ann CharT $ map locateC lvs)
+matchAsPrimitive [WordP ann w]
+    | w == "true" = return $ Just (BoolV ann True)
+    | w == "false" = return $ Just (BoolV ann False)
 matchAsPrimitive _ = return Nothing
 
-matchAsVariable :: [MatchablePart] -> ParserEnv (Maybe Value)
+-- ToDo: refactor
+matchAsVariable :: [Annotated MatchablePart] -> ParserEnv (Maybe (Annotated Value))
 matchAsVariable ps = do
+    let ann = getFirstAnnotation ps
     r <- matchAsName ps
     case r of
         Just n -> do
             isDef <- variableIsDefined n
-            matchAsVariable' n isDef
+            matchAsVariable' n isDef ann
         Nothing -> return Nothing
     where
-        matchAsVariable' :: Name -> Bool -> ParserEnv (Maybe Value)
-        matchAsVariable' n True = return $ Just (VarV n)
-        matchAsVariable' ("the":n) False = do
+        matchAsVariable' :: Name -> Bool -> Location -> ParserEnv (Maybe (Annotated Value))
+        matchAsVariable' n True ann = return $ Just (VarV ann n)
+        matchAsVariable' ("the":n) False ann = do
             isDef <- variableIsDefined n
             if isDef
-                then return $ Just (VarV n)
+                then return $ Just (VarV ann n)
                 else return Nothing
-        matchAsVariable' _ _ = return Nothing
+        matchAsVariable' _ _ _ = return Nothing
 
-matchAsOperatorCall :: [MatchablePart] -> ParserEnv (Maybe Value)
+matchAsOperatorCall :: [Annotated MatchablePart] -> ParserEnv (Maybe (Annotated Value))
 matchAsOperatorCall ps = do
+    let ann = getFirstAnnotation ps
     operators <- getOperatorSignatures
     r <- matchAsFunctionCall ps operators
-    return $ uncurry OperatorCall <$> r
+    return $ uncurry (OperatorCall ann) <$> r
 
-matchAsValue :: [MatchablePart] -> ParserEnv (Maybe Value)
+matchAsValue :: [Annotated MatchablePart] -> ParserEnv (Maybe (Annotated Value))
 matchAsValue [ParensP ps] = matchAsValue ps
 matchAsValue ps = firstNotNull (\matcher -> matcher ps) [matchAsPrimitive, matchAsVariable, matchAsOperatorCall]
 
@@ -118,24 +127,26 @@ matchAsValue ps = firstNotNull (\matcher -> matcher ps) [matchAsPrimitive, match
 
 -- Sentence matchers
 
-matchAsProcedureCall :: [MatchablePart] -> ParserEnv (Maybe Sentence)
+matchAsProcedureCall :: [Annotated MatchablePart] -> ParserEnv (Maybe (Annotated Sentence))
 matchAsProcedureCall ps = do
     procedures <- getProcedureSignatures
     r <- matchAsFunctionCall ps procedures
     matchAsProcedureCall' ps procedures r
     where
         -- Takes the result of matching as a function call, tries again if necessary, and returns a procedure call
-        matchAsProcedureCall' :: [MatchablePart] -> [FunSignature] -> Maybe (FunId, [Value]) -> ParserEnv (Maybe Sentence)
-        matchAsProcedureCall' (WordP (x:xs) : ps) procedures Nothing
+        matchAsProcedureCall' :: [Annotated MatchablePart] -> [FunSignature] -> Maybe (FunId, [Annotated Value]) -> ParserEnv (Maybe (Annotated Sentence))
+        matchAsProcedureCall' (WordP fAnn (x:xs) : ps) procedures Nothing
             | isUpper x = do
-                let lowerCaseTitle = WordP (toLower x : xs) : ps
+                let lowerCaseTitle = WordP fAnn (toLower x : xs) : ps
                 r <- matchAsFunctionCall lowerCaseTitle procedures
-                return $ uncurry ProcedureCall <$> r
+                return $ uncurry (ProcedureCall fAnn) <$> r
             | otherwise = return Nothing
-        matchAsProcedureCall' _ _ r = return $ uncurry ProcedureCall <$> r
+        matchAsProcedureCall' ps _ r = do
+            let ann = getFirstAnnotation ps
+            return $ uncurry (ProcedureCall ann) <$> r
 
 
-matchAsSentence :: [MatchablePart] -> ParserEnv (Maybe Sentence)
+matchAsSentence :: [Annotated MatchablePart] -> ParserEnv (Maybe (Annotated Sentence))
 matchAsSentence [ParensP ps] = matchAsSentence ps
 matchAsSentence ps = matchAsProcedureCall ps
 

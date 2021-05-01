@@ -98,7 +98,7 @@ Tells the function to return a specific value.
 Any procedure can be used as a sentence, filling in with values the gaps where function parameters are.
 
 ### Control flow
-These sentences all have something in common: they contain other sentences. All of them have a simple form and a block form, both of them sharing the same header.
+These sentences all have something in common: they contain other sentences. All of them have a simple form and a block form, both sharing the same header.
 
 Sentences in their simple form can only have one sentence inside them, and it can only be a variable declaration, a result statement or a procedure call. The header must end in a comma, after which comes the contained sentence.
 
@@ -112,7 +112,9 @@ If %boolean value%, %basic sentence%.
 Block if:
 ```
 If %boolean value%:
-    [%sentence%]
+    %sentence 1%
+    %sentence 2%
+    ...
 ```
 
 Simple if-else:
@@ -123,9 +125,13 @@ If %boolean value%, %basic sentence%, otherwise %basic sentence%.
 Block if-else:
 ```
 If %boolean value%:
-    [%sentence%]
+    %sentence 1%
+    %sentence 2%
+    ...
 Otherwise:
-    [%sentence%]
+    %sentence 3%
+    %sentence 4%
+    ...
 ```
 The `else` statement must come after an `if` statement. They must both have the same form, and if they are blocks they have to be defined at the same indentation level
 
@@ -137,7 +143,9 @@ For each %variable name% in %list value%, %basic sentence%.
 Block for each:
 ```
 For each %variable name% in %list value%:
-    [%sentence%]
+    %sentence 1%
+    %sentence 2%
+    ...
 ```
 
 Simple until:
@@ -148,7 +156,9 @@ Until %boolean value%, %basic sentence%.
 Block until:
 ```
 Until %boolean value%:
-    [%sentence%]
+    %sentence 1%
+    %sentence 2%
+    ...
 ```
 
 Simple while:
@@ -159,7 +169,9 @@ While %boolean value%, %basic sentence%.
 Block while:
 ```
 While %boolean value%:
-    [%sentence%]
+    %sentence 1%
+    %sentence 2%
+    ...
 ```
 
 ### Examples
@@ -198,16 +210,16 @@ Otherwise:
 
 ## Values
 
-Values can be primitives, lists, variables, and operator calls. Available primitives are booleans, numbers, and floats.
+Values can be primitives, lists, variables, and operator calls. Available primitives are booleans, numbers, and whole numbers.
 
 ### Booleans
 The two possible values are refered to with the words `true` and `false`.
 
-### Numbers
-Numbers are used writing the numeric values, not the words.
+### Whole numbers
+Whole numbers are used writing the numeric values, not the words.
 
-### Floats
-Floats are written with a dot separating the decimal part. If a function takes a float and a number is given, it is converted to float implicitly.
+### Number
+Numbers are written with a dot separating the decimal part. If a function takes a number and a whole number is given, it is converted to a number implicitly.
 
 ### Chars
 Char literals are written between single quotes.
