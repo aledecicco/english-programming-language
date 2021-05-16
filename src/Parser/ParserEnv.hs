@@ -1,4 +1,4 @@
-module ParserEnv ( module ParserEnv, setCurrentLocation, withLocation, initialLocation ) where
+module ParserEnv ( module ParserEnv, setCurrentLocation, withLocation, initialLocation, getLocation, getFirstLocation ) where
 
 import Data.List ( find )
 import Data.Bifunctor ( first, second )

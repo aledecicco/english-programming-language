@@ -32,10 +32,14 @@ translateState prog (fs, _) = setFunctions $ mapMaybe (translateFunction prog) f
 variablesFromTitle :: [Bare TitlePart] -> [Bare Value] -> EvaluatorEnv ([(Name, Bare Value)], [(Name, Int)])
 variablesFromTitle _ [] = return ([], [])
 variablesFromTitle (TitleWords _ _ : ts) vs = variablesFromTitle ts vs
-variablesFromTitle (TitleParam _ pn RefT : ts) ((VarV _ vn):vs) = do
+variablesFromTitle (TitleParam _ pn (RefT _) : ts) ((VarV _ vn):vs) = do
     (vars, refs) <- variablesFromTitle ts vs
     ~(Just addr) <- getVariableAddress vn
     return (vars, (pn, addr):refs)
+variablesFromTitle (TitleParam _ pn _ : ts) (var@(VarV _ vn):vs) = do
+    (vars, refs) <- variablesFromTitle ts vs
+    val <- evaluateValue var
+    return ((vn, val):vars, refs)
 variablesFromTitle (TitleParam _ pn _ : ts) (v:vs) = do
     (vars, refs) <- variablesFromTitle ts vs
     return ((pn, v):vars, refs)
@@ -44,6 +48,10 @@ variablesFromTitle (TitleParam _ pn _ : ts) (v:vs) = do
 
 
 -- Evaluators
+
+evaluateValueExceptReference :: Value a -> EvaluatorEnv (Bare Value)
+evaluateValueExceptReference v@(VarV _ _) = return $ void v
+evaluateValueExceptReference v = evaluateValue v
 
 evaluateValue :: Value a -> EvaluatorEnv (Bare Value)
 evaluateValue (VarV _ vn) = do
@@ -55,13 +63,13 @@ evaluateValue (ListV _ t es) = do
     es' <- mapM evaluateValue es
     return $ ListV () t es'
 evaluateValue (OperatorCall _ fid vs) = do
-    vs' <- mapM evaluateValue vs
+    vs' <- mapM evaluateValueExceptReference vs
     evaluateOperator fid vs'
 evaluateValue v = return $ void v
 
-evaluateSentenceLines :: [Annotated Sentence] -> EvaluatorEnv (Maybe (Bare Value))
-evaluateSentenceLines [] = return Nothing
-evaluateSentenceLines ss = firstNotNull (\s -> setCurrentLocation (getAnnotation s) >> evaluateSentence s) ss
+evaluateSentences :: [Annotated Sentence] -> EvaluatorEnv (Maybe (Bare Value))
+evaluateSentences [] = return Nothing
+evaluateSentences ss = firstNotNull (`withLocation` evaluateSentence) ss
 
 evaluateSentence :: Annotated Sentence -> EvaluatorEnv (Maybe (Bare Value))
 evaluateSentence (VarDef _ vNs v) = do
@@ -71,25 +79,25 @@ evaluateSentence (VarDef _ vNs v) = do
 evaluateSentence (If _ bv ls) = do
     (BoolV _ v') <- evaluateValue bv
     if v'
-        then evaluateSentenceLines ls
+        then evaluateSentences ls
         else return Nothing
 evaluateSentence (IfElse _ v lsT lsF) = do
     (BoolV _ v') <- evaluateValue v
     if v'
-        then evaluateSentenceLines lsT
-        else evaluateSentenceLines lsF
+        then evaluateSentences lsT
+        else evaluateSentences lsF
 evaluateSentence (ForEach _ iN lv ls) = do
     (ListV _ _ v') <- evaluateValue lv
-    let iterateLoop = (\v -> setVariableValue iN v >> evaluateSentenceLines ls)
+    let iterateLoop = (\v -> setVariableValue iN v >> evaluateSentences ls)
     r <- firstNotNull iterateLoop v'
-    removeVariableValue iN
+    removeVariableValue iN -- ToDo: iterators generate memory leaks because they are never freed
     return r
 evaluateSentence s@(Until _ bv ls) = do
     (BoolV _ v') <- evaluateValue bv
     if v'
         then return Nothing
         else  do
-            r <- evaluateSentenceLines ls
+            r <- evaluateSentences ls
             case r of
                 (Just v'') -> return $ Just v''
                 Nothing -> evaluateSentence s
@@ -97,7 +105,7 @@ evaluateSentence s@(While _ bv ls) = do
     (BoolV _ v') <- evaluateValue bv
     if v'
         then do
-            r <- evaluateSentenceLines ls
+            r <- evaluateSentences ls
             case r of
                 (Just v'') -> return $ Just v''
                 Nothing -> evaluateSentence s
@@ -106,7 +114,7 @@ evaluateSentence (Result _ v) = do
     v' <- evaluateValue v
     return $ Just v'
 evaluateSentence (ProcedureCall _ fid vs) = do
-    vs' <- mapM evaluateValue vs
+    vs' <- mapM evaluateValueExceptReference vs
     evaluateProcedure fid vs'
     return Nothing
 
@@ -128,7 +136,7 @@ evaluateUserDefinedFunction fid vs = do
     case r of
         Just (FunCallable (Title _ t) ss) -> do
             (vars, refs) <- variablesFromTitle t (map void vs)
-            withVariables (evaluateSentenceLines ss) vars refs
+            withVariables (evaluateSentences ss) vars refs
         Nothing -> throw $ functionNotDefinedError fid
 
 evaluateProgram :: Program -> ParserData -> IO EvaluatorData

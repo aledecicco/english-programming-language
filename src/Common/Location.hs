@@ -7,9 +7,15 @@ import AST
 --
 
 
--- Definition
+--
 
 type LocationT m r = StateT Location m r
+
+getLocation :: Foldable a => a b -> b
+getLocation = head . foldr (:) []
+
+getFirstLocation :: Foldable a => [a b] -> b
+getFirstLocation = getLocation . head
 
 initialLocation :: Location
 initialLocation = (0, 0)
@@ -21,7 +27,7 @@ setCurrentLocation :: Monad m => Location -> LocationT m ()
 setCurrentLocation = put
 
 withLocation :: (Monad m, Foldable a) => Annotated a -> (Annotated a -> LocationT m b) -> LocationT m b
-withLocation a f = setCurrentLocation (getAnnotation a) >> f a
+withLocation a f = setCurrentLocation (getLocation a) >> f a
 
 runLocationT :: LocationT m a -> Location -> m (a, Location)
 runLocationT = runStateT

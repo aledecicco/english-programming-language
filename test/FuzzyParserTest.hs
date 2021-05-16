@@ -1,5 +1,6 @@
 module FuzzyParserTest ( tests ) where
 
+import Control.Monad ( void )
 import Test.Tasty ( testGroup, TestTree )
 import Test.Tasty.HUnit ( HasCallStack, testCase, assertFailure, Assertion, (@?=) )
 
@@ -17,6 +18,13 @@ expectedResult p s r =
     case runFuzzyParser p s of
         Left e -> assertFailure $ "Parser failed, the error was:\n" ++ e
         Right r' -> r' @?= r
+
+-- Asserts that a parser action yields a specific result ignoring annotations with the given environment
+expectedBareResult :: (HasCallStack, Eq (a ()), Show (a ()), Functor a) => FuzzyParser (a b) -> String -> a () -> Assertion
+expectedBareResult p s r =
+    case runFuzzyParser p s of
+        Left e -> assertFailure $ "Parser failed, the error was:\n" ++ e
+        Right r' -> void r' @?= r
 
 -- Asserts that a parser succeeds when parsing a given string
 expectedSuccess :: HasCallStack => FuzzyParser a -> String -> Assertion
@@ -113,51 +121,57 @@ typeNameTests = testGroup "Type name"
     [
         testCase "Whole number" $
             expectedResult
-                (typeName False)
+                (baseType False)
                 "whole number"
                 IntT,
 
         testCase "Whole numbers" $
             expectedResult
-                (typeName True)
+                (baseType True)
                 "whole numbers"
                 IntT,
 
         testCase "List" $
             expectedResult
-                (typeName False)
+                (baseType False)
                 "list of whole numbers"
                 (ListT IntT),
 
         testCase "List of lists" $
             expectedResult
-                (typeName False)
+                (baseType False)
                 "list of lists of whole numbers"
                 (ListT (ListT IntT)),
 
+        testCase "Reference" $
+            expectedResult
+                referenceType
+                "reference to a list of numbers"
+                (RefT (ListT FloatT)),
+
         testCase "List without element" $
             expectedFailure
-                (typeName False)
+                (baseType False)
                 "list",
 
         testCase "List of lists without element" $
             expectedFailure
-                (typeName False)
+                (baseType False)
                 "list of lists",
 
         testCase "Whole numbers without plural" $
             expectedFailure
-                (typeName True)
+                (baseType True)
                 "whole number",
 
         testCase "Whole number with plural" $
             expectedFailure
-                (typeName False)
+                (baseType False)
                 "whole numbers",
 
         testCase "List without plural element" $
             expectedFailure
-                (typeName False)
+                (baseType False)
                 "list of whole number"
     ]
 
@@ -347,9 +361,9 @@ seriesTests = testGroup "Series"
             (series valueMatchable)
             "11, 12 and 13, and 14"
             [
-                ValueM [IntP 11],
-                ValueM [IntP 12, WordP "and", IntP 13],
-                ValueM [IntP 14]
+                ValueM (1,0) [IntP (1,0) 11],
+                ValueM (1,4) [IntP (1,4) 12, WordP (1,7) "and", IntP (1,11) 13],
+                ValueM (1,19) [IntP (1,19) 14]
             ],
 
         testCase "Without last comma" $
@@ -406,12 +420,12 @@ functionDefinitionTests = testGroup "Function definition"
             expectedResult
                 functionDefinition
                 "A number equal to the double of a number (m):\n  Let r be m times 2.\n  The result is r."
-                (FunDef
-                    (Line 1 [TitleWords ["the", "double", "of"], TitleParam ["m"] FloatT])
+                (FunDef (1,0)
+                    (Title (1,18) [TitleWords (1,18) ["the", "double", "of"], TitleParam (1,32) ["m"] FloatT])
                     (Just FloatT)
                     [
-                        Line 2 (VarDef [["r"]] (ValueM [WordP "m", WordP "times", IntP 2])),
-                        Line 3 (Result (ValueM [WordP "r"]))
+                        VarDef (2,2) [["r"]] (ValueM (2,11) [WordP (2,11) "m", WordP (2,13) "times", IntP (2,19) 2]),
+                        Result (3,2) (ValueM (3,16) [WordP (3,16) "r"])
                     ]
                 ),
 
@@ -419,11 +433,11 @@ functionDefinitionTests = testGroup "Function definition"
             expectedResult
                 functionDefinition
                 "To double a number (m):\n  Let r be m times 2."
-                (FunDef
-                    (Line 1 [TitleWords ["double"], TitleParam ["m"] FloatT])
+                (FunDef (1,0)
+                    (Title (1,3) [TitleWords (1,3) ["double"], TitleParam (1,10) ["m"] FloatT])
                     Nothing
                     [
-                        Line 2 (VarDef [["r"]] (ValueM [WordP "m", WordP "times", IntP 2]))
+                        VarDef (2,2) [["r"]] (ValueM (2,11) [WordP (2,11) "m", WordP (2,13) "times", IntP (2,19) 2])
                     ]
                 ),
 
@@ -431,12 +445,12 @@ functionDefinitionTests = testGroup "Function definition"
         testCase "Predicate" $
             expectedResult
                 functionDefinition
-                "Whether a number (m) is whole:\n  The result is true."
-                (FunDef
-                    (Line 1 [TitleParam ["m"] FloatT, TitleWords ["is", "whole"]])
+                "Whether a number (m) is whole:\n  The result is false."
+                (FunDef (1,0)
+                    (Title (1,8) [TitleParam (1,8) ["m"] FloatT, TitleWords (1,21) ["is", "whole"]])
                     (Just BoolT)
                     [
-                        Line 2 (Result (ValueM [WordP "true"]))
+                        Result (2,2) (ValueM (2,16) [WordP (2,16) "false"])
                     ]
                 ),
 
@@ -458,26 +472,26 @@ titleTests = testGroup "Title"
             expectedResult
                 title
                 "Function definition"
-                (Line 1 [TitleWords ["Function", "definition"]]),
+                (Title (1,0) [TitleWords (1,0) ["Function", "definition"]]),
 
         testCase "Many parts" $
             expectedResult
                 title
                 "Definition with a number (m) and a number (n)"
-                (Line 1 [
-                    TitleWords ["Definition", "with"],
-                    TitleParam ["m"] FloatT,
-                    TitleWords ["and"],
-                    TitleParam ["n"] FloatT
+                (Title (1,0) [
+                    TitleWords (1,0) ["Definition", "with"],
+                    TitleParam (1,16) ["m"] FloatT,
+                    TitleWords (1,29) ["and"],
+                    TitleParam (1,33) ["n"] FloatT
                 ]),
 
         testCase "Consecutive arguments" $
             expectedResult
                 title
                 "Definition with a number (m) a number (n)"
-                (Line 1 [
-                    TitleWords ["Definition", "with"],
-                    TitleParam ["m"] FloatT
+                (Title (1,0) [
+                    TitleWords (1,0) ["Definition", "with"],
+                    TitleParam (1,16) ["m"] FloatT
                 ]),
 
         testCase "Missing name" $
@@ -488,50 +502,50 @@ titleWordsTests :: TestTree
 titleWordsTests = testGroup "Title words"
     [
         testCase "Words" $
-            expectedResult
+            expectedBareResult
                 titleWords
                 "Function definition"
-                (TitleWords ["Function", "definition"]),
+                (TitleWords () ["Function", "definition"]),
 
         testCase "Words followed by reserved word" $
-            expectedResult
+            expectedBareResult
                 titleWords
                 "Function definition be"
-                (TitleWords ["Function", "definition", "be"]),
+                (TitleWords () ["Function", "definition", "be"]),
 
         testCase "Words followed by parameter" $
-            expectedResult
+            expectedBareResult
                 titleWords
                 "Function definition a number"
-                (TitleWords ["Function", "definition"]),
+                (TitleWords () ["Function", "definition"]),
 
         testCase "Reserved word first" $
-            expectedResult
+            expectedBareResult
                 titleWords
                 "Be function definition"
-                (TitleWords ["Be", "function", "definition"])
+                (TitleWords () ["Be", "function", "definition"])
     ]
 
 titleParamTests :: TestTree
 titleParamTests = testGroup "Title parameter"
     [
         testCase "Named" $
-            expectedResult
+            expectedBareResult
                 (titleParam True)
                 "A number (m)"
-                (TitleParam ["m"] FloatT),
+                (TitleParam () ["m"] FloatT),
 
         testCase "Followed by words" $
-            expectedResult
+            expectedBareResult
                 (titleParam True)
                 "A number (m) function definition"
-                (TitleParam ["m"] FloatT),
+                (TitleParam () ["m"] FloatT),
 
         testCase "Two parameters" $
-            expectedResult
+            expectedBareResult
                 (titleParam True)
                 "A number (m) a number (n)"
-                (TitleParam ["m"] FloatT),
+                (TitleParam () ["m"] FloatT),
 
         testCase "Missing name" $
             expectedFailure (titleParam True) "A number",
@@ -593,17 +607,17 @@ valueTests :: TestTree
 valueTests = testGroup "Value"
     [
         testCase "List" $
-            expectedResult
+            expectedBareResult
                 value
                 "a list of numbers containing a, b, and c"
-                (ListV FloatT [ValueM [WordP "a"], ValueM [WordP "b"], ValueM [WordP "c"]]),
+                (ListV () FloatT [ValueM () [WordP () "a"], ValueM () [WordP () "b"], ValueM () [WordP () "c"]]),
 
 
         testCase "Empty list" $
-            expectedResult
+            expectedBareResult
                 value
                 "a list of numbers"
-                (ListV FloatT [])
+                (ListV () FloatT [])
     ]
 
 --

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 5c7bf24f5d1f40d8259f81ef2f49469458e903a1efef776b7305eccd0751f9ed
+-- hash: 7a812315cd346b4281cdfa1443df25378299c6f53b0f01113ac3abcd114ecc84
 
 name:           english-programming-language
 version:        0.1.0.0
@@ -25,7 +25,6 @@ library
       PrettyPrinter
       Utils
       FuzzyParser
-      Matcher
       ParserEnv
       Solver
       BuiltInEval
@@ -69,7 +68,6 @@ test-suite english-programming-language-test
   other-modules:
       EvaluatorTest
       FuzzyParserTest
-      MatcherTest
       ParserTestUtils
       SolverTest
       Paths_english_programming_language

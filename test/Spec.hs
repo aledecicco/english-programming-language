@@ -1,7 +1,6 @@
-import Test.Tasty ( defaultMain, testGroup, TestTree )
+import Test.Tasty ( defaultMainWithRerun, testGroup, TestTree )
 
 import qualified FuzzyParserTest
-import qualified MatcherTest
 import qualified SolverTest
 import qualified EvaluatorTest
 
@@ -11,7 +10,7 @@ import qualified EvaluatorTest
 --
 
 main :: IO ()
-main = defaultMain tests
+main = defaultMainWithRerun tests
 
 tests :: TestTree
-tests = testGroup "Tests" [FuzzyParserTest.tests, MatcherTest.tests, SolverTest.tests, EvaluatorTest.tests]
+tests = testGroup "Tests" [FuzzyParserTest.tests, SolverTest.tests, EvaluatorTest.tests]

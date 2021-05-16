@@ -49,8 +49,8 @@ name :: FuzzyParser Name
 name = (some . try) identifier <?> "name"
 
 -- Parses a type by its name
-typeName :: Bool -> FuzzyParser Type
-typeName False =
+baseType :: Bool -> FuzzyParser Type
+baseType False =
     (word "whole" >> word "number" >> return IntT)
     <|> (word "number" >> return FloatT)
     <|> (word "boolean" >> return BoolT)
@@ -59,10 +59,10 @@ typeName False =
     <|> (do
             word "list"
             word "of"
-            eT <- typeName True
+            eT <- baseType True
             return $ ListT eT)
     <?> "singular type"
-typeName True =
+baseType True =
     (word "whole" >> word "numbers" >> return IntT)
     <|> (word "numbers" >> return FloatT)
     <|> (word "booleans" >> return BoolT)
@@ -71,9 +71,18 @@ typeName True =
     <|> (do
             word "lists"
             word "of"
-            eT <- typeName True
+            eT <- baseType True
             return $ ListT eT)
     <?> "plural type"
+
+referenceType :: FuzzyParser Type
+referenceType = (do
+    word "reference"
+    word "to"
+    word "a"
+    RefT <$> baseType False)
+    <?> "reference type"
+
 
 -- Parses any word and checks that it's not reserved
 identifier :: FuzzyParser String
@@ -191,7 +200,7 @@ returnType =
     <|> (word "To" >> return Nothing)
     <|> do
         word "A"
-        rt <- typeName False
+        rt <- baseType False
         word "equal"
         word "to"
         return $ Just rt
@@ -218,7 +227,7 @@ titleParam :: Bool -> FuzzyParser (Annotated TitlePart)
 titleParam isFirst = do
     ann <- getCurrentLocation
     if isFirst then firstWord "a" else word "a"
-    t <- typeName False
+    t <- referenceType <|> baseType False
     a <- parens name <?> "parameter name"
     return $ TitleParam ann a t
 
@@ -358,7 +367,7 @@ listValue = do
     ann <- getCurrentLocation
     try $ word "a" >> word "list"
     word "of"
-    t <- typeName True
+    t <- baseType True
     l <- (word "containing" >> series valueMatchable) <|> return []
     return $ ListV ann t l
 

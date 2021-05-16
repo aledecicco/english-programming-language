@@ -146,15 +146,17 @@ setVariableValue vn v = do
 removeVariableValue :: Name -> EvaluatorEnv ()
 removeVariableValue = removeVariableAddress
 
--- ToDo: garbage collection of added values
 withVariables :: EvaluatorEnv a -> [(Name, Bare Value)] -> [(Name, Int)] -> EvaluatorEnv a
 withVariables action newVarVals newVarRefs = do
+    let newVarsLen = length newVarVals
     varRefs <- lift $ gets (\(_, vas, _, _) -> vas)
     changeReferences $ const []
     mapM_ (uncurry addVariableValue) newVarVals
     mapM_ (uncurry setVariableAddress) newVarRefs
     r <- action
     changeReferences $ const varRefs
+    changeValues $ drop newVarsLen
+    changePointer $ subtract newVarsLen
     return r
 
 --

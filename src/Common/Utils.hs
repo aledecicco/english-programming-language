@@ -8,8 +8,9 @@ import AST
 --
 
 
--- Functions
+--
 
+-- Gets a function's id from its title
 getFunId :: [TitlePart a] -> FunId
 getFunId ts = intercalate "_" (getFunIdParts ts)
     where
@@ -17,11 +18,6 @@ getFunId ts = intercalate "_" (getFunIdParts ts)
         getFunIdParts [] = []
         getFunIdParts (TitleWords _ w : ts) = w ++ getFunIdParts ts
         getFunIdParts (TitleParam {} : ts) = "%" : getFunIdParts ts
-
---
-
-
--- Actions
 
 -- Receives a computation and tries it on each element of a list, returning the first non-empty result
 firstNotNull :: Monad m => (a -> m (Maybe b)) -> [a] -> m (Maybe b)
