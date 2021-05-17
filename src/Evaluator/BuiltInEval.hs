@@ -5,6 +5,7 @@ module BuiltInEval where
 import Control.Monad.Trans.Class ( lift )
 import Control.Monad ( void )
 import Data.List ( intercalate )
+import Data.Maybe ( fromJust )
 
 import PrettyPrinter
 import EvaluatorEnv
@@ -19,27 +20,49 @@ import AST
 io :: IO () -> EvaluatorEnv ()
 io = lift . lift . lift
 
-binaryOperation :: (forall a. (Num a) => a -> a -> a) -> Value b -> Value b -> Bare Value
+binaryOperation :: (forall a. (Num a) => a -> a -> a) -> Value b -> Value c -> Bare Value
 binaryOperation op (IntV _ n) (FloatV _ f) = FloatV () $ fromIntegral n `op` f
 binaryOperation op (FloatV _ f) (IntV _ n) = FloatV () $ fromIntegral n `op` f
 binaryOperation op (FloatV _ f1) (FloatV _ f2) = FloatV () $ f1 `op` f2
 binaryOperation op (IntV _ n1) (IntV _ n2) = IntV () $ n1 `op` n2
 
-floatOperation :: (Float -> Float -> Float) -> Value a -> Value a -> Bare Value
+floatOperation :: (Float -> Float -> Float) -> Value a -> Value b -> Bare Value
 floatOperation op (IntV _ n) (FloatV _ f) = FloatV () $ fromIntegral n `op` f
 floatOperation op (FloatV _ f) (IntV _ n) = FloatV () $ fromIntegral n `op` f
 floatOperation op (FloatV _ f1) (FloatV _ f2) = FloatV () $ f1 `op` f2
 floatOperation op (IntV _ n1) (IntV _ n2) = FloatV () $ fromIntegral n1 `op` fromIntegral n2
 
-relationalOperation :: (forall a. (Ord a) => a -> a -> Bool) -> Value a -> Value a -> Bare Value
+listOperation :: ([Value a] -> [Value b] -> [Value c]) -> Value a -> Value b -> Bare Value
+listOperation op (ListV _ t1 vs1) (ListV _ _ vs2) = ListV () t1 $ map void (vs1 `op` vs2)
+
+relationalOperation :: (forall a. (Ord a) => a -> a -> Bool) -> Value a -> Value b -> Bare Value
 relationalOperation op (IntV _ n) (FloatV _ f) = BoolV () $ fromIntegral n `op` f
 relationalOperation op (FloatV _ f) (IntV _ n) = BoolV () $ fromIntegral n `op` f
 relationalOperation op (FloatV _ f1) (FloatV _ f2) = BoolV () $ f1 `op` f2
 relationalOperation op (IntV _ n1) (IntV _ n2) = BoolV () $ n1 `op` n2
 
+binaryModification :: (forall a. (Num a) => a -> a -> a) -> Value b -> Value c -> EvaluatorEnv ()
+binaryModification op (VarV _ vn) v = do
+    varV <- fromJust <$> getVariableValue vn
+    let newVal = binaryOperation op varV v
+    setVariableValue vn newVal
+
+floatModification :: (Float -> Float -> Float) -> Value b -> Value c -> EvaluatorEnv ()
+floatModification op (VarV _ vn) v = do
+    varV <- fromJust <$> getVariableValue vn
+    let newVal = floatOperation op varV v
+    setVariableValue vn newVal
+
+listModification :: ([Bare Value] -> [Bare Value] -> [Bare Value]) -> Value a -> Value b -> EvaluatorEnv ()
+listModification op (VarV _ vn) v = do
+    varV <- fromJust <$> getVariableValue vn
+    let newVal = listOperation op varV (void v)
+    setVariableValue vn newVal
+
 --
 
--- Evaluators
+
+-- Operator evaluators
 
 evaluateBuiltInOperator :: FunId -> [Value a] -> EvaluatorEnv (Bare Value)
 evaluateBuiltInOperator "%_plus_%" [v1, v2] = evaluatePlus v1 v2
@@ -51,13 +74,7 @@ evaluateBuiltInOperator "%_is_less_than_or_equal_to_%" [v1, v2] = evaluateIsLess
 evaluateBuiltInOperator "%_is_greater_than_%" [v1, v2] = evaluateIsGreaterThan v1 v2
 evaluateBuiltInOperator "%_is_greater_than_or_equal_to_%" [v1, v2] = evaluateIsGreaterThanOrEqualTo v1 v2
 evaluateBuiltInOperator "the_element_of_%_at_position_%" [l, v] = evaluateElementOfListAtPosition l v
-evaluateBuiltInOperator "%_appended_to_%" [l1, l2] = evaluateListAppendedToList l1 l2
-
-evaluateBuiltInProcedure :: FunId -> [Value a] -> EvaluatorEnv ()
-evaluateBuiltInProcedure "print_%" [v] = evaluatePrint v
-
-evaluatePrint :: Value a -> EvaluatorEnv ()
-evaluatePrint = io . putStr . ppValue
+evaluateBuiltInOperator "%_appended_to_%" [l1, l2] = evaluateAppendedTo l1 l2
 
 evaluatePlus :: Value a -> Value a -> EvaluatorEnv (Bare Value)
 evaluatePlus v1 v2 = return $ binaryOperation (+) v1 v2
@@ -80,8 +97,8 @@ evaluateElementOfListAtPosition (ListV _ _ xs) (IntV _ n)
     | n < length xs = return . void $ xs !! n
     | otherwise = throw $ outOfBoundsIndexError n
 
-evaluateListAppendedToList :: Value a -> Value a -> EvaluatorEnv (Bare Value)
-evaluateListAppendedToList (ListV _ t xs) (ListV _ _ ys) = return $ ListV () t (map void $ xs ++ ys)
+evaluateAppendedTo :: Value a -> Value a -> EvaluatorEnv (Bare Value)
+evaluateAppendedTo v1 v2 = return $ listOperation (++) v1 v2
 
 evaluateIsLessThan :: Value a -> Value a -> EvaluatorEnv (Bare Value)
 evaluateIsLessThan v1 v2 = return $ relationalOperation (<) v1 v2
@@ -94,5 +111,38 @@ evaluateIsGreaterThan v1 v2 = return $ relationalOperation (>) v1 v2
 
 evaluateIsGreaterThanOrEqualTo :: Value a -> Value a -> EvaluatorEnv (Bare Value)
 evaluateIsGreaterThanOrEqualTo v1 v2 = return $ relationalOperation (>=) v1 v2
+
+--
+
+
+-- Procedure evaluators
+
+evaluateBuiltInProcedure :: FunId -> [Value a] -> EvaluatorEnv ()
+evaluateBuiltInProcedure "print_%" [v] = evaluatePrint v
+evaluateBuiltInProcedure "add_%_to_%" [v1, v2] = evaluateAddTo v1 v2
+evaluateBuiltInProcedure "multiply_%_by_%" [v1, v2] = evaluateMultiplyBy v1 v2
+evaluateBuiltInProcedure "subtract_%_from_%" [v1, v2] = evaluateSubtractFrom v1 v2
+evaluateBuiltInProcedure "divide_%_by_%" [v1, v2] = evaluateDivideBy v1 v2
+evaluateBuiltInProcedure "append_%_to_%" [v1, v2] = evaluateAppendTo v1 v2
+
+evaluatePrint :: Value a -> EvaluatorEnv ()
+evaluatePrint = io . putStr . ppValue
+
+evaluateAddTo :: Value a -> Value a -> EvaluatorEnv ()
+evaluateAddTo v var = binaryModification (+) var v
+
+evaluateMultiplyBy :: Value a -> Value a -> EvaluatorEnv ()
+evaluateMultiplyBy = binaryModification (*)
+
+evaluateSubtractFrom :: Value a -> Value a -> EvaluatorEnv ()
+evaluateSubtractFrom v var = binaryModification (-) var v
+
+evaluateDivideBy :: Value a -> Value a -> EvaluatorEnv ()
+evaluateDivideBy _ (IntV _ 0) = throw divisionByZeroError
+evaluateDivideBy _ (FloatV _ 0) = throw divisionByZeroError
+evaluateDivideBy var v = floatModification (/) var v
+
+evaluateAppendTo :: Value a -> Value a -> EvaluatorEnv ()
+evaluateAppendTo v var = listModification (++) var v
 
 --

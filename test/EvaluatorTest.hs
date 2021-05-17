@@ -59,13 +59,13 @@ valueTests = testGroup "Value"
         testCase "Operator call" $
             expectedResult
                 (Just <$> evaluateValue (OperatorCall () "%_plus_%" [IntV () 2, IntV () 3]))
-               initialState
+               stateWithFunctions
                 (IntV () 5),
 
         testCase "Variable" $
             expectedResult
                 (setVariableValue ["x"] (IntV () 5) >> Just <$> evaluateValue (VarV () ["x"]))
-                initialState
+                stateWithFunctions
                 (IntV () 5)
 
     ]
@@ -103,6 +103,45 @@ sentenceTests = testGroup "sentence"
                 stateWithFunctions
                 (IntV () 3),
 
+        testCase "Add to" $
+            expectedResult
+                (
+                    evaluateSentences
+                        [
+                            VarDef (0,0) [["x"]] (IntV (0,0) 2),
+                            ProcedureCall (0,0) "add_%_to_%" [IntV (0,0) 3, VarV (0,0) ["x"]],
+                            Result (0,0) (VarV (0,0) ["x"])
+                        ]
+                )
+                stateWithFunctions
+                (IntV () 5),
+
+        testCase "Divide by" $
+            expectedResult
+                (
+                    evaluateSentences
+                        [
+                            VarDef (0,0) [["x"]] (IntV (0,0) 2),
+                            ProcedureCall (0,0) "divide_%_by_%" [VarV (0,0) ["x"], IntV (0,0) 2],
+                            Result (0,0) (VarV (0,0) ["x"])
+                        ]
+                )
+                stateWithFunctions
+                (FloatV () 1.0),
+
+        testCase "Append to" $
+            expectedResult
+                (
+                    evaluateSentences
+                        [
+                            VarDef (0,0) [["x"]] (ListV (0,0) FloatT [FloatV (0,0) 5.0, FloatV (0,0) 4.0]),
+                            ProcedureCall (0,0) "append_%_to_%" [ListV (0,0) IntT [IntV (0,0) 3, IntV (0,0) 2, IntV (0,0) 1], VarV (0,0) ["x"]],
+                            Result (0,0) (VarV (0,0) ["x"])
+                        ]
+                )
+                stateWithFunctions
+                (ListV () FloatT [FloatV () 5.0, FloatV () 4.0, IntV () 3, IntV () 2, IntV () 1]),
+
         testCase "Variable not in scope after if" $
             expectedFailure
                 (
@@ -111,6 +150,18 @@ sentenceTests = testGroup "sentence"
                             If (0,0)
                                 (BoolV (0,0) False)
                                 [VarDef (0,0) [["x"]] (IntV (0,0) 3)],
+                            Result (0,0) (VarV (0,0) ["x"])
+                        ]
+                )
+                stateWithFunctions,
+
+        testCase "Division by zero" $
+            expectedFailure
+                (
+                    evaluateSentences
+                        [
+                            VarDef (0,0) [["x"]] (IntV (0,0) 2),
+                            ProcedureCall (0,0) "divide_%_by_%" [VarV (0,0) ["x"], FloatV (0,0) 0.0],
                             Result (0,0) (VarV (0,0) ["x"])
                         ]
                 )
