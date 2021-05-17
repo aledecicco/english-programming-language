@@ -146,6 +146,9 @@ setVariableValue vn v = do
 removeVariableValue :: Name -> EvaluatorEnv ()
 removeVariableValue = removeVariableAddress
 
+-- Receives a list of new variables to be declared and a list of references to be set and performs an action with those variables
+-- The values of new variables are discarded after the action
+-- The original values of the variables references can be modified inside the action
 withVariables :: EvaluatorEnv a -> [(Name, Bare Value)] -> [(Name, Int)] -> EvaluatorEnv a
 withVariables action newVarVals newVarRefs = do
     let newVarsLen = length newVarVals

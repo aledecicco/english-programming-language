@@ -14,6 +14,14 @@ import AST
 
 -- Auxiliary
 
+-- ToDo: find a cleaner way
+stateWithFunctions :: EvaluatorData
+stateWithFunctions =
+    let (_, rs, vs, p) = initialState
+    in (map convertFunction (builtInOperators ++ builtInProcedures), rs, vs, p)
+    where
+        convertFunction (fid, FunSignature t _) = (fid, FunCallable t [])
+
 -- Asserts that an evaluator action yields a specific result with the given environment
 expectedResult :: HasCallStack => EvaluatorEnv (Maybe (Bare Value)) -> EvaluatorData -> Bare Value -> Assertion
 expectedResult eval st res = do
@@ -62,6 +70,7 @@ valueTests = testGroup "Value"
 
     ]
 
+-- ToDo: locations shouldn't matter
 sentenceTests :: TestTree
 sentenceTests = testGroup "sentence"
     [
@@ -77,7 +86,7 @@ sentenceTests = testGroup "sentence"
                             Result (0,0) (VarV (0,0) ["x"])
                         ]
                 )
-                initialState
+                stateWithFunctions
                 (IntV () 3),
 
         testCase "Variable in scope after if" $
@@ -91,7 +100,7 @@ sentenceTests = testGroup "sentence"
                             Result (0,0) (VarV (0,0) ["x"])
                         ]
                 )
-                initialState
+                stateWithFunctions
                 (IntV () 3),
 
         testCase "Variable not in scope after if" $
@@ -105,8 +114,7 @@ sentenceTests = testGroup "sentence"
                             Result (0,0) (VarV (0,0) ["x"])
                         ]
                 )
-                initialState
-
+                stateWithFunctions
     ]
 
 --

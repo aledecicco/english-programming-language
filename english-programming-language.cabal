@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 7a812315cd346b4281cdfa1443df25378299c6f53b0f01113ac3abcd114ecc84
+-- hash: 3c42c22f23c5c3d7d5b16c351501b20d4830a624a86a587daa1658d4686ab25a
 
 name:           english-programming-language
 version:        0.1.0.0
@@ -42,6 +42,7 @@ library
     , mtl
     , tasty
     , tasty-hunit
+    , tasty-rerun
     , transformers
   default-language: Haskell2010
 
@@ -59,6 +60,7 @@ executable english-programming-language-exe
     , mtl
     , tasty
     , tasty-hunit
+    , tasty-rerun
     , transformers
   default-language: Haskell2010
 
@@ -68,7 +70,6 @@ test-suite english-programming-language-test
   other-modules:
       EvaluatorTest
       FuzzyParserTest
-      ParserTestUtils
       SolverTest
       Paths_english_programming_language
   hs-source-dirs:
@@ -81,5 +82,6 @@ test-suite english-programming-language-test
     , mtl
     , tasty
     , tasty-hunit
+    , tasty-rerun
     , transformers
   default-language: Haskell2010

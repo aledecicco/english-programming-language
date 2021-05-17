@@ -19,10 +19,10 @@ data MatchablePart a = IntP a Int | FloatP a Float | CharP a Char | StringP a St
 
 -- Program structure
 
-type Bare a = a ()
-
+-- (Line number, Column number)
 type Location = (Int, Int)
 type Annotated a = a Location
+type Bare a = a ()
 
 data Type = IntT | FloatT | BoolT | CharT | ListT Type | RefT Type | AnyT String
     deriving (Eq, Show)

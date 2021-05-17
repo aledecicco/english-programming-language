@@ -29,6 +29,7 @@ translateFunction p (fid, FunSignature t _) =
 translateState :: Program -> ParserData -> EvaluatorEnv ()
 translateState prog (fs, _) = setFunctions $ mapMaybe (translateFunction prog) fs
 
+-- Returns a list of new variables to be declared and a list of references to be set according to the signature of a function
 variablesFromTitle :: [Bare TitlePart] -> [Bare Value] -> EvaluatorEnv ([(Name, Bare Value)], [(Name, Int)])
 variablesFromTitle _ [] = return ([], [])
 variablesFromTitle (TitleWords _ _ : ts) vs = variablesFromTitle ts vs
@@ -43,6 +44,17 @@ variablesFromTitle (TitleParam _ pn _ : ts) (var@(VarV _ vn):vs) = do
 variablesFromTitle (TitleParam _ pn _ : ts) (v:vs) = do
     (vars, refs) <- variablesFromTitle ts vs
     return ((pn, v):vars, refs)
+
+-- Finishes evaluating the arguments of a function call if necessary
+evaluateParameters :: [Bare TitlePart] -> [Value a] -> EvaluatorEnv [Bare Value]
+evaluateParameters _ [] = return []
+evaluateParameters (TitleWords _ _ : ts) vs = evaluateParameters ts vs
+evaluateParameters (TitleParam _ pn (RefT _) : ts) (v@(VarV _ _):vs) = (void v:) <$> evaluateParameters ts vs
+evaluateParameters (TitleParam _ pn _ : ts) (v@(VarV _ vn):vs) = do
+    v' <- evaluateValue v
+    vs' <- evaluateParameters ts vs
+    return $ v':vs'
+evaluateParameters (TitleParam _ pn _ : ts) (v:vs) = (void v:) <$> evaluateParameters ts vs
 
 --
 
@@ -118,16 +130,23 @@ evaluateSentence (ProcedureCall _ fid vs) = do
     evaluateProcedure fid vs'
     return Nothing
 
+-- ToDo: built-in functions dont have callables!
 evaluateOperator :: FunId -> [Value a] -> EvaluatorEnv (Bare Value)
 evaluateOperator fid vs
-    | isBuiltInFunction fid = evaluateBuiltInOperator fid vs
+    | isBuiltInFunction fid = do
+        ~(FunCallable (Title _ t) _) <- fromJust <$> getFunctionCallable fid
+        vs' <- evaluateParameters t vs
+        evaluateBuiltInOperator fid vs'
     | otherwise = do
         r <- evaluateUserDefinedFunction fid vs
         maybe (throw expectedResultError) return r
 
 evaluateProcedure :: FunId -> [Value a] -> EvaluatorEnv ()
 evaluateProcedure fid vs
-    | isBuiltInFunction fid = evaluateBuiltInProcedure fid vs
+    | isBuiltInFunction fid = do
+        ~(FunCallable (Title _ t) _) <- fromJust <$> getFunctionCallable fid
+        vs' <- evaluateParameters t vs
+        evaluateBuiltInProcedure fid vs'
     | otherwise = void $ evaluateUserDefinedFunction fid vs
 
 evaluateUserDefinedFunction :: FunId -> [Value a] -> EvaluatorEnv (Maybe (Bare Value))

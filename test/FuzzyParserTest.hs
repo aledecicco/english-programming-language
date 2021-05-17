@@ -361,9 +361,9 @@ seriesTests = testGroup "Series"
             (series valueMatchable)
             "11, 12 and 13, and 14"
             [
-                ValueM (1,0) [IntP (1,0) 11],
-                ValueM (1,4) [IntP (1,4) 12, WordP (1,7) "and", IntP (1,11) 13],
-                ValueM (1,19) [IntP (1,19) 14]
+                ValueM (1,1) [IntP (1,1) 11],
+                ValueM (1,5) [IntP (1,5) 12, WordP (1,8) "and", IntP (1,12) 13],
+                ValueM (1,20) [IntP (1,20) 14]
             ],
 
         testCase "Without last comma" $
@@ -420,12 +420,12 @@ functionDefinitionTests = testGroup "Function definition"
             expectedResult
                 functionDefinition
                 "A number equal to the double of a number (m):\n  Let r be m times 2.\n  The result is r."
-                (FunDef (1,0)
-                    (Title (1,18) [TitleWords (1,18) ["the", "double", "of"], TitleParam (1,32) ["m"] FloatT])
+                (FunDef (1,1)
+                    (Title (1,19) [TitleWords (1,19) ["the", "double", "of"], TitleParam (1,33) ["m"] FloatT])
                     (Just FloatT)
                     [
-                        VarDef (2,2) [["r"]] (ValueM (2,11) [WordP (2,11) "m", WordP (2,13) "times", IntP (2,19) 2]),
-                        Result (3,2) (ValueM (3,16) [WordP (3,16) "r"])
+                        VarDef (2,3) [["r"]] (ValueM (2,12) [WordP (2,12) "m", WordP (2,14) "times", IntP (2,20) 2]),
+                        Result (3,3) (ValueM (3,17) [WordP (3,17) "r"])
                     ]
                 ),
 
@@ -433,11 +433,11 @@ functionDefinitionTests = testGroup "Function definition"
             expectedResult
                 functionDefinition
                 "To double a number (m):\n  Let r be m times 2."
-                (FunDef (1,0)
-                    (Title (1,3) [TitleWords (1,3) ["double"], TitleParam (1,10) ["m"] FloatT])
+                (FunDef (1,1)
+                    (Title (1,4) [TitleWords (1,4) ["double"], TitleParam (1,11) ["m"] FloatT])
                     Nothing
                     [
-                        VarDef (2,2) [["r"]] (ValueM (2,11) [WordP (2,11) "m", WordP (2,13) "times", IntP (2,19) 2])
+                        VarDef (2,3) [["r"]] (ValueM (2,12) [WordP (2,12) "m", WordP (2,14) "times", IntP (2,20) 2])
                     ]
                 ),
 
@@ -446,11 +446,11 @@ functionDefinitionTests = testGroup "Function definition"
             expectedResult
                 functionDefinition
                 "Whether a number (m) is whole:\n  The result is false."
-                (FunDef (1,0)
-                    (Title (1,8) [TitleParam (1,8) ["m"] FloatT, TitleWords (1,21) ["is", "whole"]])
+                (FunDef (1,1)
+                    (Title (1,9) [TitleParam (1,9) ["m"] FloatT, TitleWords (1,22) ["is", "whole"]])
                     (Just BoolT)
                     [
-                        Result (2,2) (ValueM (2,16) [WordP (2,16) "false"])
+                        Result (2,3) (ValueM (2,17) [WordP (2,17) "false"])
                     ]
                 ),
 
@@ -472,26 +472,26 @@ titleTests = testGroup "Title"
             expectedResult
                 title
                 "Function definition"
-                (Title (1,0) [TitleWords (1,0) ["Function", "definition"]]),
+                (Title (1,1) [TitleWords (1,1) ["Function", "definition"]]),
 
         testCase "Many parts" $
             expectedResult
                 title
                 "Definition with a number (m) and a number (n)"
-                (Title (1,0) [
-                    TitleWords (1,0) ["Definition", "with"],
-                    TitleParam (1,16) ["m"] FloatT,
-                    TitleWords (1,29) ["and"],
-                    TitleParam (1,33) ["n"] FloatT
+                (Title (1,1) [
+                    TitleWords (1,1) ["Definition", "with"],
+                    TitleParam (1,17) ["m"] FloatT,
+                    TitleWords (1,30) ["and"],
+                    TitleParam (1,34) ["n"] FloatT
                 ]),
 
         testCase "Consecutive arguments" $
             expectedResult
                 title
                 "Definition with a number (m) a number (n)"
-                (Title (1,0) [
-                    TitleWords (1,0) ["Definition", "with"],
-                    TitleParam (1,16) ["m"] FloatT
+                (Title (1,1) [
+                    TitleWords (1,1) ["Definition", "with"],
+                    TitleParam (1,17) ["m"] FloatT
                 ]),
 
         testCase "Missing name" $

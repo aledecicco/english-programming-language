@@ -29,7 +29,7 @@ splits (x:xs) = splits' [x] xs
         splits' l (r:rs) = (l, r:rs) : splits' (l++[r]) rs
 
 -- Returns whether a list of words is a prefix of the given matchable, and the unmatched sufix
-isPrefix :: [String] -> [Annotated MatchablePart] -> (Bool, [Annotated MatchablePart])
+isPrefix :: [String] -> [MatchablePart a] -> (Bool, [MatchablePart a])
 isPrefix [] ms = (True, ms)
 isPrefix _ [] = (False, [])
 isPrefix (t:ts) ms@(WordP _ w : ps)
@@ -38,7 +38,7 @@ isPrefix (t:ts) ms@(WordP _ w : ps)
 isPrefix _ ms = (False, ms)
 
 -- Returns all the ways a list of matchables can be used to fill the gaps (parameters) of a title
-sepByTitle :: [Annotated MatchablePart] -> [TitlePart a] -> [[[Annotated MatchablePart]]]
+sepByTitle :: [MatchablePart a] -> [TitlePart b] -> [[[MatchablePart a]]]
 sepByTitle [] [] = [[]]
 sepByTitle _ [] = []
 sepByTitle ps (TitleWords _ ws : ts) =
@@ -54,7 +54,7 @@ sepByTitle ps (TitleParam {} : ts) = do
 
 -- Auxiliary matchers
 
-matchAsName :: [Annotated MatchablePart] -> ParserEnv (Maybe Name)
+matchAsName :: [MatchablePart a] -> ParserEnv (Maybe Name)
 matchAsName [WordP _ w] = return $ Just [w]
 matchAsName (WordP _ w : ps) = do
     r <- matchAsName ps
@@ -168,7 +168,7 @@ satisfiesType (RefT t1) (RefT t2) = t1 `satisfiesType` t2
 satisfiesType (RefT t1) t2 = t1 `satisfiesType` t2
 satisfiesType t1 t2 = t1 == t2
 
-getValueType :: Annotated Value -> ParserEnv Type
+getValueType :: Value a -> ParserEnv Type
 getValueType (IntV _ _) = return IntT
 getValueType (FloatV _ _) = return FloatT
 getValueType (BoolV _ _) = return BoolT
@@ -301,7 +301,7 @@ solveSentence :: Maybe Type -> Annotated Sentence -> ParserEnv (Annotated Senten
 solveSentence _ (VarDef ann vNs v) = do
     v' <- solveValue v
     t <- getValueType v'
-    mapM_ (\vn -> setVariableTypeWithCheck vn t) vNs
+    mapM_ (`setVariableTypeWithCheck` t) vNs
     return $ VarDef ann vNs v'
 solveSentence rt (If ann v ls) = do
     v' <- solveValueWithType BoolT v

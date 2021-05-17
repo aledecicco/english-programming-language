@@ -1,5 +1,6 @@
 module SolverTest ( tests ) where
 
+import Control.Monad ( void )
 import Test.Tasty ( testGroup, TestTree )
 import Test.Tasty.HUnit ( HasCallStack, testCase, assertFailure, Assertion, (@?=) )
 
@@ -109,14 +110,14 @@ asNameTests :: TestTree
 asNameTests = testGroup "As name"
     [
         testCase "Many words" $
-            expectedBareResult
-                (matchAsName [WordP (0,0) "short", WordP (0,0) "name"])
+            expectedResult
+                (matchAsName [WordP () "short", WordP () "name"])
                 initialState
                 (Just ["short", "name"]),
 
         testCase "Followed by number part" $
-            expectedBareResult
-                (matchAsName [WordP (0,0) "short", WordP (0,0) "name", IntP () 1])
+            expectedResult
+                (matchAsName [WordP () "short", WordP () "name", IntP () 1])
                 initialState
                 Nothing
     ]
@@ -125,32 +126,32 @@ asFunctionCallTests :: TestTree
 asFunctionCallTests = testGroup "As function call"
     [
         testCase "Arguments at beggining and end" $
-            expectedBareResult
-                (matchAsFunctionCall [IntP (0,0) 2, WordP (0,0) "plus", IntP (0,0) 3] $ map snd builtInOperators)
+            expectedResult
+                (matchAsFunctionCall [IntP (0,0) 2, WordP (0,2) "plus", IntP (0,7) 3] $ map snd builtInOperators)
                 stateWithFunctions
-                (Just ("%_plus_%", [IntV () 2, IntV () 3])),
+                (Just ("%_plus_%", [IntV (0,0) 2, IntV (0,7) 3])),
 
         testCase "Addition and multiplication associativity" $
-            expectedBareResult
-                (matchAsFunctionCall [IntP (0,0) 2, WordP (0,0) "times", IntP (0,0) 3, WordP (0,0) "plus", IntP (0,0) 4, WordP (0,0) "times", IntP (0,0) 5] $ map snd builtInOperators)
+            expectedResult
+                (matchAsFunctionCall [IntP (0,0) 2, WordP (0,2) "times", IntP (0,8) 3, WordP (0,10) "plus", IntP (0,15) 4, WordP (0,17) "times", IntP (0,23) 5] $ map snd builtInOperators)
                 stateWithFunctions
-                (Just ("%_plus_%", [OperatorCall () "%_times_%" [IntV () 2, IntV () 3], OperatorCall () "%_times_%" [IntV () 4, IntV () 5]])),
+                (Just ("%_plus_%", [OperatorCall (0,0) "%_times_%" [IntV (0,0) 2, IntV (0,8) 3], OperatorCall (0,15) "%_times_%" [IntV (0,15) 4, IntV (0,23) 5]])),
 
         testCase "Forced associativity with parenthesis" $
-            expectedBareResult
-                (matchAsFunctionCall [ParensP (0,0) [IntP (0,0) 2, WordP (0,0) "times", IntP (0,0) 3, WordP (0,0) "plus", IntP (0,0) 4], WordP (0,0) "times", IntP (0,0) 5] $ map snd builtInOperators)
+            expectedResult
+                (matchAsFunctionCall [ParensP [IntP (0,1) 2, WordP (0,3) "times", IntP (0,9) 3, WordP (0,11) "plus", IntP (0,16) 4], WordP (0,19) "times", IntP (0,25) 5] $ map snd builtInOperators)
                 stateWithFunctions
-                (Just ("%_times_%", [OperatorCall () "%_plus_%" [OperatorCall () "%_times_%" [IntV () 2, IntV () 3], IntV () 4], IntV () 5])),
+                (Just ("%_times_%", [OperatorCall (0,1) "%_plus_%" [OperatorCall (0,1) "%_times_%" [IntV (0,1) 2, IntV (0,9) 3], IntV (0,16) 4], IntV (0,25) 5])),
 
         testCase "Wrong type arguments" $
-            expectedBareResult
-                (matchAsFunctionCall [WordP (0,0) "true", WordP (0,0) "plus", WordP (0,0) "false"] $ map snd builtInOperators)
+            expectedResult
+                (matchAsFunctionCall [WordP (0,0) "true", WordP (0,5) "plus", WordP (0,10) "false"] $ map snd builtInOperators)
                 stateWithFunctions
-                (Just ("%_plus_%", [BoolV () True, BoolV () False])),
+                (Just ("%_plus_%", [BoolV (0,0) True, BoolV (0,10) False])),
 
         testCase "Wrong functions category" $
-            expectedBareResult
-                (matchAsFunctionCall [IntP (0,0) 2, WordP (0,0) "plus", IntP (0,0) 3] $ map snd builtInProcedures)
+            expectedResult
+                (matchAsFunctionCall [IntP (0,0) 2, WordP (0,2) "plus", IntP (0,7) 3] $ map snd builtInProcedures)
                 stateWithFunctions
                 Nothing
     ]
@@ -160,7 +161,7 @@ asOperatorCallTests = testGroup "As operator call"
     [
         testCase "Procedure matchable" $
             expectedResult
-                (matchAsOperatorCall [WordP (0,0) "print", IntP (0,0) 3])
+                (matchAsOperatorCall [WordP (0,0) "print", IntP (0,6) 3])
                 stateWithFunctions
                 Nothing
     ]
@@ -171,7 +172,7 @@ asProcedureCallTests = testGroup "As procedure call"
     [
         testCase "Operator matchable" $
             expectedResult
-                (matchAsProcedureCall [IntP (0,0) 2, WordP (0,0) "plus", IntP (0,0) 3])
+                (matchAsProcedureCall [IntP (0,0) 2, WordP (0,2) "plus", IntP (0,7) 3])
                 stateWithFunctions
                 Nothing
     ]
@@ -181,13 +182,13 @@ getValueTypeTests = testGroup "Get value type"
     [
         testCase "Adding ints" $
             expectedResult
-                (getValueType $ OperatorCall "%_plus_%" [IntV 2, IntV 3])
+                (getValueType $ OperatorCall () "%_plus_%" [IntV () 2, IntV () 3])
                 stateWithFunctions
                 IntT,
 
         testCase "Adding mixed" $
             expectedResult
-                (getValueType $ OperatorCall "%_plus_%" [IntV 2, FloatV 3.0])
+                (getValueType $ OperatorCall () "%_plus_%" [IntV () 2, FloatV () 3.0])
                 stateWithFunctions
                 FloatT
     ]
@@ -211,37 +212,38 @@ setVariableTypeTests = testGroup "Set variable type"
                 initialState
     ]
 
+-- ToDo: locations shouldn't matter
 checkValueIntegrityTests :: TestTree
 checkValueIntegrityTests = testGroup "Check value integrity"
     [
         testCase "Correct type arguments" $
             expectedSuccess
-                (checkValueIntegrity $ OperatorCall "%_plus_%" [IntV 2, FloatV 3.0])
+                (checkValueIntegrity $ OperatorCall (0,0) "%_plus_%" [IntV (0,0) 2, FloatV (0,0) 3.0])
                 stateWithFunctions,
 
         testCase "Correct bound types" $
             expectedSuccess
-                (checkValueIntegrity $ OperatorCall "%_appended_to_%" [ListV IntT [IntV 1, IntV 2], ListV IntT [IntV 3, IntV 4]])
+                (checkValueIntegrity $ OperatorCall (0,0) "%_appended_to_%" [ListV (0,0) IntT [IntV (0,0) 1, IntV (0,0) 2], ListV (0,0) IntT [IntV (0,0) 3, IntV (0,0) 4]])
                 stateWithFunctions,
 
         testCase "Satisfiable bound types" $
             expectedSuccess
-                (checkValueIntegrity $ OperatorCall "%_appended_to_%" [ListV FloatT [FloatV 1, IntV 2], ListV IntT [IntV 3, IntV 4]])
+                (checkValueIntegrity $ OperatorCall (0,0) "%_appended_to_%" [ListV (0,0) FloatT [FloatV (0,0) 1, IntV (0,0) 2], ListV (0,0) IntT [IntV (0,0) 3, IntV (0,0) 4]])
                 stateWithFunctions,
 
         testCase "Wrong bound types" $
             expectedFailure
-                (checkValueIntegrity $ OperatorCall "%_appended_to_%" [ListV BoolT [BoolV True, BoolV False], ListV IntT [IntV 3, IntV 4]])
+                (checkValueIntegrity $ OperatorCall (0,0) "%_appended_to_%" [ListV (0,0) BoolT [BoolV (0,0) True, BoolV (0,0) False], ListV (0,0) IntT [IntV (0,0) 3, IntV (0,0) 4]])
                 stateWithFunctions,
 
         testCase "Wrong type arguments" $
             expectedFailure
-                (checkValueIntegrity $ OperatorCall "%_plus_%" [BoolV True, BoolV False])
+                (checkValueIntegrity $ OperatorCall (0,0) "%_plus_%" [BoolV (0,0) True, BoolV (0,0) False])
                 stateWithFunctions,
 
         testCase "Ill-formed arguments" $
             expectedFailure
-                (checkValueIntegrity $ OperatorCall "%_appended_to_%" [ListV IntT [BoolV True, BoolV False], ListV IntT [IntV 3, IntV 4]])
+                (checkValueIntegrity $ OperatorCall (0,0) "%_appended_to_%" [ListV (0,0) IntT [BoolV (0,0) True, BoolV (0,0) False], ListV (0,0) IntT [IntV (0,0) 3, IntV (0,0) 4]])
                 stateWithFunctions
     ]
 
@@ -250,27 +252,26 @@ solveValueTests = testGroup "Solve value"
     [
         testCase "Matchable" $
             expectedResult
-                (solveValue (ValueM [IntP 2, WordP "times", IntP 3, WordP "plus", IntP 4, WordP "times", IntP 5]))
+                (solveValue (ValueM (0,0) [IntP (0,0) 2, WordP (0,2) "times", IntP (0,8) 3, WordP (0,10) "plus", IntP (0,15) 4, WordP (0,17) "times", IntP (0,23) 5]))
                 stateWithFunctions
-                (OperatorCall "%_plus_%" [OperatorCall "%_times_%" [IntV 2, IntV 3], OperatorCall "%_times_%" [IntV 4, IntV 5]]),
+                (OperatorCall (0,0) "%_plus_%" [OperatorCall (0,0) "%_times_%" [IntV (0,0) 2, IntV (0,8) 3], OperatorCall (0,15) "%_times_%" [IntV (0,15) 4, IntV (0,23) 5]]),
 
         testCase "List" $
             expectedResult
-                (solveValue (ListV IntT [ValueM [IntP 2, WordP "times", IntP 3], ValueM [IntP 4, WordP "times", IntP 5]]))
+                (solveValue (ListV (0,0) IntT [ValueM (0,1) [IntP (0,1) 2, WordP (0,3) "times", IntP (0,9) 3], ValueM (0,11) [IntP (0,11) 4, WordP (0,13) "times", IntP (0,19) 5]]))
                 stateWithFunctions
-                (ListV IntT [OperatorCall "%_times_%" [IntV 2, IntV 3], OperatorCall "%_times_%" [IntV 4, IntV 5]]),
+                (ListV (0,0) IntT [OperatorCall (0,1) "%_times_%" [IntV (0,1) 2, IntV (0,9) 3], OperatorCall (0,11) "%_times_%" [IntV (0,11) 4, IntV (0,19) 5]]),
 
         testCase "List with wrong items" $
             expectedFailure
-                (solveValue (ListV IntT [BoolV True, BoolV False]))
+                (solveValue (ListV (0,0) IntT [BoolV (0,1) True, BoolV (0,7) False]))
                 initialState,
 
         testCase "Matchable with wrong type arguments" $
             expectedFailure
-                (solveValue (ValueM [WordP "true", WordP "plus", WordP "false"]))
+                (solveValue (ValueM (0,0) [WordP (0,0) "true", WordP (0,5) "plus", WordP (0,10) "false"]))
                 stateWithFunctions
     ]
-
 
 --
 
