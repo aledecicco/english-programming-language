@@ -184,6 +184,10 @@ getValueType (OperatorCall _ fid vs) = do
             ~(FunSignature _ (Operator tFun)) <- fromJust <$> getFunctionSignature fid
             return $ tFun vTs
 
+getIteratorType :: Type -> Type
+getIteratorType (RefT t) = getIteratorType t
+getIteratorType (ListT t) = t
+
 --
 
 
@@ -315,8 +319,8 @@ solveSentence rt (IfElse ann v lsT lsF) = do
     return $ IfElse ann v' lsT' lsF'
 solveSentence rt (ForEach ann iN v ls) = do
     v' <- solveValueWithType (ListT $ AnyT "a") v
-    ~(ListT t) <- getValueType v'
-    setNewVariableType iN t
+    iT <- getIteratorType <$> getValueType v'
+    setNewVariableType iN iT
     ls' <- solveSentences ls rt
     removeVariableType iN
     return $ ForEach ann iN v' ls'

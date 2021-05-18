@@ -6,7 +6,7 @@ import Evaluator ( evaluateProgram )
 
 main :: IO ()
 main = do
-    fc <- readFile "examples/Sum.epl"
+    fc <- readFile "examples/Pow.epl"
     let p = parseProgram fc
         (p', s) = solveProgram p
     evaluateProgram p' s

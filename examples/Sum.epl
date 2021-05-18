@@ -1,6 +1,6 @@
 A number equal to the sum of a list of numbers (L):
     Let r be 0.
-    For each element in L, let r be r plus the element.
+    For each element in L, add the element to r.
     The result is r.
 
 To run:
@@ -8,4 +8,4 @@ To run:
     Print "The sum of ".
     Print L.
     Print " is ".
-    Print the sum of 2.
+    Print the sum of L.
