@@ -104,7 +104,7 @@ evaluateSentence (ForEach _ iN lv ls) = do
     (ListV _ _ v') <- evaluateValue lv
     let iterateLoop = (\v -> setVariableValue iN v >> evaluateSentences ls)
     r <- firstNotNull iterateLoop v'
-    removeVariableValue iN -- ToDo: iterators generate memory leaks because they are never freed
+    removeVariableValue iN
     return r
 evaluateSentence s@(Until _ bv ls) = do
     (BoolV _ v') <- evaluateValue bv
@@ -132,7 +132,6 @@ evaluateSentence (ProcedureCall _ fid vs) = do
     evaluateProcedure fid vs'
     return Nothing
 
--- ToDo: should built-in functions have callables? If so, should they use the same structure as user-defined functions?
 evaluateOperator :: FunId -> [Value a] -> EvaluatorEnv (Bare Value)
 evaluateOperator fid vs
     | isBuiltInFunction fid = do

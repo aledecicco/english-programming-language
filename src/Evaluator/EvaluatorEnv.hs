@@ -142,7 +142,6 @@ setVariableValue vn v = do
         Just addr -> setValueAtAddress addr v
         Nothing -> addVariableValue vn v
 
--- ToDo: garbage collection of value at address
 removeVariableValue :: Name -> EvaluatorEnv ()
 removeVariableValue = removeVariableAddress
 

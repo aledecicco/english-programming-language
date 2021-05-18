@@ -96,7 +96,6 @@ matchAsPrimitive [WordP ann w]
     | w == "false" = return $ Just (BoolV ann False)
 matchAsPrimitive _ = return Nothing
 
--- ToDo: refactor
 matchAsVariable :: [Annotated MatchablePart] -> ParserEnv (Maybe (Annotated Value))
 matchAsVariable ps = do
     let ann = getFirstLocation ps
@@ -220,7 +219,6 @@ checkValueIntegrity (ListV _ t vs) = mapM_ checkElement vs
         checkElement = \v -> withLocation v checkValueIntegrity >> checkValueType v t
 checkValueIntegrity _ = return ()
 
--- ToDo: refactor
 checkFunctionCallIntegrity :: (FunId, [Annotated Value]) -> ParserEnv ()
 checkFunctionCallIntegrity (fid, vs) = do
     mapM_ (`withLocation` checkValueIntegrity) vs
