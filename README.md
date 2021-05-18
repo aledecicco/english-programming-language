@@ -55,6 +55,12 @@ a %singular type name% (%variable name%)
 ```
 The type name specifies the expected type of the parameter and the variable name specifies the name the parameter will have in the body of the function. For example, if a function takes a number as one of its parameters, it could be specified as `a number (m)`.
 
+Also, parameters can be defined as references:
+```
+a reference to a %singular type% (%variable name%)
+```
+Parameters that are references only accept variables as arguments, and modifying the parameter inside the body of the function modifies the value of the original variable passed as argument.
+
 ### Identifiers
 Identifiers can be made of any sequence of words except for `a`. They are used to understand which function is being called. For example, with the title `A number equal the product of a number (m) and a number (n)`, the identifying parts are `the product of` and `and`. When calling this function, the gaps should be filled in with actual values.
 
@@ -177,27 +183,27 @@ While %boolean value%:
 ### Examples
 Assign the value `2` to variables `x`, `y`, and `z`:
 ```
-Let x, y, and z be 2
+Let x, y, and z be 2.
 ```
 
 Make the current function return `6`:
 ```
-The result is 2 times 3
+The result is 2 times 3.
 ```
 
-Call the procedure `"print"` with `6` as its argument:
+Call the procedure `print` with `6` as its argument:
 ```
-Print 2 times 3
+Print 2 times 3.
 ```
 
 Call the procedure `print` for each element of the list `L`:
 ```
-For each element in L, print the element
+For each element in L, print the element.
 ```
 
 Add one to variable `x` until it's larger than `3`:
 ```
-Until x is larger than 3, let x be x plus 1
+Until x is larger than 3, let x be x plus 1.
 ```
 
 Print a `1` if `x` is larger than `0`, and a `0` otherwise:
@@ -206,6 +212,10 @@ If x is larger than 0:
     Print 1.
 Otherwise:
     Print 0.
+```
+Or, more concisely:
+```
+If x is larger than 0, print 1, otherwise print 0.
 ```
 
 ## Values
@@ -219,13 +229,13 @@ The two possible values are refered to with the words `true` and `false`.
 Whole numbers are used writing the numeric values, not the words.
 
 ### Number
-Numbers are written with a dot separating the decimal part. If a function takes a number and a whole number is given, it is converted to a number implicitly.
+Numbers are written with a dot separating the decimal part. If some expression expects a number and a whole number is given, it is converted to a number implicitly.
 
 ### Chars
 Char literals are written between single quotes.
 
 ### Strings
-String literals are written between quotes.
+String literals are written between double quotes.
 
 ### Lists
 An empty list:
@@ -242,23 +252,32 @@ A string literal:
 ```
 "[%character%]"
 ```
-The only way to declare a list by extension is inside a `Let` expression, except for string literals which can be used anywhere. Note that all values have to be of the same type as the one declared.
+The only way to declare a list by extension is inside a `Let` expression, except for string literals which can be used anywhere. Note that all elements must be of the same type as the one declared for the list.
 
 ### Variables
 Variable names can be any series of words except for `be` and `in`, which are the only two reserved keywords. They are referenced using their names, which can optionally be preceded by the word `the`. This applies to all variables (declared in `let` expressions, passed as parameters to a function, or defined as iterators in a `for each` loop).
 
 ### Examples
 
-Declare variable `L` as the list `[1-1, 2.2, 3.3]`:
+Declare variable `L` as the list `[1.1, 2.2, 3.3]`:
 ```
 Let L be a list of floats containing 1.1, 2.2, and 3.3
+```
+
+Declare variable `s` as the string `"abc"`:
+```
+Let s be "abc".
+```
+Or, equivalently:
+```
+Let s be a list of chars containing 'a', 'b', and 'c'.
 ```
 
 Print each element of `L`:
 ```
 For each element in L, print the element
 ```
-Note that here, the iterator is referenced as `the element`.
+Note that here the iterator is referenced as `the element`.
 
 
 # How it works
@@ -279,8 +298,6 @@ To run:
 
 # Possible improvements:
 - Clean up the methods that checks type bindings in the solver
-- Change the state so that ids are generated for each variable, and each variable name points to an id
 - Infer variable aliases from their types in titles
-- Allow passing by reference
 - Implement importing other files as libraries (without the `Run` procedure)
 - Prevent the `Run` procedure from being called explicitly
