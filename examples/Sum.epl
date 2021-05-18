@@ -1,6 +1,6 @@
 A number equal to the sum of a list of numbers (L):
     Let r be 0.
-    For each element in L, add the element to r.
+    For each number in L, add the number to r.
     The result is r.
 
 To run:

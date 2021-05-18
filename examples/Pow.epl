@@ -7,5 +7,10 @@ To raise a reference to a number (m) to the power of a number (n):
 
 To run:
     Let x be 2.
-    Raise x to the power of 3.
+    Let y be 3.
+    Print x.
+    Print " to the power of ".
+    Print y.
+    Print " is ".
+    Raise x to the power of y.
     Print x.

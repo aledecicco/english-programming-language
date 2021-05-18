@@ -39,10 +39,10 @@ variablesFromTitle (TitleParam _ pn (RefT _) : ts) ((VarV _ vn):vs) = do
     (vars, refs) <- variablesFromTitle ts vs
     ~(Just addr) <- getVariableAddress vn
     return (vars, (pn, addr):refs)
-variablesFromTitle (TitleParam _ pn _ : ts) (var@(VarV _ vn):vs) = do
+variablesFromTitle (TitleParam _ pn _ : ts) (var@(VarV _ _):vs) = do
     (vars, refs) <- variablesFromTitle ts vs
     val <- evaluateValue var
-    return ((vn, val):vars, refs)
+    return ((pn, val):vars, refs)
 variablesFromTitle (TitleParam _ pn _ : ts) (v:vs) = do
     (vars, refs) <- variablesFromTitle ts vs
     return ((pn, v):vars, refs)

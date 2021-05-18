@@ -151,15 +151,19 @@ removeVariableValue = removeVariableAddress
 -- The original values of the variables references can be modified inside the action
 withVariables :: EvaluatorEnv a -> [(Name, Bare Value)] -> [(Name, Int)] -> EvaluatorEnv a
 withVariables action newVarVals newVarRefs = do
-    let newVarsLen = length newVarVals
+    -- Save current state
     varRefs <- lift $ gets (\(_, vas, _, _) -> vas)
+    varValsLen <- lift $ length <$> gets (\(_, _, vals, _) -> vals)
+    p <- lift $ gets (\(_, _, _, p) -> p)
+    -- Perform the action using only the given variables
     changeReferences $ const []
     mapM_ (uncurry addVariableValue) newVarVals
     mapM_ (uncurry setVariableAddress) newVarRefs
     r <- action
+    -- Restore the state
     changeReferences $ const varRefs
-    changeValues $ drop newVarsLen
-    changePointer $ subtract newVarsLen
+    changeValues $ take varValsLen
+    changePointer $ const p
     return r
 
 --
