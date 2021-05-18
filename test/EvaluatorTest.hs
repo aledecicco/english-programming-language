@@ -14,13 +14,10 @@ import AST
 
 -- Auxiliary
 
--- ToDo: find a cleaner way
 stateWithFunctions :: EvaluatorData
 stateWithFunctions =
     let (_, rs, vs, p) = initialState
-    in (map convertFunction (builtInOperators ++ builtInProcedures), rs, vs, p)
-    where
-        convertFunction (fid, FunSignature t _) = (fid, FunCallable t [])
+    in (translateFunctions [] (builtInOperators ++ builtInProcedures), rs, vs, p)
 
 -- Asserts that an evaluator action yields a specific result with the given environment
 expectedResult :: HasCallStack => EvaluatorEnv (Maybe (Bare Value)) -> EvaluatorData -> Bare Value -> Assertion

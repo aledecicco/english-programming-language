@@ -40,12 +40,14 @@ ppType BoolT False = "boolean"
 ppType CharT False = "character"
 ppType (ListT CharT) False = "string"
 ppType (ListT t) False = "list of " ++ ppType t True
+ppType (RefT t) False = "reference to a " ++ ppType t False
 ppType IntT True = "whole numbers"
 ppType FloatT True = "numbers"
 ppType BoolT True = "booleans"
 ppType CharT True = "characters"
 ppType (ListT CharT) True = "strings"
 ppType (ListT t) True = "lists of " ++ ppType t True
+ppType (RefT t) True = "references to " ++ ppType t True
 
 ppName :: Name -> String
 ppName = unwords
@@ -55,11 +57,9 @@ ppValue (IntV _ n) = show n
 ppValue (FloatV _ f) = show f
 ppValue (BoolV _ True) = "true"
 ppValue (BoolV _ False) = "false"
-ppValue (CharV _ c) = singleQuote [c]
-ppValue (ListV _ CharT cs) = doubleQuote $ map getChar cs
-    where
-        getChar :: Value a -> Char
-        getChar (CharV _ c) = c
+-- Should chars and strings be quoted?
+ppValue (CharV _ c) = [c]
+ppValue (ListV _ CharT cs) = concatMap ppValue cs
 ppValue (ListV _ _ vs) = asList $ map ppValue vs
 ppValue (VarV _ n) = ppName n
 

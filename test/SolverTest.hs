@@ -198,7 +198,7 @@ setVariableTypeTests = testGroup "Set variable type"
     [
         testCase "Valid mismatching types" $
             expectedSuccess
-                (setVariableType ["a"] IntT >> setVariableTypeWithCheck ["a"] FloatT)
+                (setVariableType ["a"] FloatT >> setVariableTypeWithCheck ["a"] IntT)
                 initialState,
 
         testCase "Invalid mismatching types" $

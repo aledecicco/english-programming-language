@@ -34,7 +34,7 @@ undefinedVariableError :: Name -> [String]
 undefinedVariableError n = ["Variable", doubleQuote $ ppName n, "is not defined"]
 
 mismatchingTypeAssignedError :: Name -> Type -> Type -> [String]
-mismatchingTypeAssignedError n t t' = ["Could not assign a", ppType t False, "to variable", doubleQuote $ ppName n, "which is a", ppType t False]
+mismatchingTypeAssignedError n t t' = ["Could not assign a", ppType t False, "to variable", doubleQuote $ ppName n, "which is a", ppType t' False]
 
 resultInProcedureError :: [String]
 resultInProcedureError = ["Found unexpected result statement in procedure"]

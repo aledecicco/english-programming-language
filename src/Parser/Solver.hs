@@ -193,7 +193,7 @@ setVariableTypeWithCheck :: Name -> Type -> ParserEnv ()
 setVariableTypeWithCheck vn t = do
     r <- getVariableType vn
     case r of
-        Just t' -> unless (t' `satisfiesType` t) $ throw (mismatchingTypeAssignedError vn t t')
+        Just t' -> unless (t `satisfiesType` t') $ throw (mismatchingTypeAssignedError vn t t')
         Nothing -> setVariableType vn t
 
 setNewVariableType :: Name -> Type -> ParserEnv ()
@@ -261,18 +261,19 @@ registerFunctions = mapM_ registerFunction
             isDef <- functionIsDefined fid
             when isDef $ throw (alreadyDefinedFunctionError fid)
             let frt = case rt of
-                    Just t -> Operator $ const t
+                    Just rt -> Operator $ const rt
                     Nothing -> Procedure
             setFunctionSignature fid $ FunSignature (void t) frt
 
 registerParameters :: Annotated Title -> ParserEnv ()
 registerParameters (Title _ ts) = registerParameters' ts
     where
-        registerParameters' :: [Annotated TitlePart] -> ParserEnv()
+        registerParameters' :: [Annotated TitlePart] -> ParserEnv ()
         registerParameters' [] = return ()
         registerParameters' (TitleParam ann vn t : ts) = do
             setCurrentLocation ann
-            setNewVariableType vn t >> registerParameters' ts
+            setNewVariableType vn t
+            registerParameters' ts
         registerParameters' (_ : ts) = registerParameters' ts
 
 --

@@ -1,0 +1,11 @@
+To raise a reference to a number (m) to the power of a number (n):
+    Let r be 1.
+    While n is greater than 0:
+        Multiply r by m.
+        Subtract 1 from n.
+    Let m be r.
+
+To run:
+    Let x be 2.
+    Raise x to the power of 3.
+    Print x.

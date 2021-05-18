@@ -17,17 +17,19 @@ import AST
 
 -- Auxiliary
 
-translateFunction :: Program -> (FunId, FunSignature) -> Maybe (FunId, FunCallable)
-translateFunction p (fid, FunSignature t _) =
-    case findDefinition p t of
-        (Just (FunDef _ _ _ ss)) -> Just (fid, FunCallable t ss)
-        Nothing -> Nothing
+
+
+translateFunctions :: Program -> [(FunId, FunSignature)] -> [(FunId, FunCallable)]
+translateFunctions prog = map (translateFunction prog)
     where
+        translateFunction :: Program -> (FunId, FunSignature) -> (FunId, FunCallable)
+        translateFunction p (fid, FunSignature t _) =
+            case findDefinition p t of
+                (Just (FunDef _ _ _ ss)) -> (fid, FunCallable t ss)
+                -- if a function is not found in the written program, then it must be a built-in function
+                Nothing -> (fid, FunCallable t [])
         findDefinition :: Program -> Title a -> Maybe (Annotated Block)
         findDefinition p t = find (\(FunDef _ t' _ _) -> void t == void t') p
-
-translateState :: Program -> ParserData -> EvaluatorEnv ()
-translateState prog (fs, _) = setFunctions $ mapMaybe (translateFunction prog) fs
 
 -- Returns a list of new variables to be declared and a list of references to be set according to the signature of a function
 variablesFromTitle :: [Bare TitlePart] -> [Bare Value] -> EvaluatorEnv ([(Name, Bare Value)], [(Name, Int)])
@@ -130,7 +132,7 @@ evaluateSentence (ProcedureCall _ fid vs) = do
     evaluateProcedure fid vs'
     return Nothing
 
--- ToDo: built-in functions dont have callables!
+-- ToDo: should built-in functions have callables? If so, should they use the same structure as user-defined functions?
 evaluateOperator :: FunId -> [Value a] -> EvaluatorEnv (Bare Value)
 evaluateOperator fid vs
     | isBuiltInFunction fid = do
@@ -166,8 +168,8 @@ evaluateProgram prog s = do
         Right r -> return $ snd r
     where
         evaluateProgram' :: Program -> ParserData -> EvaluatorEnv ()
-        evaluateProgram' prog s = do
-            translateState prog s
+        evaluateProgram' prog (fs, _) = do
+            setFunctions $ translateFunctions prog fs
             evaluateProcedure "run" []
 
 --
