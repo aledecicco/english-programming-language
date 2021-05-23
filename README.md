@@ -351,6 +351,8 @@ Modifies the value of the given variable, appending the list to it.
 - Use maps instead of lists for variable references and values in the evaluator
 - Free iterators right after the for-each block
 - Print errors instead of calling `error` in the main loop
+- Use a custom Error datatype instead of strings
+- Make assertions on specific error types in tests
 - Infer variable aliases from their types in titles
 - Implement importing other files as libraries (without the `Run` procedure)
 - Prevent the `Run` procedure from being called explicitly
