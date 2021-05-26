@@ -1,6 +1,9 @@
 # Expressive
 A programming language that resembles English. Write some sentences and watch the interpreter try to understand what you meant.
 
+![Version](https://img.shields.io/badge/version-v2.0.0-blue)
+![License](https://img.shields.io/badge/license-MIT-brightgreen)
+
 # Syntax
 An Expressive program is composed of a series of function definitions. Those functions can either be operators, which return a value, or procedures, which don't return anything.
 
