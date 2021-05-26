@@ -5,6 +5,7 @@ import Test.Tasty ( testGroup, TestTree )
 import Test.Tasty.HUnit ( HasCallStack, testCase, assertFailure, Assertion, (@?=) )
 
 import BuiltInDefs ( builtInOperators, builtInProcedures )
+import Errors
 import ParserEnv
 import Solver
 import AST
@@ -23,28 +24,21 @@ stateWithFunctions =
 expectedResult :: (HasCallStack, Eq a, Show a) => ParserEnv a -> ParserData -> a -> Assertion
 expectedResult a s r =
     case runParserEnv a s initialLocation of
-        Left e -> assertFailure $ "Parser action failed, the error was:\n" ++ e
+        Left e -> assertFailure $ "Parser action failed, the error was:\n" ++ show e
         Right ((r', _), _) -> r' @?= r
-
--- Asserts that a parser action yields a specific result ignoring annotations with the given environment
-expectedBareResult :: (HasCallStack, Eq (a ()), Show (a ()), Functor a) => ParserEnv (a b) -> ParserData -> a () -> Assertion
-expectedBareResult a s r =
-    case runParserEnv a s initialLocation of
-        Left e -> assertFailure $ "Parser action failed, the error was:\n" ++ e
-        Right ((r', _), _) -> void r' @?= r
 
 -- Asserts that a parser action succeeds with the given environment
 expectedSuccess :: (HasCallStack, Show a) => ParserEnv a -> ParserData -> Assertion
 expectedSuccess a s =
     case runParserEnv a s initialLocation of
-        Left e -> assertFailure $ "Parser action failed, the error was:\n" ++ e
+        Left e -> assertFailure $ "Parser action failed, the error was:\n" ++ show e
         Right _ -> return ()
 
--- Asserts that a parser action fails with the given environment
-expectedFailure :: (HasCallStack, Show a) => ParserEnv a -> ParserData -> Assertion
-expectedFailure a s =
+-- Asserts that a parser action yields a specific error with the given environment
+expectedError :: (HasCallStack, Show a) => ParserEnv a -> ParserData -> Error -> Assertion
+expectedError a s e =
     case runParserEnv a s initialLocation of
-        Left _ -> return ()
+        Left e' -> e' @?= e
         Right (r, _) -> assertFailure $ "Parser action didn't fail, the result was " ++ show r
 
 --
@@ -202,49 +196,53 @@ setVariableTypeTests = testGroup "Set variable type"
                 initialState,
 
         testCase "Invalid mismatching types" $
-            expectedFailure
+            expectedError
                 (setVariableType ["a"] IntT >> setVariableTypeWithCheck ["a"] BoolT)
-                initialState,
+                initialState
+                (Error (Just (0,0)) $ MismatchingTypeAssigned IntT BoolT ["a"]),
 
         testCase "Repeated new variable" $
-            expectedFailure
+            expectedError
                 (setVariableType ["a"] IntT >> setNewVariableType ["a"] IntT)
                 initialState
+                (Error (Just (0,0)) $ VariableAlreadyDefined ["a"])
     ]
 
--- ToDo: locations shouldn't matter
 checkValueIntegrityTests :: TestTree
 checkValueIntegrityTests = testGroup "Check value integrity"
     [
         testCase "Correct type arguments" $
             expectedSuccess
-                (checkValueIntegrity $ OperatorCall (0,0) "%_plus_%" [IntV (0,0) 2, FloatV (0,0) 3.0])
+                (checkValueIntegrity $ OperatorCall (0,0) "%_plus_%" [IntV (0,0) 2, FloatV (0,6) 3.0])
                 stateWithFunctions,
 
         testCase "Correct bound types" $
             expectedSuccess
-                (checkValueIntegrity $ OperatorCall (0,0) "%_appended_to_%" [ListV (0,0) IntT [IntV (0,0) 1, IntV (0,0) 2], ListV (0,0) IntT [IntV (0,0) 3, IntV (0,0) 4]])
+                (checkValueIntegrity $ OperatorCall (0,0) "%_appended_to_%" [ListV (0,0) IntT [IntV (0,1) 1, IntV (0,3) 2], ListV (0,17) IntT [IntV (0,18) 3, IntV (0,20) 4]])
                 stateWithFunctions,
 
         testCase "Satisfiable bound types" $
             expectedSuccess
-                (checkValueIntegrity $ OperatorCall (0,0) "%_appended_to_%" [ListV (0,0) FloatT [FloatV (0,0) 1, IntV (0,0) 2], ListV (0,0) IntT [IntV (0,0) 3, IntV (0,0) 4]])
+                (checkValueIntegrity $ OperatorCall (0,0) "%_appended_to_%" [ListV (0,0) FloatT [FloatV (0,1) 1, IntV (0,3) 2], ListV (0,17) IntT [IntV (0,18) 3, IntV (0,20) 4]])
                 stateWithFunctions,
 
         testCase "Wrong bound types" $
-            expectedFailure
-                (checkValueIntegrity $ OperatorCall (0,0) "%_appended_to_%" [ListV (0,0) BoolT [BoolV (0,0) True, BoolV (0,0) False], ListV (0,0) IntT [IntV (0,0) 3, IntV (0,0) 4]])
-                stateWithFunctions,
+            expectedError
+                (checkValueIntegrity $ OperatorCall (0,0) "%_appended_to_%" [ListV (0,0) BoolT [BoolV (0,1) True, BoolV (0,7) False], ListV (0,21) IntT [IntV (0,22) 3, IntV (0,24) 4]])
+                stateWithFunctions
+                (Error (Just (0,21)) $ WrongTypeParameter (ListT BoolT) (ListT IntT) ["n"]),
 
         testCase "Wrong type arguments" $
-            expectedFailure
-                (checkValueIntegrity $ OperatorCall (0,0) "%_plus_%" [BoolV (0,0) True, BoolV (0,0) False])
-                stateWithFunctions,
+            expectedError
+                (checkValueIntegrity $ OperatorCall (0,0) "%_plus_%" [IntV (0,0) 1, BoolV (0,3) True])
+                stateWithFunctions
+                (Error (Just (0,3)) $ WrongTypeParameter FloatT BoolT ["n"]),
 
         testCase "Ill-formed arguments" $
-            expectedFailure
-                (checkValueIntegrity $ OperatorCall (0,0) "%_appended_to_%" [ListV (0,0) IntT [BoolV (0,0) True, BoolV (0,0) False], ListV (0,0) IntT [IntV (0,0) 3, IntV (0,0) 4]])
+            expectedError
+                (checkValueIntegrity $ OperatorCall (0,0) "%_appended_to_%" [ListV (0,0) IntT [BoolV (0,1) True, BoolV (0,6) False], ListV (0,20) IntT [IntV (0,21) 3, IntV (0,23) 4]])
                 stateWithFunctions
+                (Error (Just (0,1)) $ WrongTypeValue IntT BoolT)
     ]
 
 solveValueTests :: TestTree
@@ -263,14 +261,16 @@ solveValueTests = testGroup "Solve value"
                 (ListV (0,0) IntT [OperatorCall (0,1) "%_times_%" [IntV (0,1) 2, IntV (0,9) 3], OperatorCall (0,11) "%_times_%" [IntV (0,11) 4, IntV (0,19) 5]]),
 
         testCase "List with wrong items" $
-            expectedFailure
+            expectedError
                 (solveValue (ListV (0,0) IntT [BoolV (0,1) True, BoolV (0,7) False]))
-                initialState,
+                initialState
+                (Error (Just (0,1)) $ WrongTypeValue IntT BoolT),
 
         testCase "Matchable with wrong type arguments" $
-            expectedFailure
+            expectedError
                 (solveValue (ValueM (0,0) [WordP (0,0) "true", WordP (0,5) "plus", WordP (0,10) "false"]))
                 stateWithFunctions
+                (Error (Just (0,0)) (WrongTypeParameter FloatT BoolT ["m"]))
     ]
 
 --

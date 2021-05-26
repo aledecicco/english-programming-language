@@ -403,12 +403,8 @@ runFuzzyParser p s =
         Left e -> Left $ errorBundlePretty e
         Right a -> Right a
 
--- Returns the program parsed from a given source code
-parseProgram :: String -> Program
-parseProgram s =
-    case FuzzyParser.runFuzzyParser parseProgram' s of
-        Left e -> error e
-        Right r -> r
+parseProgram :: String -> Either String Program
+parseProgram = runFuzzyParser parseProgram'
     where
         parseProgram' :: FuzzyParser Program
         parseProgram' = some block <* eof

@@ -1,4 +1,4 @@
-module ParserEnv ( module ParserEnv, setCurrentLocation, withLocation, initialLocation, getLocation, getFirstLocation ) where
+module ParserEnv ( module ParserEnv, withLocation, initialLocation, getLocation, getFirstLocation ) where
 
 import Data.List ( find )
 import Data.Bifunctor ( first, second )
@@ -6,7 +6,7 @@ import Control.Monad.Trans.Class ( lift )
 import Control.Monad.Trans.State ( get, gets, modify, runStateT, StateT )
 import Control.Monad.Trans.Except ( throwE, runExcept, Except )
 
-import PrettyPrinter ( ppError )
+import Errors
 import Location
 import AST
 
@@ -16,9 +16,9 @@ import AST
 -- Type definition
 
 type ParserData = ([(FunId, FunSignature)], [(Name, Type)])
-type ParserEnv a = LocationT (StateT ParserData (Except String)) a
+type ParserEnv a = LocationT (StateT ParserData (Except Error)) a
 
-runParserEnv :: ParserEnv a -> ParserData -> Location -> Either String ((a, Location), ParserData)
+runParserEnv :: ParserEnv a -> ParserData -> Location -> Either Error ((a, Location), ParserData)
 runParserEnv f d s = runExcept $ runStateT (runLocationT f s) d
 
 initialState :: ParserData
@@ -29,10 +29,13 @@ initialState = ([], [])
 
 -- Errors
 
-throw :: [String] -> ParserEnv a
-throw ps = do
+throw :: ErrorType -> ParserEnv a
+throw eT = lift . lift . throwE $ Error Nothing eT
+
+throwHere :: ErrorType -> ParserEnv a
+throwHere eT = do
     l <- getCurrentLocation
-    lift . lift . throwE $ ppError ps l
+    lift . lift . throwE $ Error (Just l) eT
 
 --
 

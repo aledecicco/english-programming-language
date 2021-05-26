@@ -358,4 +358,5 @@ Modifies the value of the given variable, appending the list to it.
 - Prevent the `Run` procedure from being called explicitly
 - Add more built-in functions
 - Clean up code with unused variables
+- Unify `throw` and `throwHere` from `SolverEnv` and `EvaluatorEnv`
 - Generate an executable

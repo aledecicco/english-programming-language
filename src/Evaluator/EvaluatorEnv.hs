@@ -1,11 +1,11 @@
-module EvaluatorEnv ( module EvaluatorEnv, setCurrentLocation, withLocation, initialLocation ) where
+module EvaluatorEnv ( module EvaluatorEnv, setCurrentLocation, getCurrentLocation, withLocation, initialLocation ) where
 
 import Data.List ( find )
 import Control.Monad.Trans.Class ( lift )
 import Control.Monad.Trans.State ( gets, modify, runStateT, StateT )
 import Control.Monad.Trans.Except ( throwE, runExceptT, ExceptT )
 
-import PrettyPrinter ( ppError )
+import Errors
 import Location
 import AST
 
@@ -17,9 +17,9 @@ import AST
 type FunData = (FunId, FunCallable)
 type Reference = (Name, Int)
 type EvaluatorData = ([FunData], [Reference], [Bare Value], Int)
-type EvaluatorEnv a = LocationT (StateT EvaluatorData (ExceptT String IO)) a
+type EvaluatorEnv a = LocationT (StateT EvaluatorData (ExceptT Error IO)) a
 
-runEvaluatorEnv :: EvaluatorEnv a -> EvaluatorData -> Location -> IO (Either String ((a, Location), EvaluatorData))
+runEvaluatorEnv :: EvaluatorEnv a -> EvaluatorData -> Location -> IO (Either Error ((a, Location), EvaluatorData))
 runEvaluatorEnv f d s = runExceptT $ runStateT (runLocationT f s) d
 
 initialState :: EvaluatorData
@@ -30,10 +30,13 @@ initialState = ([], [], [], 0)
 
 -- Errors
 
-throw :: [String] -> EvaluatorEnv a
-throw ps = do
+throw :: ErrorType -> EvaluatorEnv a
+throw eT = lift . lift . throwE $ Error Nothing eT
+
+throwHere :: ErrorType -> EvaluatorEnv a
+throwHere eT = do
     l <- getCurrentLocation
-    lift . lift . throwE $ ppError ps l
+    lift . lift . throwE $ Error (Just l) eT
 
 --
 

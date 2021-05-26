@@ -3,6 +3,7 @@ module PrettyPrinter where
 import Data.List (intercalate)
 
 import AST
+import Errors ( Error(..), ErrorType(..) )
 
 --
 
@@ -74,5 +75,25 @@ ppMatchablePart (ParensP ps) = surround "(" ")" $ ppMatchable ps
 ppMatchable :: [MatchablePart a] -> String
 ppMatchable ps = unwords $ map ppMatchablePart ps
 
-ppError :: [String] -> Location -> String
-ppError e (ln, cn) = unwords ["Error in line", show ln, "column", show cn, ":\n", unwords e, "\n"]
+ppErrorType :: ErrorType -> String
+ppErrorType (WrongTypeValue eT aT) = unwords ["Expected a", ppType aT False, "but got a", ppType aT False, "instead"]
+ppErrorType (WrongTypeParameter eT aT n) = unwords ["Parameter", doubleQuote $ ppName n, "expected a", ppType eT False, "but got a", ppType aT False, "instead"]
+ppErrorType (UnmatchableValue ps) = unwords ["Could not understand", doubleQuote $ ppMatchable ps, "as a value"]
+ppErrorType (UnmatchableSentence ps) = unwords ["Could not understand", doubleQuote $ ppMatchable ps, "as a sentence"]
+ppErrorType (FunctionAlreadyDefined fid) = unwords ["Funcion", doubleQuote $ ppFunctionId fid, "is already defined"]
+ppErrorType (UndefinedFunction fid) = unwords ["Function", doubleQuote $ ppFunctionId fid, "is not defined"]
+ppErrorType (VariableAlreadyDefined n) = unwords ["Expected variable", doubleQuote $ ppName n, "to be new but it was already defined"]
+ppErrorType (UndefinedVariable n) = unwords ["Variable", doubleQuote $ ppName n, "is not defined"]
+ppErrorType (MismatchingTypeAssigned eT aT n) = unwords ["Could not assign a", ppType aT False, "to variable", doubleQuote $ ppName n, "which is a", ppType eT False]
+ppErrorType ResultInProcedure = "Found unexpected result statement in procedure"
+ppErrorType ExpectedResult = "Expected a result statement before end of operator"
+ppErrorType EmptyList = "Expected a list with at least one element"
+ppErrorType (OutOfBoundsIndex i) = unwords ["Tried to access a list at index", show i, ", which is out of bounds"]
+ppErrorType DivisionByZero = "Division by zero"
+
+ppError :: Error -> String
+ppError (Error l eT) =
+    let errM = ppErrorType eT
+    in case l of
+        (Just (ln, cn)) -> unwords ["An error occured in line", show ln, "column", show cn, ":\n", errM, "\n"]
+        Nothing -> unwords ["An error occured:\n", errM, "\n"]

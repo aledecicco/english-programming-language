@@ -3,8 +3,8 @@ module EvaluatorTest ( tests ) where
 import Test.Tasty ( testGroup, TestTree )
 import Test.Tasty.HUnit ( HasCallStack, testCase, assertFailure, Assertion, (@?=) )
 
-import BuiltInDefs
-import PrettyPrinter
+import BuiltInDefs ( builtInProcedures, builtInOperators )
+import Errors
 import EvaluatorEnv
 import Evaluator
 import AST
@@ -24,7 +24,7 @@ expectedResult :: HasCallStack => EvaluatorEnv (Maybe (Bare Value)) -> Evaluator
 expectedResult eval st res = do
     r <- runEvaluatorEnv eval st initialLocation
     case r of
-        Left err -> assertFailure $ "Evaluator action failed, the error was:\n" ++ err
+        Left e -> assertFailure $ "Evaluator action failed, the error was:\n" ++ show e
         Right ((Nothing , _), _) -> assertFailure "Evaluator action didn't yield a result"
         Right ((Just res', _), _) -> res' @?= res
 
@@ -33,17 +33,17 @@ expectedSuccess :: HasCallStack => EvaluatorEnv (Maybe (Bare Value)) -> Evaluato
 expectedSuccess eval st = do
     r <- runEvaluatorEnv eval st initialLocation
     case r of
-        Left e -> assertFailure $ "Evaluator action failed, the error was:\n" ++ e
+        Left e -> assertFailure $ "Evaluator action failed, the error was:\n" ++ show e
         Right _ -> return ()
 
--- Asserts that an evaluator action fails with the given environment
-expectedFailure :: HasCallStack => EvaluatorEnv (Maybe (Bare Value)) -> EvaluatorData -> Assertion
-expectedFailure eval st = do
+-- Asserts that an evaluator yields a specific error with the given environment
+expectedError :: HasCallStack => EvaluatorEnv (Maybe (Bare Value)) -> EvaluatorData -> Error -> Assertion
+expectedError eval st e = do
     r <- runEvaluatorEnv eval st initialLocation
     case r of
-        Left _ -> return ()
+        Left e' -> e' @?= e
         Right ((Nothing, _), _) -> assertFailure "Evaluator action didn't fail, and yielded no result"
-        Right ((Just res, _), _) -> assertFailure $ "Evaluator action didn't fail, the result was " ++ ppValue res
+        Right ((Just res, _), _) -> assertFailure $ "Evaluator action didn't fail, the result was " ++ show res
 
 --
 
@@ -55,32 +55,31 @@ valueTests = testGroup "Value"
     [
         testCase "Operator call" $
             expectedResult
-                (Just <$> evaluateValue (OperatorCall () "%_plus_%" [IntV () 2, IntV () 3]))
+                (Just <$> evaluateValue (OperatorCall (0,0) "%_plus_%" [IntV (0,0) 2, IntV (0,6) 3]))
                stateWithFunctions
                 (IntV () 5),
 
         testCase "Variable" $
             expectedResult
-                (setVariableValue ["x"] (IntV () 5) >> Just <$> evaluateValue (VarV () ["x"]))
+                (setVariableValue ["x"] (IntV () 5) >> Just <$> evaluateValue (VarV (0,0) ["x"]))
                 stateWithFunctions
                 (IntV () 5)
 
     ]
 
--- ToDo: locations shouldn't matter
 sentenceTests :: TestTree
 sentenceTests = testGroup "sentence"
     [
         testCase "While" $
             expectedResult
                 (
-                    evaluateSentences
-                        [
-                            VarDef (0,0) [["x"]] (IntV (0,0) 0),
-                            While (0,0)
-                                (OperatorCall (0,0) "%_is_less_than_%" [VarV (0,0) ["x"], IntV (0,0) 3])
-                                [VarDef (0,0) [["x"]] (OperatorCall (0,0) "%_plus_%" [VarV (0,0) ["x"], IntV (0,0) 1])],
-                            Result (0,0) (VarV (0,0) ["x"])
+                    evaluateSentences $
+                        mockLocations [
+                            VarDef () [["x"]] (IntV () 0),
+                            While ()
+                                (OperatorCall () "%_is_less_than_%" [VarV () ["x"], IntV () 3])
+                                [VarDef () [["x"]] (OperatorCall () "%_plus_%" [VarV () ["x"], IntV () 1])],
+                            Result () (VarV () ["x"])
                         ]
                 )
                 stateWithFunctions
@@ -89,12 +88,12 @@ sentenceTests = testGroup "sentence"
         testCase "Variable in scope after if" $
             expectedResult
                 (
-                    evaluateSentences
-                        [
-                            If (0,0)
-                                (BoolV (0,0) True)
-                                [VarDef (0,0) [["x"]] (IntV (0,0) 3)],
-                            Result (0,0) (VarV (0,0) ["x"])
+                    evaluateSentences $
+                        mockLocations [
+                            If ()
+                                (BoolV () True)
+                                [VarDef () [["x"]] (IntV () 3)],
+                            Result () (VarV () ["x"])
                         ]
                 )
                 stateWithFunctions
@@ -103,11 +102,11 @@ sentenceTests = testGroup "sentence"
         testCase "Add to" $
             expectedResult
                 (
-                    evaluateSentences
-                        [
-                            VarDef (0,0) [["x"]] (IntV (0,0) 2),
-                            ProcedureCall (0,0) "add_%_to_%" [IntV (0,0) 3, VarV (0,0) ["x"]],
-                            Result (0,0) (VarV (0,0) ["x"])
+                    evaluateSentences $
+                        mockLocations [
+                            VarDef () [["x"]] (IntV () 2),
+                            ProcedureCall () "add_%_to_%" [IntV () 3, VarV () ["x"]],
+                            Result () (VarV () ["x"])
                         ]
                 )
                 stateWithFunctions
@@ -116,11 +115,11 @@ sentenceTests = testGroup "sentence"
         testCase "Divide by" $
             expectedResult
                 (
-                    evaluateSentences
-                        [
-                            VarDef (0,0) [["x"]] (IntV (0,0) 2),
-                            ProcedureCall (0,0) "divide_%_by_%" [VarV (0,0) ["x"], IntV (0,0) 2],
-                            Result (0,0) (VarV (0,0) ["x"])
+                    evaluateSentences $
+                        mockLocations [
+                            VarDef () [["x"]] (IntV () 2),
+                            ProcedureCall () "divide_%_by_%" [VarV () ["x"], IntV () 2],
+                            Result () (VarV () ["x"])
                         ]
                 )
                 stateWithFunctions
@@ -129,41 +128,46 @@ sentenceTests = testGroup "sentence"
         testCase "Append to" $
             expectedResult
                 (
-                    evaluateSentences
-                        [
-                            VarDef (0,0) [["x"]] (ListV (0,0) FloatT [FloatV (0,0) 5.0, FloatV (0,0) 4.0]),
-                            ProcedureCall (0,0) "append_%_to_%" [ListV (0,0) IntT [IntV (0,0) 3, IntV (0,0) 2, IntV (0,0) 1], VarV (0,0) ["x"]],
-                            Result (0,0) (VarV (0,0) ["x"])
+                    evaluateSentences $
+                        mockLocations [
+                            VarDef () [["x"]] (ListV () FloatT [FloatV () 5.0, FloatV () 4.0]),
+                            ProcedureCall () "append_%_to_%" [ListV () IntT [IntV () 3, IntV () 2, IntV () 1], VarV () ["x"]],
+                            Result () (VarV () ["x"])
                         ]
                 )
                 stateWithFunctions
                 (ListV () FloatT [FloatV () 5.0, FloatV () 4.0, IntV () 3, IntV () 2, IntV () 1]),
 
         testCase "Variable not in scope after if" $
-            expectedFailure
+            expectedError
                 (
                     evaluateSentences
                         [
                             If (0,0)
-                                (BoolV (0,0) False)
-                                [VarDef (0,0) [["x"]] (IntV (0,0) 3)],
-                            Result (0,0) (VarV (0,0) ["x"])
-                        ]
-                )
-                stateWithFunctions,
-
-        testCase "Division by zero" $
-            expectedFailure
-                (
-                    evaluateSentences
-                        [
-                            VarDef (0,0) [["x"]] (IntV (0,0) 2),
-                            ProcedureCall (0,0) "divide_%_by_%" [VarV (0,0) ["x"], FloatV (0,0) 0.0],
-                            Result (0,0) (VarV (0,0) ["x"])
+                                (BoolV (0,3) False)
+                                [VarDef (1,0) [["x"]] (IntV (1,6) 3)],
+                            Result (2,0) (VarV (2,14) ["x"])
                         ]
                 )
                 stateWithFunctions
+                (Error (Just (2,14)) $ UndefinedVariable ["x"]),
+
+        testCase "Division by zero" $
+            expectedError
+                (
+                    evaluateSentences
+                        [
+                            VarDef (0,0) [["x"]] (IntV (0,6) 2),
+                            ProcedureCall (1,0) "divide_%_by_%" [VarV (1,7) ["x"], FloatV (1,11) 0.0],
+                            Result (2,0) (VarV (0,14) ["x"])
+                        ]
+                )
+                stateWithFunctions
+                (Error (Just (1,0)) DivisionByZero)
     ]
+    where
+        mockLocations :: Functor a => [a ()] -> [Annotated a]
+        mockLocations = map . fmap $ const (0,0)
 
 --
 

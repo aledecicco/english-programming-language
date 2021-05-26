@@ -196,27 +196,28 @@ setVariableTypeWithCheck :: Name -> Type -> ParserEnv ()
 setVariableTypeWithCheck vn t = do
     r <- getVariableType vn
     case r of
-        Just t' -> unless (t `satisfiesType` t') $ throw (mismatchingTypeAssignedError vn t t')
+        Just t' -> unless (t `satisfiesType` t') $ throwHere (MismatchingTypeAssigned t' t vn)
         Nothing -> setVariableType vn t
 
 setNewVariableType :: Name -> Type -> ParserEnv ()
 setNewVariableType vn t' = do
     isDef <- variableIsDefined vn
     if isDef
-        then throw $ alreadyDefinedVariableError vn
+        then throwHere $ VariableAlreadyDefined vn
         else setVariableType vn t'
 
 checkValueType :: Annotated Value -> Type -> ParserEnv ()
 checkValueType v t = do
-    t' <- getValueType v
-    unless (t' `satisfiesType` t) $ throw (wrongTypeValueError t t')
+    t' <- withLocation v getValueType
+    unless (t' `satisfiesType` t) $ throwHere (WrongTypeValue t t')
 
 -- Validates that a value is correctly formed
 checkValueIntegrity :: Annotated Value -> ParserEnv ()
 checkValueIntegrity (OperatorCall _ fid vs) = checkFunctionCallIntegrity (fid, vs)
 checkValueIntegrity (ListV _ t vs) = mapM_ checkElement vs
     where
-        checkElement = \v -> withLocation v checkValueIntegrity >> checkValueType v t
+        checkElement :: Annotated Value -> ParserEnv ()
+        checkElement v = withLocation v checkValueIntegrity >> checkValueType v t
 checkValueIntegrity _ = return ()
 
 checkFunctionCallIntegrity :: (FunId, [Annotated Value]) -> ParserEnv ()
@@ -236,12 +237,12 @@ checkFunctionCallIntegrity (fid, vs) = do
                         Just (_, t) ->
                             if t' `satisfiesType` t
                                 then checkParameterTypes bts ts vs
-                                else throw $ wrongTypeParameterError t t' n
+                                else throwHere $ WrongTypeParameter t t' n
                         Nothing -> checkParameterTypes ((tid, t'):bts) ts vs
                 Nothing ->
                     if t' `satisfiesType` t
                         then checkParameterTypes bts ts vs
-                        else throw $ wrongTypeParameterError t t' n
+                        else throwHere $ WrongTypeParameter t t' n
 
         findTypeToBind :: Type -> Maybe String
         findTypeToBind (ListT t) = findTypeToBind t
@@ -254,29 +255,24 @@ checkFunctionCallIntegrity (fid, vs) = do
 -- Registration
 
 registerFunctions :: Program -> ParserEnv ()
-registerFunctions = mapM_ registerFunction
+registerFunctions = mapM_ (`withLocation` registerFunction)
     where
         registerFunction :: Annotated Block -> ParserEnv ()
-        registerFunction (FunDef ann t@(Title _ ft) rt _) = do
-            setCurrentLocation ann
+        registerFunction (FunDef _ t@(Title _ ft) rt _) = do
             let fid = getFunId ft
             isDef <- functionIsDefined fid
-            when isDef $ throw (alreadyDefinedFunctionError fid)
+            when isDef $ throwHere (FunctionAlreadyDefined fid)
             let frt = case rt of
                     Just rt -> Operator $ const rt
                     Nothing -> Procedure
             setFunctionSignature fid $ FunSignature (void t) frt
 
 registerParameters :: Annotated Title -> ParserEnv ()
-registerParameters (Title _ ts) = registerParameters' ts
+registerParameters (Title _ ts) = mapM_ (`withLocation` registerParameter) ts
     where
-        registerParameters' :: [Annotated TitlePart] -> ParserEnv ()
-        registerParameters' [] = return ()
-        registerParameters' (TitleParam ann vn t : ts) = do
-            setCurrentLocation ann
-            setNewVariableType vn t
-            registerParameters' ts
-        registerParameters' (_ : ts) = registerParameters' ts
+        registerParameter :: Annotated TitlePart -> ParserEnv ()
+        registerParameter (TitleParam ann vn t) = setNewVariableType vn t
+        registerParameter _ = return ()
 
 --
 
@@ -285,13 +281,13 @@ registerParameters (Title _ ts) = registerParameters' ts
 
 solveValue :: Annotated Value -> ParserEnv (Annotated Value)
 solveValue (ListV ann t es) = do
-    es' <- mapM (solveValueWithType t) es
+    es' <- mapM (`withLocation` solveValueWithType t) es
     return $ ListV ann t es'
 solveValue (ValueM _ ps) = do
     r <- matchAsValue ps
     case r of
         Just v' -> checkValueIntegrity v' >> return v'
-        Nothing -> throw $ unmatchableValueError ps
+        Nothing -> throwHere $ UnmatchableValue ps
 solveValue v = return v
 
 solveValueWithType :: Type -> Annotated Value -> ParserEnv (Annotated Value)
@@ -302,59 +298,61 @@ solveValueWithType t v = do
 
 solveSentence :: Maybe Type -> Annotated Sentence -> ParserEnv (Annotated Sentence)
 solveSentence _ (VarDef ann vNs v) = do
-    v' <- solveValue v
+    v' <- withLocation v solveValue
     t <- getValueType v'
     mapM_ (`setVariableTypeWithCheck` t) vNs
     return $ VarDef ann vNs v'
 solveSentence rt (If ann v ls) = do
-    v' <- solveValueWithType BoolT v
+    v' <- withLocation v $ solveValueWithType BoolT
     ls' <- solveSentences ls rt
     return $ If ann v' ls'
 solveSentence rt (IfElse ann v lsT lsF) = do
-    v' <- solveValueWithType BoolT v
+    v' <- withLocation v $ solveValueWithType BoolT
     lsT' <- solveSentences lsT rt
     lsF' <- solveSentences lsF rt
     return $ IfElse ann v' lsT' lsF'
 solveSentence rt (ForEach ann iN v ls) = do
-    v' <- solveValueWithType (ListT $ AnyT "a") v
+    v' <- withLocation v $ solveValueWithType (ListT $ AnyT "a")
     iT <- getIteratorType <$> getValueType v'
     setNewVariableType iN iT
     ls' <- solveSentences ls rt
     removeVariableType iN
     return $ ForEach ann iN v' ls'
 solveSentence rt (Until ann v ls) = do
-    v' <- solveValueWithType BoolT v
+    v' <- withLocation v $ solveValueWithType BoolT
     ls' <- solveSentences ls rt
     return $ Until ann v' ls'
 solveSentence rt (While ann v ls) = do
-    v' <- solveValueWithType BoolT v
+    v' <- withLocation v $ solveValueWithType BoolT
     ls' <- solveSentences ls rt
     return $ While ann v' ls'
 solveSentence rt (Result ann v) =
     case rt of
         Just t -> do
-            v' <- solveValueWithType t v
+            v' <- withLocation v $ solveValueWithType t
             return $ Result ann v'
-        Nothing -> throw resultInProcedureError
+        Nothing -> throwHere ResultInProcedure
 solveSentence _ (SentenceM ann ps) = do
     r <- matchAsSentence ps
     case r of
         Just s@(ProcedureCall ann fid vs) -> checkFunctionCallIntegrity (fid, vs) >> return s
-        _ -> throw $ unmatchableSentenceError ps
+        _ -> throwHere $ UnmatchableSentence ps
 
 solveSentences :: [Annotated Sentence] -> Maybe Type -> ParserEnv [Annotated Sentence]
-solveSentences ss rt = mapM (\s -> withLocation s (solveSentence rt)) ss
+solveSentences ss rt = mapM (`withLocation` solveSentence rt) ss
 
 solveBlock :: Annotated Block -> ParserEnv (Annotated Block)
 solveBlock (FunDef ann t rt ss) = do
     withLocation t registerParameters
     FunDef ann t rt <$> solveSentences ss rt
 
-solveProgram :: Program -> (Program, ParserData)
-solveProgram p =
-    case runParserEnv (solveProgram' p) initialState initialLocation of
-        Left e -> error e
-        Right ((p', _), env) -> (p', env)
+--
+
+
+-- Main
+
+solveProgram :: Program -> Either Error ((Program, Location), ParserData)
+solveProgram p = runParserEnv (solveProgram' p) initialState initialLocation
     where
         solveProgram' :: Program -> ParserEnv Program
         solveProgram' p = do

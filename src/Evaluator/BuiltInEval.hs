@@ -86,16 +86,16 @@ evaluateMinus :: Value a -> Value a -> EvaluatorEnv (Bare Value)
 evaluateMinus v1 v2 = return $ binaryOperation (-) v1 v2
 
 evaluateDividedBy :: Value a -> Value a -> EvaluatorEnv (Bare Value)
-evaluateDividedBy _ (IntV _ 0) = throw divisionByZeroError
-evaluateDividedBy _ (FloatV _ 0) = throw divisionByZeroError
+evaluateDividedBy _ (IntV _ 0) = throwHere DivisionByZero
+evaluateDividedBy _ (FloatV _ 0) = throwHere DivisionByZero
 evaluateDividedBy v1 v2 = return $ floatOperation (/) v1 v2
 
 evaluateElementOfListAtPosition :: Value a -> Value a -> EvaluatorEnv (Bare Value)
-evaluateElementOfListAtPosition (ListV _ _ []) _ = throw emptyListError
+evaluateElementOfListAtPosition (ListV _ _ []) _ = throwHere EmptyList
 evaluateElementOfListAtPosition (ListV _ _ xs) (IntV _ n)
-    | n < 0 = throw $ outOfBoundsIndexError n
+    | n < 0 = throwHere $ OutOfBoundsIndex n
     | n < length xs = return . void $ xs !! n
-    | otherwise = throw $ outOfBoundsIndexError n
+    | otherwise = throwHere $ OutOfBoundsIndex n
 
 evaluateAppendedTo :: Value a -> Value a -> EvaluatorEnv (Bare Value)
 evaluateAppendedTo v1 v2 = return $ listOperation (++) v1 v2
@@ -124,6 +124,7 @@ evaluateBuiltInProcedure "multiply_%_by_%" [v1, v2] = evaluateMultiplyBy v1 v2
 evaluateBuiltInProcedure "subtract_%_from_%" [v1, v2] = evaluateSubtractFrom v1 v2
 evaluateBuiltInProcedure "divide_%_by_%" [v1, v2] = evaluateDivideBy v1 v2
 evaluateBuiltInProcedure "append_%_to_%" [v1, v2] = evaluateAppendTo v1 v2
+evaluateBuiltInProcedure x y = error $ show x ++ show (length y)
 
 evaluatePrint :: Value a -> EvaluatorEnv ()
 evaluatePrint = io . putStr . ppValue
@@ -138,8 +139,8 @@ evaluateSubtractFrom :: Value a -> Value a -> EvaluatorEnv ()
 evaluateSubtractFrom v var = binaryModification (-) var v
 
 evaluateDivideBy :: Value a -> Value a -> EvaluatorEnv ()
-evaluateDivideBy _ (IntV _ 0) = throw divisionByZeroError
-evaluateDivideBy _ (FloatV _ 0) = throw divisionByZeroError
+evaluateDivideBy _ (IntV _ 0) = throwHere DivisionByZero
+evaluateDivideBy _ (FloatV _ 0) = throwHere DivisionByZero
 evaluateDivideBy var v = floatModification (/) var v
 
 evaluateAppendTo :: Value a -> Value a -> EvaluatorEnv ()
