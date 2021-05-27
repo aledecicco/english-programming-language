@@ -1,0 +1,14 @@
+A number equal to the fibonacci sequence at a whole number (position):
+    Let x, y, and i be 1.
+    Until i is equal to the position:
+        Swap x with y.
+        Add x to y.
+        Add 1 to i.
+    The result is x.
+
+To run:
+    Let n be 6.
+    Print "The ".
+    Print n.
+    Print "th fibonacci number is ".
+    Print the fibonacci sequence at n.

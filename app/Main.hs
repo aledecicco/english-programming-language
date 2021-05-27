@@ -7,7 +7,7 @@ import PrettyPrinter ( ppError )
 
 main :: IO ()
 main = do
-    fc <- readFile "examples/Pow.epl"
+    fc <- readFile "examples/SeqFib.epl"
     case parseProgram fc of
         Left e -> putStrLn e
         Right p ->
@@ -16,5 +16,5 @@ main = do
                 Right ((p', _), d) -> do
                     r <- evaluateProgram p' d
                     case r of
-                        Left e -> putStrLn $ ppError e
+                        Left e -> putStrLn $ "\n" ++ ppError e
                         Right f -> putChar '\n'

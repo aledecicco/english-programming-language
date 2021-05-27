@@ -69,12 +69,15 @@ evaluateBuiltInOperator "%_plus_%" [v1, v2] = evaluatePlus v1 v2
 evaluateBuiltInOperator "%_times_%" [v1, v2] = evaluateTimes v1 v2
 evaluateBuiltInOperator "%_minus_%" [v1, v2] = evaluateMinus v1 v2
 evaluateBuiltInOperator "%_divided_by_%" [v1, v2] = evaluateDividedBy v1 v2
+evaluateBuiltInOperator "%_is_equal_to_%" [v1, v2] = evaluateIsEqualTo v1 v2
+evaluateBuiltInOperator "%_is_not_equal_to_%" [v1, v2] = evaluateIsNotEqualTo v1 v2
 evaluateBuiltInOperator "%_is_less_than_%" [v1, v2] = evaluateIsLessThan v1 v2
 evaluateBuiltInOperator "%_is_less_than_or_equal_to_%" [v1, v2] = evaluateIsLessThanOrEqualTo v1 v2
 evaluateBuiltInOperator "%_is_greater_than_%" [v1, v2] = evaluateIsGreaterThan v1 v2
 evaluateBuiltInOperator "%_is_greater_than_or_equal_to_%" [v1, v2] = evaluateIsGreaterThanOrEqualTo v1 v2
-evaluateBuiltInOperator "the_element_of_%_at_position_%" [l, v] = evaluateElementOfListAtPosition l v
+evaluateBuiltInOperator "the_element_of_%_at_%" [l, v] = evaluateElementOfListAt l v
 evaluateBuiltInOperator "%_appended_to_%" [l1, l2] = evaluateAppendedTo l1 l2
+evaluateBuiltInOperator "the_list_from_%_to_%" [v1, v2] = evaluateTheListFromTo v1 v2
 
 evaluatePlus :: Value a -> Value a -> EvaluatorEnv (Bare Value)
 evaluatePlus v1 v2 = return $ binaryOperation (+) v1 v2
@@ -90,15 +93,11 @@ evaluateDividedBy _ (IntV _ 0) = throwHere DivisionByZero
 evaluateDividedBy _ (FloatV _ 0) = throwHere DivisionByZero
 evaluateDividedBy v1 v2 = return $ floatOperation (/) v1 v2
 
-evaluateElementOfListAtPosition :: Value a -> Value a -> EvaluatorEnv (Bare Value)
-evaluateElementOfListAtPosition (ListV _ _ []) _ = throwHere EmptyList
-evaluateElementOfListAtPosition (ListV _ _ xs) (IntV _ n)
-    | n < 0 = throwHere $ OutOfBoundsIndex n
-    | n < length xs = return . void $ xs !! n
-    | otherwise = throwHere $ OutOfBoundsIndex n
+evaluateIsEqualTo :: Value a -> Value a -> EvaluatorEnv (Bare Value)
+evaluateIsEqualTo v1 v2 = return $ relationalOperation (==) v1 v2
 
-evaluateAppendedTo :: Value a -> Value a -> EvaluatorEnv (Bare Value)
-evaluateAppendedTo v1 v2 = return $ listOperation (++) v1 v2
+evaluateIsNotEqualTo :: Value a -> Value a -> EvaluatorEnv (Bare Value)
+evaluateIsNotEqualTo v1 v2 = return $ relationalOperation (/=) v1 v2
 
 evaluateIsLessThan :: Value a -> Value a -> EvaluatorEnv (Bare Value)
 evaluateIsLessThan v1 v2 = return $ relationalOperation (<) v1 v2
@@ -112,6 +111,19 @@ evaluateIsGreaterThan v1 v2 = return $ relationalOperation (>) v1 v2
 evaluateIsGreaterThanOrEqualTo :: Value a -> Value a -> EvaluatorEnv (Bare Value)
 evaluateIsGreaterThanOrEqualTo v1 v2 = return $ relationalOperation (>=) v1 v2
 
+evaluateElementOfListAt :: Value a -> Value a -> EvaluatorEnv (Bare Value)
+evaluateElementOfListAt (ListV _ _ []) _ = throwHere EmptyList
+evaluateElementOfListAt (ListV _ _ xs) (IntV _ n)
+    | n < 0 = throwHere $ OutOfBoundsIndex n
+    | n < length xs = return . void $ xs !! n
+    | otherwise = throwHere $ OutOfBoundsIndex n
+
+evaluateAppendedTo :: Value a -> Value a -> EvaluatorEnv (Bare Value)
+evaluateAppendedTo v1 v2 = return $ listOperation (++) v1 v2
+
+evaluateTheListFromTo :: Value a -> Value a -> EvaluatorEnv (Bare Value)
+evaluateTheListFromTo (IntV _ vF) (IntV _ vT) = return $ ListV () IntT [IntV () n | n <- [vF..vT]]
+
 --
 
 
@@ -119,6 +131,7 @@ evaluateIsGreaterThanOrEqualTo v1 v2 = return $ relationalOperation (>=) v1 v2
 
 evaluateBuiltInProcedure :: FunId -> [Value a] -> EvaluatorEnv ()
 evaluateBuiltInProcedure "print_%" [v] = evaluatePrint v
+evaluateBuiltInProcedure "swap_%_with_%" [v1, v2] = evaluateSwapWith v1 v2
 evaluateBuiltInProcedure "add_%_to_%" [v1, v2] = evaluateAddTo v1 v2
 evaluateBuiltInProcedure "multiply_%_by_%" [v1, v2] = evaluateMultiplyBy v1 v2
 evaluateBuiltInProcedure "subtract_%_from_%" [v1, v2] = evaluateSubtractFrom v1 v2
@@ -128,6 +141,13 @@ evaluateBuiltInProcedure x y = error $ show x ++ show (length y)
 
 evaluatePrint :: Value a -> EvaluatorEnv ()
 evaluatePrint = io . putStr . ppValue
+
+evaluateSwapWith :: Value a -> Value a -> EvaluatorEnv ()
+evaluateSwapWith (VarV _ vn1) (VarV _ vn2) = do
+    v1 <- fromJust <$> getVariableValue vn1
+    v2 <- fromJust <$> getVariableValue vn2
+    setVariableValue vn1 v2
+    setVariableValue vn2 v1
 
 evaluateAddTo :: Value a -> Value a -> EvaluatorEnv ()
 evaluateAddTo v var = binaryModification (+) var v

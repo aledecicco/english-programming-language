@@ -42,6 +42,14 @@ builtInOperators = map functionFromTuple
             binaryType
         ),
         (
+            [TitleParam () ["m"] FloatT, TitleWords () ["is", "equal", "to"], TitleParam () ["n"] FloatT],
+            relationalType
+        ),
+        (
+            [TitleParam () ["m"] FloatT, TitleWords () ["is", "not", "equal", "to"], TitleParam () ["n"] FloatT],
+            relationalType
+        ),
+        (
             [TitleParam () ["m"] FloatT, TitleWords () ["is", "less", "than"], TitleParam () ["n"] FloatT],
             relationalType
         ),
@@ -58,7 +66,7 @@ builtInOperators = map functionFromTuple
             relationalType
         ),
         (
-            [TitleWords () ["the", "element", "of"], TitleParam () ["l"] (ListT $ AnyT "a"), TitleWords () ["at", "position"], TitleParam () ["m"] IntT],
+            [TitleWords () ["the", "element", "of"], TitleParam () ["l"] (ListT $ AnyT "a"), TitleWords () ["at"], TitleParam () ["m"] IntT],
             Operator (\[ListT t, IntT] -> t)
         ),
         (
@@ -72,6 +80,10 @@ builtInProcedures = map functionFromTuple
     [
         (
             [TitleWords () ["print"], TitleParam () ["v"] $ AnyT "a"],
+            Procedure
+        ),
+        (
+            [TitleWords () ["swap"], TitleParam () ["v"] $ RefT (AnyT "a"), TitleWords () ["with"], TitleParam () ["w"] $ RefT (AnyT "a")],
             Procedure
         ),
         (

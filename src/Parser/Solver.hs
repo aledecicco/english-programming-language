@@ -246,6 +246,7 @@ checkFunctionCallIntegrity (fid, vs) = do
 
         findTypeToBind :: Type -> Maybe String
         findTypeToBind (ListT t) = findTypeToBind t
+        findTypeToBind (RefT t) = findTypeToBind t
         findTypeToBind (AnyT tid) = Just tid
         findTypeToBind _ = Nothing
 

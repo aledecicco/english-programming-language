@@ -94,6 +94,7 @@ ppErrorType DivisionByZero = "Division by zero"
 ppError :: Error -> String
 ppError (Error l eT) =
     let errM = ppErrorType eT
-    in case l of
-        (Just (ln, cn)) -> unwords ["An error occured in line", show ln, "column", show cn, ":\n", errM, "\n"]
-        Nothing -> unwords ["An error occured:\n", errM, "\n"]
+        hM = case l of
+            (Just (ln, cn)) -> unwords ["An error occured in line", show ln, "column", show cn]
+            Nothing -> "An error occured"
+    in hM ++ ":\n" ++ errM

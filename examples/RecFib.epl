@@ -1,0 +1,14 @@
+A number equal to the fibonacci sequence at a whole number (position):
+    If the position is less than or equal to 2:
+        The result is 1.
+    Otherwise:
+        Let X be the fibonacci sequence at the position minus 1.
+        Let Y be the fibonacci sequence at the position minus 2.
+        The result is X plus Y.
+
+To run:
+    Let n be 6.
+    Print "The ".
+    Print n.
+    Print "th fibonacci number is ".
+    Print the fibonacci sequence at n.
