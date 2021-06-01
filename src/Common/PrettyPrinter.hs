@@ -20,7 +20,7 @@ doubleQuote :: String -> String
 doubleQuote = surround "\"" "\""
 
 asList :: [String] -> String
-asList xs = surround "[" "]" $ intercalate "," xs
+asList xs = surround "[" "]" $ intercalate ", " xs
 
 
 --

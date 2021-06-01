@@ -1,4 +1,4 @@
-module Evaluator where
+module Evaluator ( module Evaluator, ReadWrite(..) ) where
 
 import Data.List ( find )
 import Data.Maybe ( fromJust, mapMaybe )
@@ -30,7 +30,7 @@ translateFunctions prog = map (translateFunction prog)
         findDefinition p t = find (\(FunDef _ t' _ _) -> void t == void t') p
 
 -- Returns a list of new variables to be declared and a list of references to be set according to the signature of a function
-variablesFromTitle :: [Bare TitlePart] -> [Bare Value] -> EvaluatorEnv ([(Name, Bare Value)], [(Name, Int)])
+variablesFromTitle :: ReadWrite m => [Bare TitlePart] -> [Bare Value] -> EvaluatorEnv m ([(Name, Bare Value)], [(Name, Int)])
 variablesFromTitle _ [] = return ([], [])
 variablesFromTitle (TitleWords _ _ : ts) vs = variablesFromTitle ts vs
 variablesFromTitle (TitleParam _ pn (RefT _) : ts) ((VarV _ vn):vs) = do
@@ -42,14 +42,14 @@ variablesFromTitle (TitleParam _ pn _ : ts) (v:vs) = do
     return ((pn, v):vars, refs)
 
 -- Finishes evaluating the arguments of a function call if necessary
-evaluateParameters :: [Bare TitlePart] -> [Annotated Value] -> EvaluatorEnv [Bare Value]
+evaluateParameters :: ReadWrite m => [Bare TitlePart] -> [Annotated Value] -> EvaluatorEnv m [Bare Value]
 evaluateParameters ts vs = do
     l <- getCurrentLocation
     r <- evaluateParameters' ts vs
     setCurrentLocation l
     return r
     where
-        evaluateParameters' :: [Bare TitlePart] -> [Annotated Value] -> EvaluatorEnv [Bare Value]
+        evaluateParameters' :: ReadWrite m => [Bare TitlePart] -> [Annotated Value] -> EvaluatorEnv m [Bare Value]
         evaluateParameters' _ [] = return []
         evaluateParameters' (TitleWords _ _ : ts) vs = evaluateParameters' ts vs
         evaluateParameters' (TitleParam _ pn (RefT _) : ts) (v:vs) = do
@@ -64,11 +64,11 @@ evaluateParameters ts vs = do
 
 -- Evaluators
 
-evaluateValueExceptReference :: Annotated Value -> EvaluatorEnv (Bare Value)
+evaluateValueExceptReference :: ReadWrite m => Annotated Value -> EvaluatorEnv m (Bare Value)
 evaluateValueExceptReference v@(VarV _ _) = return $ void v
 evaluateValueExceptReference v = evaluateValue v
 
-evaluateValue :: Annotated Value -> EvaluatorEnv (Bare Value)
+evaluateValue :: ReadWrite m => Annotated Value -> EvaluatorEnv m (Bare Value)
 evaluateValue (VarV _ vn) = do
     r <- getVariableValue vn
     case r of
@@ -80,11 +80,11 @@ evaluateValue (ListV _ t es) = do
 evaluateValue (OperatorCall _ fid vs) = evaluateOperator fid vs
 evaluateValue v = return $ void v
 
-evaluateSentences :: [Annotated Sentence] -> EvaluatorEnv (Maybe (Bare Value))
+evaluateSentences :: ReadWrite m => [Annotated Sentence] -> EvaluatorEnv m (Maybe (Bare Value))
 evaluateSentences [] = return Nothing
 evaluateSentences ss = firstNotNull (`withLocation` evaluateSentence) ss
 
-evaluateSentence :: Annotated Sentence -> EvaluatorEnv (Maybe (Bare Value))
+evaluateSentence :: ReadWrite m => Annotated Sentence -> EvaluatorEnv m (Maybe (Bare Value))
 evaluateSentence (VarDef _ vNs v) = do
     v' <- withLocation v evaluateValue
     mapM_ (`setVariableValue` v') vNs
@@ -128,7 +128,7 @@ evaluateSentence (Result _ v) = do
     return $ Just v'
 evaluateSentence (ProcedureCall _ fid vs) = evaluateProcedure fid vs >> return Nothing
 
-evaluateOperator :: FunId -> [Annotated Value] -> EvaluatorEnv (Bare Value)
+evaluateOperator :: ReadWrite m => FunId -> [Annotated Value] -> EvaluatorEnv m (Bare Value)
 evaluateOperator fid vs
     | isBuiltInFunction fid = do
         ~(FunCallable (Title _ t) _) <- fromJust <$> getFunctionCallable fid
@@ -138,7 +138,7 @@ evaluateOperator fid vs
         r <- evaluateUserDefinedFunction fid vs
         maybe (throwHere ExpectedResult) return r
 
-evaluateProcedure :: FunId -> [Annotated Value] -> EvaluatorEnv ()
+evaluateProcedure :: ReadWrite m => FunId -> [Annotated Value] -> EvaluatorEnv m ()
 evaluateProcedure fid vs
     | isBuiltInFunction fid = do
         ~(FunCallable (Title _ t) _) <- fromJust <$> getFunctionCallable fid
@@ -146,7 +146,7 @@ evaluateProcedure fid vs
         evaluateBuiltInProcedure fid vs'
     | otherwise = void $ evaluateUserDefinedFunction fid vs
 
-evaluateUserDefinedFunction :: FunId -> [Annotated Value] -> EvaluatorEnv (Maybe (Bare Value))
+evaluateUserDefinedFunction :: ReadWrite m => FunId -> [Annotated Value] -> EvaluatorEnv m (Maybe (Bare Value))
 evaluateUserDefinedFunction fid vs = do
     r <- getFunctionCallable fid
     case r of
@@ -161,10 +161,10 @@ evaluateUserDefinedFunction fid vs = do
 
 -- Main
 
-evaluateProgram :: Program -> ParserData -> IO (Either Error (((), Location), EvaluatorData))
+evaluateProgram :: ReadWrite m => Program -> ParserData -> m (Either Error (((), Location), EvaluatorData))
 evaluateProgram prog s = runEvaluatorEnv (evaluateProgram' prog s) initialState initialLocation
     where
-        evaluateProgram' :: Program -> ParserData -> EvaluatorEnv ()
+        evaluateProgram' :: ReadWrite m => Program -> ParserData -> EvaluatorEnv m ()
         evaluateProgram' prog (fs, _) = do
             setFunctions $ translateFunctions prog fs
             evaluateProcedure "run" []

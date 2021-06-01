@@ -20,7 +20,7 @@ stateWithFunctions =
     in (translateFunctions [] (builtInOperators ++ builtInProcedures), rs, vs, p)
 
 -- Asserts that an evaluator action yields a specific result with the given environment
-expectedResult :: HasCallStack => EvaluatorEnv (Maybe (Bare Value)) -> EvaluatorData -> Bare Value -> Assertion
+expectedResult :: HasCallStack => EvaluatorEnv IO (Maybe (Bare Value)) -> EvaluatorData -> Bare Value -> Assertion
 expectedResult eval st res = do
     r <- runEvaluatorEnv eval st initialLocation
     case r of
@@ -29,7 +29,7 @@ expectedResult eval st res = do
         Right ((Just res', _), _) -> res' @?= res
 
 -- Asserts that an evaluator action succeeds with the given environment
-expectedSuccess :: HasCallStack => EvaluatorEnv (Maybe (Bare Value)) -> EvaluatorData -> Assertion
+expectedSuccess :: HasCallStack => EvaluatorEnv IO (Maybe (Bare Value)) -> EvaluatorData -> Assertion
 expectedSuccess eval st = do
     r <- runEvaluatorEnv eval st initialLocation
     case r of
@@ -37,7 +37,7 @@ expectedSuccess eval st = do
         Right _ -> return ()
 
 -- Asserts that an evaluator yields a specific error with the given environment
-expectedError :: HasCallStack => EvaluatorEnv (Maybe (Bare Value)) -> EvaluatorData -> Error -> Assertion
+expectedError :: HasCallStack => EvaluatorEnv IO (Maybe (Bare Value)) -> EvaluatorData -> Error -> Assertion
 expectedError eval st e = do
     r <- runEvaluatorEnv eval st initialLocation
     case r of

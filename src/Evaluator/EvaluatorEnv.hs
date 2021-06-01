@@ -12,14 +12,29 @@ import AST
 --
 
 
--- Type definition
+-- Type definitions
 
 type FunData = (FunId, FunCallable)
 type Reference = (Name, Int)
-type EvaluatorData = ([FunData], [Reference], [Bare Value], Int)
-type EvaluatorEnv a = LocationT (StateT EvaluatorData (ExceptT Error IO)) a
 
-runEvaluatorEnv :: EvaluatorEnv a -> EvaluatorData -> Location -> IO (Either Error ((a, Location), EvaluatorData))
+-- Function callables
+-- A mapping between variable names and their addresses
+-- A list of values, where the index of each value is its address
+-- The stack pointer
+type EvaluatorData = ([FunData], [Reference], [Bare Value], Int)
+type EvaluatorEnv m a = LocationT (StateT EvaluatorData (ExceptT Error m)) a
+
+class Monad m => ReadWrite m where
+    read :: m String
+    write :: String -> m ()
+    writeLn :: String -> m ()
+
+instance ReadWrite IO where
+    read = getLine
+    write = putStr
+    writeLn = putStrLn
+
+runEvaluatorEnv :: EvaluatorEnv m a -> EvaluatorData -> Location -> m (Either Error ((a, Location), EvaluatorData))
 runEvaluatorEnv f d s = runExceptT $ runStateT (runLocationT f s) d
 
 initialState :: EvaluatorData
@@ -30,10 +45,10 @@ initialState = ([], [], [], 0)
 
 -- Errors
 
-throw :: ErrorType -> EvaluatorEnv a
+throw :: Monad m => ErrorType -> EvaluatorEnv m a
 throw eT = lift . lift . throwE $ Error Nothing eT
 
-throwHere :: ErrorType -> EvaluatorEnv a
+throwHere :: Monad m => ErrorType -> EvaluatorEnv m a
 throwHere eT = do
     l <- getCurrentLocation
     lift . lift . throwE $ Error (Just l) eT
@@ -46,16 +61,16 @@ throwHere eT = do
 removeById :: Eq a => a -> [(a, b)] -> [(a, b)]
 removeById id = filter (\p -> fst p /= id)
 
-changeFunctions :: ([FunData] -> [FunData]) -> EvaluatorEnv ()
+changeFunctions :: Monad m => ([FunData] -> [FunData]) -> EvaluatorEnv m ()
 changeFunctions m = lift $ modify (\(fs, rs, vs, p) -> (m fs, rs, vs, p))
 
-changeReferences :: ([Reference] -> [Reference]) -> EvaluatorEnv ()
+changeReferences :: Monad m => ([Reference] -> [Reference]) -> EvaluatorEnv m ()
 changeReferences m = lift $ modify (\(fs, rs, vs, p) -> (fs, m rs, vs, p))
 
-changeValues :: ([Bare Value] -> [Bare Value]) -> EvaluatorEnv ()
+changeValues :: Monad m => ([Bare Value] -> [Bare Value]) -> EvaluatorEnv m ()
 changeValues m = lift $ modify (\(fs, rs, vs, p) -> (fs, rs, m vs, p))
 
-changePointer :: (Int -> Int) -> EvaluatorEnv ()
+changePointer :: Monad m => (Int -> Int) -> EvaluatorEnv m ()
 changePointer m = lift $ modify (\(fs, rs, vs, p) -> (fs, rs, vs, m p))
 
 --
@@ -63,19 +78,19 @@ changePointer m = lift $ modify (\(fs, rs, vs, p) -> (fs, rs, vs, m p))
 
 -- Functions
 
-getFunctionCallable :: FunId -> EvaluatorEnv (Maybe FunCallable)
+getFunctionCallable :: Monad m => FunId -> EvaluatorEnv m (Maybe FunCallable)
 getFunctionCallable fid = lift $ gets (\(fs, _, _, _) -> lookup fid fs)
 
-setFunctionCallable :: FunId -> FunCallable -> EvaluatorEnv ()
+setFunctionCallable :: Monad m => FunId -> FunCallable -> EvaluatorEnv m ()
 setFunctionCallable fid f = do
     r <- getFunctionCallable fid
     removeFunctionCallable fid
     changeFunctions ((fid, f):)
 
-removeFunctionCallable :: FunId -> EvaluatorEnv ()
+removeFunctionCallable :: Monad m => FunId -> EvaluatorEnv m ()
 removeFunctionCallable fid = changeFunctions $ removeById fid
 
-setFunctions :: [(FunId, FunCallable)] -> EvaluatorEnv ()
+setFunctions :: Monad m => [(FunId, FunCallable)] -> EvaluatorEnv m ()
 setFunctions = changeFunctions . const
 
 --
@@ -83,15 +98,15 @@ setFunctions = changeFunctions . const
 
 -- References
 
-getVariableAddress :: Name -> EvaluatorEnv (Maybe Int)
+getVariableAddress :: Monad m => Name -> EvaluatorEnv m (Maybe Int)
 getVariableAddress vn = lift $ gets (\(_, vas, _, _) -> lookup vn vas)
 
-setVariableAddress :: Name -> Int -> EvaluatorEnv ()
+setVariableAddress :: Monad m => Name -> Int -> EvaluatorEnv m ()
 setVariableAddress vn addr = do
     removeVariableAddress vn
     changeReferences ((vn, addr):)
 
-removeVariableAddress :: Name -> EvaluatorEnv ()
+removeVariableAddress :: Monad m => Name -> EvaluatorEnv m ()
 removeVariableAddress vn = changeReferences $ removeById vn
 
 --
@@ -99,10 +114,10 @@ removeVariableAddress vn = changeReferences $ removeById vn
 
 -- Values
 
-getValueAtAddress :: Int -> EvaluatorEnv (Bare Value)
+getValueAtAddress :: Monad m => Int -> EvaluatorEnv m (Bare Value)
 getValueAtAddress addr = lift $ gets (\(_, _, avs, _) -> avs !! addr)
 
-setValueAtAddress :: Int -> Bare Value -> EvaluatorEnv ()
+setValueAtAddress :: Monad m => Int -> Bare Value -> EvaluatorEnv m ()
 setValueAtAddress addr v = changeValues $ replaceNth addr v
     where
         replaceNth :: Int -> a -> [a] -> [a]
@@ -113,10 +128,10 @@ setValueAtAddress addr v = changeValues $ replaceNth addr v
 
 -- Stack pointer
 
-getStackPointer :: EvaluatorEnv Int
+getStackPointer :: Monad m => EvaluatorEnv m Int
 getStackPointer = lift $ gets (\(_, _, _, p) -> p)
 
-setStackPointer :: Int -> EvaluatorEnv ()
+setStackPointer :: Monad m => Int -> EvaluatorEnv m ()
 setStackPointer p = changePointer $ const p
 
 --
@@ -124,34 +139,34 @@ setStackPointer p = changePointer $ const p
 
 -- Variables
 
-getVariableValue :: Name -> EvaluatorEnv (Maybe (Bare Value))
+getVariableValue :: Monad m => Name -> EvaluatorEnv m (Maybe (Bare Value))
 getVariableValue vn = do
     r <- getVariableAddress vn
     case r of
         Just addr -> Just <$> getValueAtAddress addr
         Nothing -> return Nothing
 
-addVariableValue :: Name -> Bare Value -> EvaluatorEnv ()
+addVariableValue :: Monad m => Name -> Bare Value -> EvaluatorEnv m ()
 addVariableValue vn v = do
     p <- getStackPointer
     setVariableAddress vn p
     setValueAtAddress p v
     setStackPointer (p+1)
 
-setVariableValue :: Name -> Bare Value -> EvaluatorEnv ()
+setVariableValue :: Monad m => Name -> Bare Value -> EvaluatorEnv m ()
 setVariableValue vn v = do
     r <- getVariableAddress vn
     case r of
         Just addr -> setValueAtAddress addr v
         Nothing -> addVariableValue vn v
 
-removeVariableValue :: Name -> EvaluatorEnv ()
+removeVariableValue :: Monad m => Name -> EvaluatorEnv m ()
 removeVariableValue = removeVariableAddress
 
 -- Receives a list of new variables to be declared and a list of references to be set and performs an action with those variables
 -- The values of new variables are discarded after the action
 -- The original values of the variables references can be modified inside the action
-withVariables :: EvaluatorEnv a -> [(Name, Bare Value)] -> [(Name, Int)] -> EvaluatorEnv a
+withVariables :: Monad m => EvaluatorEnv m a -> [(Name, Bare Value)] -> [(Name, Int)] -> EvaluatorEnv m a
 withVariables action newVarVals newVarRefs = do
     -- Save current state
     varRefs <- lift $ gets (\(_, vas, _, _) -> vas)

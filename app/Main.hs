@@ -2,8 +2,9 @@ module Main where
 
 import FuzzyParser ( parseProgram )
 import Solver ( solveProgram )
-import Evaluator ( evaluateProgram )
+import Evaluator ( evaluateProgram, ReadWrite(..) )
 import PrettyPrinter ( ppError )
+
 
 main :: IO ()
 main = do

@@ -5,6 +5,7 @@ import Test.Tasty.Ingredients.Rerun ( rerunningTests )
 import qualified FuzzyParserTest
 import qualified SolverTest
 import qualified EvaluatorTest
+import qualified ExamplesTest
 
 --
 
@@ -20,6 +21,6 @@ main =
         tests
 
 tests :: TestTree
-tests = testGroup "Tests" [FuzzyParserTest.tests, SolverTest.tests, EvaluatorTest.tests]
+tests = testGroup "Tests" [FuzzyParserTest.tests, SolverTest.tests, EvaluatorTest.tests, ExamplesTest.tests]
 
 --

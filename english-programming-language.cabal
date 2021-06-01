@@ -4,10 +4,10 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 97a190f99b8480c2798450bbef8cd90cf588b3c6b2779d4378f056fdec1448fe
+-- hash: 96640db9a5e93be18b05b9d83d4c66451fe1f26269a770f8f7365d460151c340
 
 name:           english-programming-language
-version:        2.1.1
+version:        2.2.0
 author:         Alejandro De Cicco
 maintainer:     alejandrodecicco99@gmail.com
 license:        MIT
@@ -69,6 +69,7 @@ test-suite english-programming-language-test
   main-is: Spec.hs
   other-modules:
       EvaluatorTest
+      ExamplesTest
       FuzzyParserTest
       SolverTest
       Paths_english_programming_language
