@@ -1,7 +1,7 @@
 # Expressive
 A programming language that resembles English. Write some sentences and watch the interpreter try to understand what you meant.
 
-![Version](https://img.shields.io/badge/version-v2.1.0-blue)
+![Version](https://img.shields.io/badge/version-v2.1.1-blue)
 ![License](https://img.shields.io/badge/license-MIT-brightgreen)
 
 # Syntax
@@ -350,13 +350,13 @@ Modifies the value of the given variable, dividing it by the number.
 Modifies the value of the given variable, appending the list to it.
 
 # Possible improvements:
+- Infer variable aliases from their types in titles
+- Use `each` for generators in function arguments
 - Clean up the methods that check type bindings in the solver
 - Use maps instead of lists for variable references and values in the evaluator
 - Free iterators right after the for-each block
 - Print errors instead of calling `error` in the main loop
 - Use a custom Error datatype instead of strings
-- Make assertions on specific error types in tests
-- Infer variable aliases from their types in titles
 - Implement importing other files as libraries (without the `Run` procedure)
 - Prevent the `Run` procedure from being called explicitly
 - Add more built-in functions
