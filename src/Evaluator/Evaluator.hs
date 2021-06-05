@@ -148,13 +148,10 @@ evaluateProcedure fid vs
 
 evaluateUserDefinedFunction :: ReadWrite m => FunId -> [Annotated Value] -> EvaluatorEnv m (Maybe (Bare Value))
 evaluateUserDefinedFunction fid vs = do
-    r <- getFunctionCallable fid
-    case r of
-        Just (FunCallable (Title _ t) ss) -> do
-            vs' <- evaluateParameters t vs
-            (vars, refs) <- variablesFromTitle t vs'
-            withVariables (evaluateSentences ss) vars refs
-        Nothing -> throwHere $ UndefinedFunction fid
+    ~(FunCallable (Title _ t) ss) <- fromJust <$> getFunctionCallable fid
+    vs' <- evaluateParameters t vs
+    (vars, refs) <- variablesFromTitle t vs'
+    withVariables (evaluateSentences ss) vars refs
 
 --
 

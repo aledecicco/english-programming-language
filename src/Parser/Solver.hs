@@ -359,6 +359,8 @@ solveProgram p = runParserEnv (solveProgram' p) initialState initialLocation
         solveProgram' p = do
             setFunctions $ builtInOperators ++ builtInProcedures
             registerFunctions p
+            mainIsDef <- functionIsDefined "run"
+            unless mainIsDef $ throw (UndefinedFunction "run")
             mapM (\b -> solveBlock b <* resetVariables) p
 
 --
