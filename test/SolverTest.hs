@@ -6,7 +6,7 @@ import Test.Tasty.HUnit ( HasCallStack, testCase, assertFailure, Assertion, (@?=
 
 import BuiltInDefs ( builtInOperators, builtInProcedures )
 import Errors
-import ParserEnv
+import SolverEnv
 import Solver
 import AST
 
@@ -15,29 +15,29 @@ import AST
 
 -- Auxiliary
 
-stateWithFunctions :: ParserData
+stateWithFunctions :: SolverData
 stateWithFunctions =
     let (_, vs) = initialState
     in (builtInOperators ++ builtInProcedures, vs)
 
 -- Asserts that a parser action yields a specific result with the given environment
-expectedResult :: (HasCallStack, Eq a, Show a) => ParserEnv a -> ParserData -> a -> Assertion
+expectedResult :: (HasCallStack, Eq a, Show a) => SolverEnv a -> SolverData -> a -> Assertion
 expectedResult a s r =
-    case runParserEnv a s initialLocation of
+    case runSolverEnv a s initialLocation of
         Left e -> assertFailure $ "Parser action failed, the error was:\n" ++ show e
         Right ((r', _), _) -> r' @?= r
 
 -- Asserts that a parser action succeeds with the given environment
-expectedSuccess :: (HasCallStack, Show a) => ParserEnv a -> ParserData -> Assertion
+expectedSuccess :: (HasCallStack, Show a) => SolverEnv a -> SolverData -> Assertion
 expectedSuccess a s =
-    case runParserEnv a s initialLocation of
+    case runSolverEnv a s initialLocation of
         Left e -> assertFailure $ "Parser action failed, the error was:\n" ++ show e
         Right _ -> return ()
 
 -- Asserts that a parser action yields a specific error with the given environment
-expectedError :: (HasCallStack, Show a) => ParserEnv a -> ParserData -> Error -> Assertion
+expectedError :: (HasCallStack, Show a) => SolverEnv a -> SolverData -> Error -> Assertion
 expectedError a s e =
-    case runParserEnv a s initialLocation of
+    case runSolverEnv a s initialLocation of
         Left e' -> e' @?= e
         Right (r, _) -> assertFailure $ "Parser action didn't fail, the result was " ++ show r
 

@@ -7,7 +7,7 @@ import Control.Monad ( void )
 import EvaluatorEnv
 import BuiltInDefs
 import BuiltInEval
-import ParserEnv ( ParserData )
+import SolverEnv ( SolverData )
 import Utils ( firstNotNull )
 import Errors
 import AST
@@ -158,10 +158,10 @@ evaluateUserDefinedFunction fid vs = do
 
 -- Main
 
-evaluateProgram :: ReadWrite m => Program -> ParserData -> m (Either Error (((), Location), EvaluatorData))
+evaluateProgram :: ReadWrite m => Program -> SolverData -> m (Either Error (((), Location), EvaluatorData))
 evaluateProgram prog s = runEvaluatorEnv (evaluateProgram' prog s) initialState initialLocation
     where
-        evaluateProgram' :: ReadWrite m => Program -> ParserData -> EvaluatorEnv m ()
+        evaluateProgram' :: ReadWrite m => Program -> SolverData -> EvaluatorEnv m ()
         evaluateProgram' prog (fs, _) = do
             setFunctions $ translateFunctions prog fs
             evaluateProcedure "run" []

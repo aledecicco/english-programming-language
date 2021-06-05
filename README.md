@@ -1,7 +1,7 @@
 # Expressive
 A programming language that resembles English. Write some sentences and watch the interpreter try to understand what you meant.
 
-![Version](https://img.shields.io/badge/version-v2.2.1-blue)
+![Version](https://img.shields.io/badge/version-v2.2.2-blue)
 ![License](https://img.shields.io/badge/license-MIT-brightgreen)
 
 # Syntax

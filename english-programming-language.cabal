@@ -4,10 +4,10 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: c6e0ea34513346fc9ed6643d229562f691e847abe571d29ca6cea223a2bc04c9
+-- hash: 8c3feb485cc0ba7f08f59ae5e5ec658e813f3a00749487bea2640d8ea70d75ad
 
 name:           english-programming-language
-version:        2.2.1
+version:        2.2.2
 author:         Alejandro De Cicco
 maintainer:     alejandrodecicco99@gmail.com
 license:        MIT
@@ -25,8 +25,8 @@ library
       PrettyPrinter
       Utils
       FuzzyParser
-      ParserEnv
       Solver
+      SolverEnv
       BuiltInEval
       Evaluator
       EvaluatorEnv

@@ -9,7 +9,7 @@ import Control.Monad ( unless, when, void )
 
 import Utils ( getFunId, firstNotNull, allOrNone )
 import BuiltInDefs
-import ParserEnv
+import SolverEnv
 import AST
 import Errors
 
@@ -54,7 +54,7 @@ sepByTitle ps (TitleParam {} : ts) = do
 
 -- Auxiliary matchers
 
-matchAsName :: [MatchablePart a] -> ParserEnv (Maybe Name)
+matchAsName :: [MatchablePart a] -> SolverEnv (Maybe Name)
 matchAsName [WordP _ w] = return $ Just [w]
 matchAsName (WordP _ w : ps) = do
     r <- matchAsName ps
@@ -64,17 +64,17 @@ matchAsName (WordP _ w : ps) = do
 matchAsName _ = return Nothing
 
 -- Matches a list of matchables as a call to one of the given functions
-matchAsFunctionCall :: [Annotated MatchablePart] -> [FunSignature] -> ParserEnv (Maybe (FunId, [Annotated Value]))
+matchAsFunctionCall :: [Annotated MatchablePart] -> [FunSignature] -> SolverEnv (Maybe (FunId, [Annotated Value]))
 matchAsFunctionCall ps fs = do
     firstNotNull matchAsFunctionCall' fs
     where
-        matchAsFunctionCall' :: FunSignature -> ParserEnv (Maybe (FunId, [Annotated Value]))
+        matchAsFunctionCall' :: FunSignature -> SolverEnv (Maybe (FunId, [Annotated Value]))
         matchAsFunctionCall' (FunSignature (Title _ ft) _) = do
             let posParams = sepByTitle ps ft
                 fid = getFunId ft
             r <- firstNotNull matchAllParams posParams
             return $ (fid, ) <$> r
-        matchAllParams :: [[Annotated MatchablePart]] -> ParserEnv (Maybe [Annotated Value])
+        matchAllParams :: [[Annotated MatchablePart]] -> SolverEnv (Maybe [Annotated Value])
         matchAllParams = allOrNone matchAsValue
 
 --
@@ -82,7 +82,7 @@ matchAsFunctionCall ps fs = do
 
 -- Value matchers
 
-matchAsPrimitive :: [Annotated MatchablePart] -> ParserEnv (Maybe (Annotated Value))
+matchAsPrimitive :: [Annotated MatchablePart] -> SolverEnv (Maybe (Annotated Value))
 matchAsPrimitive [IntP ann n] = return $ Just (IntV ann n)
 matchAsPrimitive [FloatP ann n] = return $ Just (FloatV ann n)
 matchAsPrimitive [CharP ann c] = return $ Just (CharV ann c)
@@ -96,7 +96,7 @@ matchAsPrimitive [WordP ann w]
     | w == "false" = return $ Just (BoolV ann False)
 matchAsPrimitive _ = return Nothing
 
-matchAsVariable :: [Annotated MatchablePart] -> ParserEnv (Maybe (Annotated Value))
+matchAsVariable :: [Annotated MatchablePart] -> SolverEnv (Maybe (Annotated Value))
 matchAsVariable ps = do
     let ann = getFirstLocation ps
     r <- matchAsName ps
@@ -106,7 +106,7 @@ matchAsVariable ps = do
             matchAsVariable' n isDef ann
         Nothing -> return Nothing
     where
-        matchAsVariable' :: Name -> Bool -> Location -> ParserEnv (Maybe (Annotated Value))
+        matchAsVariable' :: Name -> Bool -> Location -> SolverEnv (Maybe (Annotated Value))
         matchAsVariable' n True ann = return $ Just (VarV ann n)
         matchAsVariable' ("the":n) False ann = do
             isDef <- variableIsDefined n
@@ -115,14 +115,14 @@ matchAsVariable ps = do
                 else return Nothing
         matchAsVariable' _ _ _ = return Nothing
 
-matchAsOperatorCall :: [Annotated MatchablePart] -> ParserEnv (Maybe (Annotated Value))
+matchAsOperatorCall :: [Annotated MatchablePart] -> SolverEnv (Maybe (Annotated Value))
 matchAsOperatorCall ps = do
     let ann = getFirstLocation ps
     operators <- getOperatorSignatures
     r <- matchAsFunctionCall ps operators
     return $ uncurry (OperatorCall ann) <$> r
 
-matchAsValue :: [Annotated MatchablePart] -> ParserEnv (Maybe (Annotated Value))
+matchAsValue :: [Annotated MatchablePart] -> SolverEnv (Maybe (Annotated Value))
 matchAsValue [ParensP ps] = matchAsValue ps
 matchAsValue ps = firstNotNull (\matcher -> matcher ps) [matchAsPrimitive, matchAsVariable, matchAsOperatorCall]
 
@@ -131,14 +131,14 @@ matchAsValue ps = firstNotNull (\matcher -> matcher ps) [matchAsPrimitive, match
 
 -- Sentence matchers
 
-matchAsProcedureCall :: [Annotated MatchablePart] -> ParserEnv (Maybe (Annotated Sentence))
+matchAsProcedureCall :: [Annotated MatchablePart] -> SolverEnv (Maybe (Annotated Sentence))
 matchAsProcedureCall ps = do
     procedures <- getProcedureSignatures
     r <- matchAsFunctionCall ps procedures
     matchAsProcedureCall' ps procedures r
     where
         -- Takes the result of matching as a function call, tries again if necessary, and returns a procedure call
-        matchAsProcedureCall' :: [Annotated MatchablePart] -> [FunSignature] -> Maybe (FunId, [Annotated Value]) -> ParserEnv (Maybe (Annotated Sentence))
+        matchAsProcedureCall' :: [Annotated MatchablePart] -> [FunSignature] -> Maybe (FunId, [Annotated Value]) -> SolverEnv (Maybe (Annotated Sentence))
         matchAsProcedureCall' (WordP fAnn (x:xs) : ps) procedures Nothing
             | isUpper x = do
                 let lowerCaseTitle = WordP fAnn (toLower x : xs) : ps
@@ -150,7 +150,7 @@ matchAsProcedureCall ps = do
             return $ uncurry (ProcedureCall ann) <$> r
 
 
-matchAsSentence :: [Annotated MatchablePart] -> ParserEnv (Maybe (Annotated Sentence))
+matchAsSentence :: [Annotated MatchablePart] -> SolverEnv (Maybe (Annotated Sentence))
 matchAsSentence [ParensP ps] = matchAsSentence ps
 matchAsSentence ps = matchAsProcedureCall ps
 
@@ -167,7 +167,7 @@ satisfiesType (RefT t1) (RefT t2) = t1 `satisfiesType` t2
 satisfiesType (RefT t1) t2 = t1 `satisfiesType` t2
 satisfiesType t1 t2 = t1 == t2
 
-getValueType :: Value a -> ParserEnv Type
+getValueType :: Value a -> SolverEnv Type
 getValueType (IntV _ _) = return IntT
 getValueType (FloatV _ _) = return FloatT
 getValueType (BoolV _ _) = return BoolT
@@ -178,7 +178,7 @@ getValueType (OperatorCall _ fid vs) = do
     vTs <- mapM getValueType vs
     getOperatorCallType fid vTs
     where
-        getOperatorCallType :: FunId -> [Type] -> ParserEnv Type
+        getOperatorCallType :: FunId -> [Type] -> SolverEnv Type
         getOperatorCallType fid vTs = do
             ~(FunSignature _ (Operator tFun)) <- fromJust <$> getFunctionSignature fid
             return $ tFun vTs
@@ -192,41 +192,41 @@ getIteratorType (ListT t) = t
 
 -- Validations
 
-setVariableTypeWithCheck :: Name -> Type -> ParserEnv ()
+setVariableTypeWithCheck :: Name -> Type -> SolverEnv ()
 setVariableTypeWithCheck vn t = do
     r <- getVariableType vn
     case r of
         Just t' -> unless (t `satisfiesType` t') $ throwHere (MismatchingTypeAssigned t' t vn)
         Nothing -> setVariableType vn t
 
-setNewVariableType :: Name -> Type -> ParserEnv ()
+setNewVariableType :: Name -> Type -> SolverEnv ()
 setNewVariableType vn t' = do
     isDef <- variableIsDefined vn
     if isDef
         then throwHere $ VariableAlreadyDefined vn
         else setVariableType vn t'
 
-checkValueType :: Annotated Value -> Type -> ParserEnv ()
+checkValueType :: Annotated Value -> Type -> SolverEnv ()
 checkValueType v t = do
     t' <- withLocation v getValueType
     unless (t' `satisfiesType` t) $ throwHere (WrongTypeValue t t')
 
 -- Validates that a value is correctly formed
-checkValueIntegrity :: Annotated Value -> ParserEnv ()
+checkValueIntegrity :: Annotated Value -> SolverEnv ()
 checkValueIntegrity (OperatorCall _ fid vs) = checkFunctionCallIntegrity (fid, vs)
 checkValueIntegrity (ListV _ t vs) = mapM_ checkElement vs
     where
-        checkElement :: Annotated Value -> ParserEnv ()
+        checkElement :: Annotated Value -> SolverEnv ()
         checkElement v = withLocation v checkValueIntegrity >> checkValueType v t
 checkValueIntegrity _ = return ()
 
-checkFunctionCallIntegrity :: (FunId, [Annotated Value]) -> ParserEnv ()
+checkFunctionCallIntegrity :: (FunId, [Annotated Value]) -> SolverEnv ()
 checkFunctionCallIntegrity (fid, vs) = do
     mapM_ (`withLocation` checkValueIntegrity) vs
     ~(FunSignature (Title _ ft) _) <- fromJust <$> getFunctionSignature fid
     checkParameterTypes [] ft vs
     where
-        checkParameterTypes :: [(String, Type)] -> [Bare TitlePart] -> [Annotated Value] -> ParserEnv ()
+        checkParameterTypes :: [(String, Type)] -> [Bare TitlePart] -> [Annotated Value] -> SolverEnv ()
         checkParameterTypes _ _ [] = return ()
         checkParameterTypes bts (TitleWords {} : ts) vs = checkParameterTypes bts ts vs
         checkParameterTypes bts (TitleParam _ n t : ts) (v:vs) = do
@@ -255,10 +255,10 @@ checkFunctionCallIntegrity (fid, vs) = do
 
 -- Registration
 
-registerFunctions :: Program -> ParserEnv ()
+registerFunctions :: Program -> SolverEnv ()
 registerFunctions = mapM_ (`withLocation` registerFunction)
     where
-        registerFunction :: Annotated Block -> ParserEnv ()
+        registerFunction :: Annotated Block -> SolverEnv ()
         registerFunction (FunDef _ t@(Title _ ft) rt _) = do
             let fid = getFunId ft
             isDef <- functionIsDefined fid
@@ -268,10 +268,10 @@ registerFunctions = mapM_ (`withLocation` registerFunction)
                     Nothing -> Procedure
             setFunctionSignature fid $ FunSignature (void t) frt
 
-registerParameters :: Annotated Title -> ParserEnv ()
+registerParameters :: Annotated Title -> SolverEnv ()
 registerParameters (Title _ ts) = mapM_ (`withLocation` registerParameter) ts
     where
-        registerParameter :: Annotated TitlePart -> ParserEnv ()
+        registerParameter :: Annotated TitlePart -> SolverEnv ()
         registerParameter (TitleParam ann vn t) = setNewVariableType vn t
         registerParameter _ = return ()
 
@@ -280,7 +280,7 @@ registerParameters (Title _ ts) = mapM_ (`withLocation` registerParameter) ts
 
 -- Solvers
 
-solveValue :: Annotated Value -> ParserEnv (Annotated Value)
+solveValue :: Annotated Value -> SolverEnv (Annotated Value)
 solveValue (ListV ann t es) = do
     es' <- mapM (`withLocation` solveValueWithType t) es
     return $ ListV ann t es'
@@ -291,13 +291,13 @@ solveValue (ValueM _ ps) = do
         Nothing -> throwHere $ UnmatchableValue ps
 solveValue v = return v
 
-solveValueWithType :: Type -> Annotated Value -> ParserEnv (Annotated Value)
+solveValueWithType :: Type -> Annotated Value -> SolverEnv (Annotated Value)
 solveValueWithType t v = do
     v' <- solveValue v
     checkValueType v' t
     return v'
 
-solveSentence :: Maybe Type -> Annotated Sentence -> ParserEnv (Annotated Sentence)
+solveSentence :: Maybe Type -> Annotated Sentence -> SolverEnv (Annotated Sentence)
 solveSentence _ (VarDef ann vNs v) = do
     v' <- withLocation v solveValue
     t <- getValueType v'
@@ -339,10 +339,10 @@ solveSentence _ (SentenceM ann ps) = do
         Just s@(ProcedureCall ann fid vs) -> checkFunctionCallIntegrity (fid, vs) >> return s
         _ -> throwHere $ UnmatchableSentence ps
 
-solveSentences :: [Annotated Sentence] -> Maybe Type -> ParserEnv [Annotated Sentence]
+solveSentences :: [Annotated Sentence] -> Maybe Type -> SolverEnv [Annotated Sentence]
 solveSentences ss rt = mapM (`withLocation` solveSentence rt) ss
 
-solveBlock :: Annotated Block -> ParserEnv (Annotated Block)
+solveBlock :: Annotated Block -> SolverEnv (Annotated Block)
 solveBlock (FunDef ann t rt ss) = do
     withLocation t registerParameters
     FunDef ann t rt <$> solveSentences ss rt
@@ -352,10 +352,10 @@ solveBlock (FunDef ann t rt ss) = do
 
 -- Main
 
-solveProgram :: Program -> Either Error ((Program, Location), ParserData)
-solveProgram p = runParserEnv (solveProgram' p) initialState initialLocation
+solveProgram :: Program -> Either Error ((Program, Location), SolverData)
+solveProgram p = runSolverEnv (solveProgram' p) initialState initialLocation
     where
-        solveProgram' :: Program -> ParserEnv Program
+        solveProgram' :: Program -> SolverEnv Program
         solveProgram' p = do
             setFunctions $ builtInOperators ++ builtInProcedures
             registerFunctions p

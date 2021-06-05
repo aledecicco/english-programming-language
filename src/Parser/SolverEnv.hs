@@ -1,4 +1,4 @@
-module ParserEnv ( module ParserEnv, withLocation, initialLocation, getLocation, getFirstLocation ) where
+module SolverEnv ( module SolverEnv, withLocation, initialLocation, getLocation, getFirstLocation ) where
 
 import Data.List ( find )
 import Data.Bifunctor ( first, second )
@@ -15,13 +15,13 @@ import AST
 
 -- Type definition
 
-type ParserData = ([(FunId, FunSignature)], [(Name, Type)])
-type ParserEnv a = LocationT (StateT ParserData (Except Error)) a
+type SolverData = ([(FunId, FunSignature)], [(Name, Type)])
+type SolverEnv a = LocationT (StateT SolverData (Except Error)) a
 
-runParserEnv :: ParserEnv a -> ParserData -> Location -> Either Error ((a, Location), ParserData)
-runParserEnv f d s = runExcept $ runStateT (runLocationT f s) d
+runSolverEnv :: SolverEnv a -> SolverData -> Location -> Either Error ((a, Location), SolverData)
+runSolverEnv f d s = runExcept $ runStateT (runLocationT f s) d
 
-initialState :: ParserData
+initialState :: SolverData
 initialState = ([], [])
 
 --
@@ -29,10 +29,10 @@ initialState = ([], [])
 
 -- Errors
 
-throw :: ErrorType -> ParserEnv a
+throw :: ErrorType -> SolverEnv a
 throw eT = lift . lift . throwE $ Error Nothing eT
 
-throwHere :: ErrorType -> ParserEnv a
+throwHere :: ErrorType -> SolverEnv a
 throwHere eT = do
     l <- getCurrentLocation
     lift . lift . throwE $ Error (Just l) eT
@@ -42,10 +42,10 @@ throwHere eT = do
 
 -- Auxiliary
 
-changeFunctions :: ([(FunId, FunSignature)] -> [(FunId, FunSignature)]) -> ParserEnv ()
+changeFunctions :: ([(FunId, FunSignature)] -> [(FunId, FunSignature)]) -> SolverEnv ()
 changeFunctions m = lift $ modify (first m)
 
-changeVariables :: ([(Name, Type)] -> [(Name, Type)]) -> ParserEnv ()
+changeVariables :: ([(Name, Type)] -> [(Name, Type)]) -> SolverEnv ()
 changeVariables m = lift $ modify (second m)
 
 
@@ -54,27 +54,27 @@ changeVariables m = lift $ modify (second m)
 
 -- Variables
 
-getVariableType :: Name -> ParserEnv (Maybe Type)
+getVariableType :: Name -> SolverEnv (Maybe Type)
 getVariableType vn = lift $ gets (lookup vn . snd)
 
-setVariableType :: Name -> Type -> ParserEnv ()
+setVariableType :: Name -> Type -> SolverEnv ()
 setVariableType vn t = do
     removeVariableType vn
     lift $ modify (second ((vn, t):))
 
-removeVariableType :: Name -> ParserEnv ()
+removeVariableType :: Name -> SolverEnv ()
 removeVariableType vn =
     let removeVn = filter (\vd -> fst vd /= vn)
     in changeVariables removeVn
 
-variableIsDefined :: Name -> ParserEnv Bool
+variableIsDefined :: Name -> SolverEnv Bool
 variableIsDefined vn = do
     r <- getVariableType vn
     case r of
         Just _ -> return True
         _ -> return False
 
-resetVariables :: ParserEnv ()
+resetVariables :: SolverEnv ()
 resetVariables = changeVariables $ const []
 
 --
@@ -82,37 +82,37 @@ resetVariables = changeVariables $ const []
 
 -- Functions
 
-getFunctionSignature :: FunId -> ParserEnv (Maybe FunSignature)
+getFunctionSignature :: FunId -> SolverEnv (Maybe FunSignature)
 getFunctionSignature fid = lift $ gets (lookup fid .fst)
 
-setFunctionSignature :: FunId -> FunSignature -> ParserEnv ()
+setFunctionSignature :: FunId -> FunSignature -> SolverEnv ()
 setFunctionSignature fid s = do
     removeFunctionSignature fid
     changeFunctions ((fid, s):)
 
-removeFunctionSignature :: FunId -> ParserEnv ()
+removeFunctionSignature :: FunId -> SolverEnv ()
 removeFunctionSignature fid =
     let removeFid = filter (\fd -> fst fd /= fid)
     in changeFunctions removeFid
 
-getOperatorSignatures :: ParserEnv [FunSignature]
+getOperatorSignatures :: SolverEnv [FunSignature]
 getOperatorSignatures = do
     fs <- fst <$> lift get
     return $ [f | (_, f@(FunSignature _ (Operator _))) <- fs]
 
-getProcedureSignatures :: ParserEnv [FunSignature]
+getProcedureSignatures :: SolverEnv [FunSignature]
 getProcedureSignatures = do
     fs <- fst <$> lift get
     return $ [f | (_, f@(FunSignature _ Procedure)) <- fs]
 
-functionIsDefined :: FunId -> ParserEnv Bool
+functionIsDefined :: FunId -> SolverEnv Bool
 functionIsDefined fid = do
     r <- getFunctionSignature fid
     case r of
         Just _ -> return True
         _ -> return False
 
-setFunctions :: [(FunId, FunSignature)] -> ParserEnv ()
+setFunctions :: [(FunId, FunSignature)] -> SolverEnv ()
 setFunctions = changeFunctions . const
 
 --
