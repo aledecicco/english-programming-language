@@ -76,6 +76,7 @@ evaluateBuiltInOperator "%_is_less_than_or_equal_to_%" [v1, v2] = evaluateIsLess
 evaluateBuiltInOperator "%_is_greater_than_%" [v1, v2] = evaluateIsGreaterThan v1 v2
 evaluateBuiltInOperator "%_is_greater_than_or_equal_to_%" [v1, v2] = evaluateIsGreaterThanOrEqualTo v1 v2
 evaluateBuiltInOperator "the_element_of_%_at_%" [l, v] = evaluateElementOfListAt l v
+evaluateBuiltInOperator "the_length_of_%" [l] = evaluateLengthOf l
 evaluateBuiltInOperator "%_appended_to_%" [l1, l2] = evaluateAppendedTo l1 l2
 evaluateBuiltInOperator "the_list_from_%_to_%" [v1, v2] = evaluateTheListFromTo v1 v2
 
@@ -94,10 +95,14 @@ evaluateDividedBy _ (FloatV _ 0) = throwHere DivisionByZero
 evaluateDividedBy v1 v2 = return $ floatOperation (/) v1 v2
 
 evaluateIsEqualTo :: ReadWrite m => Value a -> Value a -> EvaluatorEnv m (Bare Value)
-evaluateIsEqualTo v1 v2 = return $ relationalOperation (==) v1 v2
+evaluateIsEqualTo (IntV _ n) (FloatV _ f) = return $ BoolV () (fromIntegral n == f)
+evaluateIsEqualTo (FloatV _ f) (IntV _ n) = return $ BoolV () (fromIntegral n == f)
+evaluateIsEqualTo v1 v2 = return $ BoolV () (void v1 == void v2)
 
 evaluateIsNotEqualTo :: ReadWrite m => Value a -> Value a -> EvaluatorEnv m (Bare Value)
-evaluateIsNotEqualTo v1 v2 = return $ relationalOperation (/=) v1 v2
+evaluateIsNotEqualTo (IntV _ n) (FloatV _ f) = return $ BoolV () (fromIntegral n /= f)
+evaluateIsNotEqualTo (FloatV _ f) (IntV _ n) = return $ BoolV () (fromIntegral n /= f)
+evaluateIsNotEqualTo v1 v2 = return $ BoolV () (void v1 /= void v2)
 
 evaluateIsLessThan :: ReadWrite m => Value a -> Value a -> EvaluatorEnv m (Bare Value)
 evaluateIsLessThan v1 v2 = return $ relationalOperation (<) v1 v2
@@ -117,6 +122,9 @@ evaluateElementOfListAt (ListV _ _ xs) (IntV _ n)
     | n < 0 = throwHere $ OutOfBoundsIndex n
     | n < length xs = return . void $ xs !! n
     | otherwise = throwHere $ OutOfBoundsIndex n
+
+evaluateLengthOf :: ReadWrite m => Value a -> EvaluatorEnv m (Bare Value)
+evaluateLengthOf (ListV _ _ xs) = return $ IntV () (length xs)
 
 evaluateAppendedTo :: ReadWrite m => Value a -> Value a -> EvaluatorEnv m (Bare Value)
 evaluateAppendedTo v1 v2 = return $ listOperation (++) v1 v2

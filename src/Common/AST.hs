@@ -51,6 +51,9 @@ data Title a = Title a [TitlePart a]
 
 data FunSignature = FunSignature (Bare Title) FunType
 
+instance Show FunSignature where
+    show (FunSignature t _) = show t
+
 data FunCallable = FunCallable (Bare Title) [Annotated Sentence]
 
 data FunType = Operator ([Type] -> Type) | Procedure

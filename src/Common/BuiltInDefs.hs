@@ -42,11 +42,11 @@ builtInOperators = map functionFromTuple
             binaryType
         ),
         (
-            [TitleParam () ["m"] FloatT, TitleWords () ["is", "equal", "to"], TitleParam () ["n"] FloatT],
+            [TitleParam () ["m"] (AnyT "a"), TitleWords () ["is", "equal", "to"], TitleParam () ["n"] (AnyT "a")],
             relationalType
         ),
         (
-            [TitleParam () ["m"] FloatT, TitleWords () ["is", "not", "equal", "to"], TitleParam () ["n"] FloatT],
+            [TitleParam () ["m"] (AnyT "a"), TitleWords () ["is", "not", "equal", "to"], TitleParam () ["n"] (AnyT "a")],
             relationalType
         ),
         (
@@ -70,8 +70,16 @@ builtInOperators = map functionFromTuple
             Operator (\[ListT t, IntT] -> t)
         ),
         (
+            [TitleWords () ["the", "length", "of"], TitleParam () ["l"] (ListT $ AnyT "a")],
+            Operator (\[ListT t] -> IntT)
+        ),
+        (
             [TitleParam () ["m"] (ListT $ AnyT "a"), TitleWords () ["appended", "to"], TitleParam () ["n"] (ListT $ AnyT "a")],
             Operator (\[ListT t1, ListT t2] -> if t1 == FloatT || t2 == FloatT then ListT FloatT else ListT t1)
+        ),
+        (
+            [TitleWords () ["the", "list", "from"], TitleParam () ["m"] IntT, TitleWords () ["to"], TitleParam () ["n"] IntT],
+            Operator (\[IntT, IntT] -> ListT IntT)
         )
     ]
 

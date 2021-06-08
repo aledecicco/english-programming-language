@@ -7,7 +7,7 @@ import Control.Monad ( void )
 import EvaluatorEnv
 import BuiltInDefs
 import BuiltInEval
-import SolverEnv ( SolverData )
+import SolverEnv ( SolverData, getLocation )
 import Utils ( firstNotNull )
 import Errors
 import AST
@@ -52,10 +52,10 @@ evaluateParameters ts vs = do
         evaluateParameters' :: ReadWrite m => [Bare TitlePart] -> [Annotated Value] -> EvaluatorEnv m [Bare Value]
         evaluateParameters' _ [] = return []
         evaluateParameters' (TitleWords _ _ : ts) vs = evaluateParameters' ts vs
-        evaluateParameters' (TitleParam _ pn (RefT _) : ts) (v:vs) = do
+        evaluateParameters' (TitleParam _ _ (RefT _) : ts) (v:vs) = do
             v' <- withLocation v evaluateValueExceptReference
             (v':) <$> evaluateParameters' ts vs
-        evaluateParameters' (TitleParam _ pn _ : ts) (v:vs) = do
+        evaluateParameters' (TitleParam {} : ts) (v:vs) = do
             v' <- withLocation v evaluateValue
             (v':) <$> evaluateParameters' ts vs
 
@@ -82,7 +82,15 @@ evaluateValue v = return $ void v
 
 evaluateSentences :: ReadWrite m => [Annotated Sentence] -> EvaluatorEnv m (Maybe (Bare Value))
 evaluateSentences [] = return Nothing
-evaluateSentences ss = firstNotNull (`withLocation` evaluateSentence) ss
+evaluateSentences ss = do
+    firstNotNull evaluateSentenceWithLocation ss
+    where
+        evaluateSentenceWithLocation :: ReadWrite m => Annotated Sentence -> EvaluatorEnv m (Maybe (Bare Value))
+        evaluateSentenceWithLocation s = do
+            let ann = getLocation s
+            r <- withLocation s evaluateSentence
+            setCurrentLocation ann
+            return r
 
 evaluateSentence :: ReadWrite m => Annotated Sentence -> EvaluatorEnv m (Maybe (Bare Value))
 evaluateSentence (VarDef _ vNs v) = do
@@ -136,7 +144,9 @@ evaluateOperator fid vs
         evaluateBuiltInOperator fid vs'
     | otherwise = do
         r <- evaluateUserDefinedFunction fid vs
-        maybe (throwHere ExpectedResult) return r
+        case r of
+            Just r' -> return r'
+            Nothing -> throwHere ExpectedResult
 
 evaluateProcedure :: ReadWrite m => FunId -> [Annotated Value] -> EvaluatorEnv m ()
 evaluateProcedure fid vs

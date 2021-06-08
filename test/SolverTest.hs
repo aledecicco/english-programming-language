@@ -39,7 +39,7 @@ expectedError :: (HasCallStack, Show a) => SolverEnv a -> SolverData -> Error ->
 expectedError a s e =
     case runSolverEnv a s initialLocation of
         Left e' -> e' @?= e
-        Right (r, _) -> assertFailure $ "Parser action didn't fail, the result was " ++ show r
+        Right ((r, _), _) -> assertFailure $ "Parser action didn't fail, the result was " ++ show r
 
 --
 
@@ -176,15 +176,48 @@ getValueTypeTests = testGroup "Get value type"
     [
         testCase "Adding ints" $
             expectedResult
-                (getValueType $ OperatorCall () "%_plus_%" [IntV () 2, IntV () 3])
+                (getValueType $ OperatorCall (0,0) "%_plus_%" [IntV (0,0) 2, IntV (0,0) 3])
                 stateWithFunctions
                 IntT,
 
         testCase "Adding mixed" $
             expectedResult
-                (getValueType $ OperatorCall () "%_plus_%" [IntV () 2, FloatV () 3.0])
+                (getValueType $ OperatorCall (0,0) "%_plus_%" [IntV (0,0) 2, FloatV (0,0) 3.0])
                 stateWithFunctions
-                FloatT
+                FloatT,
+
+        testCase "Correct type arguments" $
+            expectedSuccess
+                (getValueType $ OperatorCall (0,0) "%_plus_%" [IntV (0,0) 2, FloatV (0,6) 3.0])
+                stateWithFunctions,
+
+        testCase "Correct bound types" $
+            expectedSuccess
+                (getValueType $ OperatorCall (0,0) "%_appended_to_%" [ListV (0,0) IntT [IntV (0,1) 1, IntV (0,3) 2], ListV (0,17) IntT [IntV (0,18) 3, IntV (0,20) 4]])
+                stateWithFunctions,
+
+        testCase "Satisfiable bound types" $
+            expectedSuccess
+                (getValueType $ OperatorCall (0,0) "%_appended_to_%" [ListV (0,0) FloatT [FloatV (0,1) 1, IntV (0,3) 2], ListV (0,17) IntT [IntV (0,18) 3, IntV (0,20) 4]])
+                stateWithFunctions,
+
+        testCase "Wrong bound types" $
+            expectedError
+                (getValueType $ OperatorCall (0,0) "%_appended_to_%" [ListV (0,0) BoolT [BoolV (0,1) True, BoolV (0,7) False], ListV (0,21) IntT [IntV (0,22) 3, IntV (0,24) 4]])
+                stateWithFunctions
+                (Error (Just (0,21)) $ WrongTypeParameter (ListT BoolT) (ListT IntT) ["n"]),
+
+        testCase "Wrong type arguments" $
+            expectedError
+                (getValueType $ OperatorCall (0,0) "%_plus_%" [IntV (0,0) 1, BoolV (0,3) True])
+                stateWithFunctions
+                (Error (Just (0,3)) $ WrongTypeParameter FloatT BoolT ["n"]),
+
+        testCase "Wrong type lists" $
+            expectedError
+                (getValueType $ OperatorCall (0,0) "%_appended_to_%" [ListV (0,0) BoolT [BoolV (0,1) True, BoolV (0,6) False], ListV (0,20) IntT [IntV (0,21) 3, IntV (0,23) 4]])
+                stateWithFunctions
+                (Error (Just (0,20)) $ WrongTypeParameter (ListT BoolT) (ListT IntT) ["n"])
     ]
 
 setVariableTypeTests :: TestTree
@@ -208,69 +241,31 @@ setVariableTypeTests = testGroup "Set variable type"
                 (Error (Just (0,0)) $ VariableAlreadyDefined ["a"])
     ]
 
-checkValueIntegrityTests :: TestTree
-checkValueIntegrityTests = testGroup "Check value integrity"
-    [
-        testCase "Correct type arguments" $
-            expectedSuccess
-                (checkValueIntegrity $ OperatorCall (0,0) "%_plus_%" [IntV (0,0) 2, FloatV (0,6) 3.0])
-                stateWithFunctions,
-
-        testCase "Correct bound types" $
-            expectedSuccess
-                (checkValueIntegrity $ OperatorCall (0,0) "%_appended_to_%" [ListV (0,0) IntT [IntV (0,1) 1, IntV (0,3) 2], ListV (0,17) IntT [IntV (0,18) 3, IntV (0,20) 4]])
-                stateWithFunctions,
-
-        testCase "Satisfiable bound types" $
-            expectedSuccess
-                (checkValueIntegrity $ OperatorCall (0,0) "%_appended_to_%" [ListV (0,0) FloatT [FloatV (0,1) 1, IntV (0,3) 2], ListV (0,17) IntT [IntV (0,18) 3, IntV (0,20) 4]])
-                stateWithFunctions,
-
-        testCase "Wrong bound types" $
-            expectedError
-                (checkValueIntegrity $ OperatorCall (0,0) "%_appended_to_%" [ListV (0,0) BoolT [BoolV (0,1) True, BoolV (0,7) False], ListV (0,21) IntT [IntV (0,22) 3, IntV (0,24) 4]])
-                stateWithFunctions
-                (Error (Just (0,21)) $ WrongTypeParameter (ListT BoolT) (ListT IntT) ["n"]),
-
-        testCase "Wrong type arguments" $
-            expectedError
-                (checkValueIntegrity $ OperatorCall (0,0) "%_plus_%" [IntV (0,0) 1, BoolV (0,3) True])
-                stateWithFunctions
-                (Error (Just (0,3)) $ WrongTypeParameter FloatT BoolT ["n"]),
-
-        testCase "Ill-formed arguments" $
-            expectedError
-                (checkValueIntegrity $ OperatorCall (0,0) "%_appended_to_%" [ListV (0,0) IntT [BoolV (0,1) True, BoolV (0,6) False], ListV (0,20) IntT [IntV (0,21) 3, IntV (0,23) 4]])
-                stateWithFunctions
-                (Error (Just (0,1)) $ WrongTypeValue IntT BoolT)
-    ]
-
 solveValueTests :: TestTree
 solveValueTests = testGroup "Solve value"
     [
         testCase "Matchable" $
             expectedResult
-                (solveValue (ValueM (0,0) [IntP (0,0) 2, WordP (0,2) "times", IntP (0,8) 3, WordP (0,10) "plus", IntP (0,15) 4, WordP (0,17) "times", IntP (0,23) 5]))
+                (solveValue $ ValueM (0,0) [IntP (0,0) 2, WordP (0,2) "times", IntP (0,8) 3, WordP (0,10) "plus", IntP (0,15) 4, WordP (0,17) "times", IntP (0,23) 5])
                 stateWithFunctions
                 (OperatorCall (0,0) "%_plus_%" [OperatorCall (0,0) "%_times_%" [IntV (0,0) 2, IntV (0,8) 3], OperatorCall (0,15) "%_times_%" [IntV (0,15) 4, IntV (0,23) 5]]),
 
         testCase "List" $
             expectedResult
-                (solveValue (ListV (0,0) IntT [ValueM (0,1) [IntP (0,1) 2, WordP (0,3) "times", IntP (0,9) 3], ValueM (0,11) [IntP (0,11) 4, WordP (0,13) "times", IntP (0,19) 5]]))
+                (solveValue $ ListV (0,0) IntT [ValueM (0,1) [IntP (0,1) 2, WordP (0,3) "times", IntP (0,9) 3], ValueM (0,11) [IntP (0,11) 4, WordP (0,13) "times", IntP (0,19) 5]])
                 stateWithFunctions
                 (ListV (0,0) IntT [OperatorCall (0,1) "%_times_%" [IntV (0,1) 2, IntV (0,9) 3], OperatorCall (0,11) "%_times_%" [IntV (0,11) 4, IntV (0,19) 5]]),
 
+        testCase "Matchable with wrong type arguments" $
+            expectedSuccess
+                (solveValue $ ValueM (0,0) [WordP (0,0) "true", WordP (0,5) "plus", WordP (0,10) "false"])
+                stateWithFunctions,
+
         testCase "List with wrong items" $
             expectedError
-                (solveValue (ListV (0,0) IntT [BoolV (0,1) True, BoolV (0,7) False]))
+                (solveValue $ ListV (0,0) IntT [BoolV (0,1) True, BoolV (0,7) False])
                 initialState
-                (Error (Just (0,1)) $ WrongTypeValue IntT BoolT),
-
-        testCase "Matchable with wrong type arguments" $
-            expectedError
-                (solveValue (ValueM (0,0) [WordP (0,0) "true", WordP (0,5) "plus", WordP (0,10) "false"]))
-                stateWithFunctions
-                (Error (Just (0,0)) (WrongTypeParameter FloatT BoolT ["m"]))
+                (Error (Just (0,1)) $ WrongTypeValue IntT BoolT)
     ]
 
 --
@@ -289,7 +284,6 @@ tests = testGroup "Solver"
         asProcedureCallTests,
         getValueTypeTests,
         setVariableTypeTests,
-        checkValueIntegrityTests,
         solveValueTests
     ]
 

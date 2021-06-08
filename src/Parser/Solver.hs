@@ -48,7 +48,6 @@ sepByTitle ps (TitleParam {} : ts) = do
     (span, rest) <- splits ps
     restMatches <- sepByTitle rest ts
     return $ span:restMatches
-
 --
 
 
@@ -65,8 +64,7 @@ matchAsName _ = return Nothing
 
 -- Matches a list of matchables as a call to one of the given functions
 matchAsFunctionCall :: [Annotated MatchablePart] -> [FunSignature] -> SolverEnv (Maybe (FunId, [Annotated Value]))
-matchAsFunctionCall ps fs = do
-    firstNotNull matchAsFunctionCall' fs
+matchAsFunctionCall ps =  firstNotNull matchAsFunctionCall'
     where
         matchAsFunctionCall' :: FunSignature -> SolverEnv (Maybe (FunId, [Annotated Value]))
         matchAsFunctionCall' (FunSignature (Title _ ft) _) = do
@@ -135,20 +133,19 @@ matchAsProcedureCall :: [Annotated MatchablePart] -> SolverEnv (Maybe (Annotated
 matchAsProcedureCall ps = do
     procedures <- getProcedureSignatures
     r <- matchAsFunctionCall ps procedures
-    matchAsProcedureCall' ps procedures r
-    where
-        -- Takes the result of matching as a function call, tries again if necessary, and returns a procedure call
-        matchAsProcedureCall' :: [Annotated MatchablePart] -> [FunSignature] -> Maybe (FunId, [Annotated Value]) -> SolverEnv (Maybe (Annotated Sentence))
-        matchAsProcedureCall' (WordP fAnn (x:xs) : ps) procedures Nothing
-            | isUpper x = do
-                let lowerCaseTitle = WordP fAnn (toLower x : xs) : ps
-                r <- matchAsFunctionCall lowerCaseTitle procedures
-                return $ uncurry (ProcedureCall fAnn) <$> r
-            | otherwise = return Nothing
-        matchAsProcedureCall' ps _ r = do
+    case r of
+        Just (fid, vs) -> do
             let ann = getFirstLocation ps
-            return $ uncurry (ProcedureCall ann) <$> r
-
+            return . Just $ ProcedureCall ann fid vs
+        Nothing -> case ps of
+            (WordP fAnn (x:xs) : ps) ->
+                if isUpper x
+                    then do
+                        let lowerCaseTitle = WordP fAnn (toLower x : xs) : ps
+                        r <- matchAsFunctionCall lowerCaseTitle procedures
+                        return $ uncurry (ProcedureCall fAnn) <$> r
+                    else return Nothing
+            _ -> return Nothing
 
 matchAsSentence :: [Annotated MatchablePart] -> SolverEnv (Maybe (Annotated Sentence))
 matchAsSentence [ParensP ps] = matchAsSentence ps
@@ -167,7 +164,7 @@ satisfiesType (RefT t1) (RefT t2) = t1 `satisfiesType` t2
 satisfiesType (RefT t1) t2 = t1 `satisfiesType` t2
 satisfiesType t1 t2 = t1 == t2
 
-getValueType :: Value a -> SolverEnv Type
+getValueType :: Annotated Value -> SolverEnv Type
 getValueType (IntV _ _) = return IntT
 getValueType (FloatV _ _) = return FloatT
 getValueType (BoolV _ _) = return BoolT
@@ -175,13 +172,9 @@ getValueType (CharV _ _) = return CharT
 getValueType (ListV _ t _) = return $ ListT t
 getValueType (VarV _ n) = RefT . fromJust <$> getVariableType n
 getValueType (OperatorCall _ fid vs) = do
-    vTs <- mapM getValueType vs
-    getOperatorCallType fid vTs
-    where
-        getOperatorCallType :: FunId -> [Type] -> SolverEnv Type
-        getOperatorCallType fid vTs = do
-            ~(FunSignature _ (Operator tFun)) <- fromJust <$> getFunctionSignature fid
-            return $ tFun vTs
+    ~(FunSignature _ (Operator tFun)) <- fromJust <$> getFunctionSignature fid
+    vTs <- getParameterTypesWithCheck (fid, vs)
+    return $ tFun vTs
 
 getIteratorType :: Type -> Type
 getIteratorType (RefT t) = getIteratorType t
@@ -202,53 +195,52 @@ setVariableTypeWithCheck vn t = do
 setNewVariableType :: Name -> Type -> SolverEnv ()
 setNewVariableType vn t' = do
     isDef <- variableIsDefined vn
-    if isDef
-        then throwHere $ VariableAlreadyDefined vn
-        else setVariableType vn t'
+    when isDef $ throwHere (VariableAlreadyDefined vn)
+    setVariableType vn t'
 
 checkValueType :: Annotated Value -> Type -> SolverEnv ()
 checkValueType v t = do
     t' <- withLocation v getValueType
     unless (t' `satisfiesType` t) $ throwHere (WrongTypeValue t t')
 
--- Validates that a value is correctly formed
-checkValueIntegrity :: Annotated Value -> SolverEnv ()
-checkValueIntegrity (OperatorCall _ fid vs) = checkFunctionCallIntegrity (fid, vs)
-checkValueIntegrity (ListV _ t vs) = mapM_ checkElement vs
-    where
-        checkElement :: Annotated Value -> SolverEnv ()
-        checkElement v = withLocation v checkValueIntegrity >> checkValueType v t
-checkValueIntegrity _ = return ()
-
-checkFunctionCallIntegrity :: (FunId, [Annotated Value]) -> SolverEnv ()
-checkFunctionCallIntegrity (fid, vs) = do
-    mapM_ (`withLocation` checkValueIntegrity) vs
+getParameterTypesWithCheck :: (FunId, [Annotated Value]) -> SolverEnv [Type]
+getParameterTypesWithCheck (fid, vs) = do
     ~(FunSignature (Title _ ft) _) <- fromJust <$> getFunctionSignature fid
-    checkParameterTypes [] ft vs
+    getParameterTypes' [] ft vs
     where
-        checkParameterTypes :: [(String, Type)] -> [Bare TitlePart] -> [Annotated Value] -> SolverEnv ()
-        checkParameterTypes _ _ [] = return ()
-        checkParameterTypes bts (TitleWords {} : ts) vs = checkParameterTypes bts ts vs
-        checkParameterTypes bts (TitleParam _ n t : ts) (v:vs) = do
-            t' <- withLocation v getValueType
-            case findTypeToBind t of
-                Just tid ->
-                    case find (\bt -> fst bt == tid) bts of
-                        Just (_, t) ->
-                            if t' `satisfiesType` t
-                                then checkParameterTypes bts ts vs
-                                else throwHere $ WrongTypeParameter t t' n
-                        Nothing -> checkParameterTypes ((tid, t'):bts) ts vs
-                Nothing ->
-                    if t' `satisfiesType` t
-                        then checkParameterTypes bts ts vs
-                        else throwHere $ WrongTypeParameter t t' n
+        getParameterTypes' :: [(String, Type)] -> [Bare TitlePart] -> [Annotated Value] -> SolverEnv [Type]
+        getParameterTypes' _ _ [] = return []
+        getParameterTypes' bts (TitleWords {} : tps) vs = getParameterTypes' bts tps vs
+        getParameterTypes' bts (TitleParam _ n pt : tps) (v:vs) = do
+            ann <- getCurrentLocation
+            at <- withLocation v getValueType
+            unless (at `satisfiesType` pt) $ throwHere (WrongTypeParameter pt at n)
+            let at' = solveTypeReferences pt at
+            r <- case solveTypeBindings pt at' of
+                Just (tF, (tid, bt)) ->
+                    case lookup tid bts of
+                        Just bt' -> do
+                            unless (bt `satisfiesType` bt') $ throwHere (WrongTypeParameter (tF bt') at' n)
+                            getParameterTypes' bts tps vs
+                        Nothing -> getParameterTypes' ((tid, bt):bts) tps vs
+                Nothing -> getParameterTypes' bts tps vs
+            setCurrentLocation ann
+            return (at':r)
 
-        findTypeToBind :: Type -> Maybe String
-        findTypeToBind (ListT t) = findTypeToBind t
-        findTypeToBind (RefT t) = findTypeToBind t
-        findTypeToBind (AnyT tid) = Just tid
-        findTypeToBind _ = Nothing
+        -- Returns the type bound by the given parameter and argument, and a function to build the whole type
+        solveTypeBindings :: Type -> Type -> Maybe (Type -> Type, (String, Type))
+        solveTypeBindings (ListT et) (ListT at) = solveTypeBindings et at >>= (\(tF, bt) -> Just (ListT . tF, bt))
+        solveTypeBindings (RefT et) (RefT at) = solveTypeBindings et at >>= (\(tF, bt) -> Just (RefT . tF, bt))
+        solveTypeBindings (AnyT tid) at = Just (id, (tid, at))
+        solveTypeBindings _ _ = Nothing
+
+        -- Solves a reference if the type it contains is expected by the given parameter
+        solveTypeReferences :: Type -> Type -> Type
+        solveTypeReferences (RefT t1) (RefT t2) = RefT $ solveTypeReferences t1 t2
+        solveTypeReferences t1 (RefT t2) = solveTypeReferences t1 t2
+        solveTypeReferences (ListT t1) (ListT t2) = ListT $ solveTypeReferences t1 t2
+        solveTypeReferences _ t = t
+
 
 --
 
@@ -263,9 +255,7 @@ registerFunctions = mapM_ (`withLocation` registerFunction)
             let fid = getFunId ft
             isDef <- functionIsDefined fid
             when isDef $ throwHere (FunctionAlreadyDefined fid)
-            let frt = case rt of
-                    Just rt -> Operator $ const rt
-                    Nothing -> Procedure
+            let frt = maybe Procedure (Operator . const) rt
             setFunctionSignature fid $ FunSignature (void t) frt
 
 registerParameters :: Annotated Title -> SolverEnv ()
@@ -287,7 +277,7 @@ solveValue (ListV ann t es) = do
 solveValue (ValueM _ ps) = do
     r <- matchAsValue ps
     case r of
-        Just v' -> checkValueIntegrity v' >> return v'
+        Just v' -> return v'
         Nothing -> throwHere $ UnmatchableValue ps
 solveValue v = return v
 
@@ -336,7 +326,9 @@ solveSentence rt (Result ann v) =
 solveSentence _ (SentenceM ann ps) = do
     r <- matchAsSentence ps
     case r of
-        Just s@(ProcedureCall ann fid vs) -> checkFunctionCallIntegrity (fid, vs) >> return s
+        Just s@(ProcedureCall ann fid vs) -> do
+            getParameterTypesWithCheck (fid, vs)
+            return s
         _ -> throwHere $ UnmatchableSentence ps
 
 solveSentences :: [Annotated Sentence] -> Maybe Type -> SolverEnv [Annotated Sentence]
