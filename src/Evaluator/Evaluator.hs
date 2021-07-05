@@ -40,6 +40,7 @@ variablesFromTitle (TitleParam _ pn (RefT _) : ts) ((VarV _ vn):vs) = do
 variablesFromTitle (TitleParam _ pn _ : ts) (v:vs) = do
     (vars, refs) <- variablesFromTitle ts vs
     return ((pn, v):vars, refs)
+variablesFromTitle [] (_:_) = error "Shouldn't happen: can't run out of title parts before running out of values in a function call"
 
 -- Finishes evaluating the arguments of a function call if necessary
 evaluateParameters :: ReadWrite m => [Bare TitlePart] -> [Annotated Value] -> EvaluatorEnv m [Bare Value]
@@ -58,6 +59,7 @@ evaluateParameters ts vs = do
         evaluateParameters' (TitleParam {} : ts) (v:vs) = do
             v' <- withLocation v evaluateValue
             (v':) <$> evaluateParameters' ts vs
+        evaluateParameters' [] (_:_) = error "Shouldn't happen: can't run out of title parts before running out of values in a function call"
 
 --
 
@@ -135,6 +137,7 @@ evaluateSentence (Result _ v) = do
     v' <- withLocation v evaluateValue
     return $ Just v'
 evaluateSentence (ProcedureCall _ fid vs) = evaluateProcedure fid vs >> return Nothing
+evaluateSentence (SentenceM _ _) = error "Shouldn't happen: sentences must be solved before evaluating them"
 
 evaluateOperator :: ReadWrite m => FunId -> [Annotated Value] -> EvaluatorEnv m (Bare Value)
 evaluateOperator fid vs

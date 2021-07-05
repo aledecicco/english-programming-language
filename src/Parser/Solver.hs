@@ -48,6 +48,17 @@ sepByTitle ps (TitleParam {} : ts) = do
     (span, rest) <- splits ps
     restMatches <- sepByTitle rest ts
     return $ span:restMatches
+
+-- Returns the matchables in a list before and after a given matchable
+splitBy :: [MatchablePart a] -> MatchablePart b -> ([MatchablePart a], [MatchablePart a])
+splitBy [] _ = ([], [])
+splitBy (p:ps) p' =
+    if void p == void p'
+        then ([], ps)
+        else
+            let (bef, aft) = splitBy ps p'
+            in (p:bef, aft)
+
 --
 
 
@@ -175,10 +186,16 @@ getValueType (OperatorCall _ fid vs) = do
     ~(FunSignature _ (Operator tFun)) <- fromJust <$> getFunctionSignature fid
     vTs <- getParameterTypesWithCheck (fid, vs)
     return $ tFun vTs
+getValueType (ValueM _ _) = error "Shouldn't happen: values must be solved before getting their types"
 
-getIteratorType :: Type -> Type
-getIteratorType (RefT t) = getIteratorType t
-getIteratorType (ListT t) = t
+getElementsType :: Type -> Type
+getElementsType (RefT t) = getElementsType t
+getElementsType (ListT t) = t
+getElementsType IntT = error "Shouldn't happen: ints don't contain types"
+getElementsType FloatT = error "Shouldn't happen: floats don't contain types"
+getElementsType BoolT = error "Shouldn't happen: bools don't contain types"
+getElementsType CharT = error "Shouldn't happen: chars don't contain types"
+getElementsType (AnyT _) = error "Shouldn't happen: generic types don't contain types"
 
 --
 
@@ -226,6 +243,7 @@ getParameterTypesWithCheck (fid, vs) = do
                 Nothing -> getParameterTypes' bts tps vs
             setCurrentLocation ann
             return (at':r)
+        getParameterTypes' _ [] (_:_) = error "Shouldn't happen: can't run out of title parts before running out of values in a function call"
 
         -- Returns the type bound by the given parameter and argument, and a function to build the whole type
         solveTypeBindings :: Type -> Type -> Maybe (Type -> Type, (String, Type))
@@ -240,7 +258,6 @@ getParameterTypesWithCheck (fid, vs) = do
         solveTypeReferences t1 (RefT t2) = solveTypeReferences t1 t2
         solveTypeReferences (ListT t1) (ListT t2) = ListT $ solveTypeReferences t1 t2
         solveTypeReferences _ t = t
-
 
 --
 
@@ -304,7 +321,7 @@ solveSentence rt (IfElse ann v lsT lsF) = do
     return $ IfElse ann v' lsT' lsF'
 solveSentence rt (ForEach ann iN v ls) = do
     v' <- withLocation v $ solveValueWithType (ListT $ AnyT "a")
-    iT <- getIteratorType <$> getValueType v'
+    iT <- getElementsType <$> getValueType v'
     setNewVariableType iN iT
     ls' <- solveSentences ls rt
     removeVariableType iN
@@ -330,6 +347,7 @@ solveSentence _ (SentenceM ann ps) = do
             getParameterTypesWithCheck (fid, vs)
             return s
         _ -> throwHere $ UnmatchableSentence ps
+solveSentence _ (ProcedureCall {}) = error "Shouldn't happen: procedure calls can only be created by solving a matchable"
 
 solveSentences :: [Annotated Sentence] -> Maybe Type -> SolverEnv [Annotated Sentence]
 solveSentences ss rt = mapM (`withLocation` solveSentence rt) ss

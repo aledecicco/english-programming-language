@@ -99,6 +99,7 @@ word w = lexeme $ string w <* notFollowedBy alphaNumChar
 -- Parses a keyword that can have its first letter in uppercase
 firstWord :: String -> FuzzyParser String
 firstWord w@(x:xs) = word w <|> word (toUpper x : xs)
+firstWord "" = error "Can't parse an empty string"
 
 anyWord :: FuzzyParser String
 anyWord = lexeme (some letterChar <* notFollowedBy alphaNumChar) <?> "word"
