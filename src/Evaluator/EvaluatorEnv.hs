@@ -117,11 +117,30 @@ removeVariableAddress vn = changeReferences $ removeById vn
 getValueAtAddress :: Monad m => Int -> EvaluatorEnv m (Bare Value)
 getValueAtAddress addr = lift $ gets (\(_, _, avs, _) -> avs !! addr)
 
+-- Replaces the references to values contained in a value with the referenced values
+loadReferences :: Monad m => Bare Value -> EvaluatorEnv m (Bare Value)
+loadReferences (ListV _ t refs) = ListV () t <$> mapM loadReferences refs
+loadReferences (RefV _ addr) = getValueAtAddress addr >>= loadReferences
+loadReferences v = return v
+
+-- Replaces the values contained in a value with references to those values, saving them to memory first
+saveReferences :: Monad m => Bare Value -> EvaluatorEnv m (Bare Value)
+saveReferences (ListV _ t es) = ListV () t <$> mapM ((RefV () <$>) . addValue) es
+saveReferences v = return v
+
 setValueAtAddress :: Monad m => Int -> Bare Value -> EvaluatorEnv m ()
 setValueAtAddress addr v = changeValues $ replaceNth addr v
     where
         replaceNth :: Int -> a -> [a] -> [a]
         replaceNth n v l = take n l ++ [v] ++ drop (n+1) l
+
+-- Defines a new value at the next empty position and returns its address
+addValue :: Monad m => Bare Value -> EvaluatorEnv m Int
+addValue v = do
+    p <- getStackPointer
+    setValueAtAddress p v
+    setStackPointer (p+1)
+    return p
 
 --
 
@@ -148,10 +167,8 @@ getVariableValue vn = do
 
 addVariableValue :: Monad m => Name -> Bare Value -> EvaluatorEnv m ()
 addVariableValue vn v = do
-    p <- getStackPointer
-    setVariableAddress vn p
-    setValueAtAddress p v
-    setStackPointer (p+1)
+    addr <- addValue v
+    setVariableAddress vn addr
 
 setVariableValue :: Monad m => Name -> Bare Value -> EvaluatorEnv m ()
 setVariableValue vn v = do
@@ -166,7 +183,7 @@ removeVariableValue = removeVariableAddress
 -- Receives a list of new variables to be declared and a list of references to be set and performs an action with those variables
 -- The values of new variables are discarded after the action
 -- The original values of the variables references can be modified inside the action
-withVariables :: Monad m => EvaluatorEnv m a -> [(Name, Bare Value)] -> [(Name, Int)] -> EvaluatorEnv m a
+withVariables :: Monad m => EvaluatorEnv m (Maybe (Bare Value)) -> [(Name, Bare Value)] -> [(Name, Int)] -> EvaluatorEnv m (Maybe (Bare Value))
 withVariables action newVarVals newVarRefs = do
     -- Save current state
     varRefs <- lift $ gets (\(_, vas, _, _) -> vas)
@@ -177,10 +194,17 @@ withVariables action newVarVals newVarRefs = do
     mapM_ (uncurry addVariableValue) newVarVals
     mapM_ (uncurry setVariableAddress) newVarRefs
     r <- action
+    -- Load values referenced in the result before cleaning the stack
+    r' <- case r of
+        Just v -> Just <$> loadReferences v
+        Nothing -> return Nothing
     -- Restore the state
     changeReferences $ const varRefs
     changeValues $ take varValsLen
     changePointer $ const p
-    return r
+    -- Save loaded values back to the stack and return the result
+    case r' of
+        Just v' -> Just <$> saveReferences v'
+        Nothing -> return Nothing
 
 --

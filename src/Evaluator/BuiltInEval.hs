@@ -25,7 +25,7 @@ binaryOperation op (IntV _ n) (FloatV _ f) = FloatV () $ fromIntegral n `op` f
 binaryOperation op (FloatV _ f) (IntV _ n) = FloatV () $ fromIntegral n `op` f
 binaryOperation op (FloatV _ f1) (FloatV _ f2) = FloatV () $ f1 `op` f2
 binaryOperation op (IntV _ n1) (IntV _ n2) = IntV () $ n1 `op` n2
-binaryOperation _ _ _ = error "Shouldn't happen: wrong types provided"
+binaryOperation _ a b = error "Shouldn't happen: wrong types provided"
 
 floatOperation :: (Float -> Float -> Float) -> Value a -> Value b -> Bare Value
 floatOperation op (IntV _ n) (FloatV _ f) = FloatV () $ fromIntegral n `op` f
@@ -47,24 +47,24 @@ relationalOperation op (IntV _ n1) (IntV _ n2) = BoolV () $ n1 `op` n2
 relationalOperation _ _ _ = error "Shouldn't happen: wrong types provided"
 
 binaryModification :: ReadWrite m => (forall a. (Num a) => a -> a -> a) -> Value b -> Value c -> EvaluatorEnv m ()
-binaryModification op (VarV _ vn) v = do
-    varV <- fromJust <$> getVariableValue vn
-    let newVal = binaryOperation op varV v
-    setVariableValue vn newVal
+binaryModification op (RefV _ addr) v = do
+    v' <- getValueAtAddress addr
+    let newVal = binaryOperation op v' v
+    setValueAtAddress addr newVal
 binaryModification _ _ _ = error "Shouldn't happen: wrong types provided"
 
 floatModification :: ReadWrite m => (Float -> Float -> Float) -> Value b -> Value c -> EvaluatorEnv m ()
-floatModification op (VarV _ vn) v = do
-    varV <- fromJust <$> getVariableValue vn
-    let newVal = floatOperation op varV v
-    setVariableValue vn newVal
+floatModification op (RefV _ addr) v = do
+    v' <- getValueAtAddress addr
+    let newVal = floatOperation op v' v
+    setValueAtAddress addr newVal
 floatModification _ _ _ = error "Shouldn't happen: wrong types provided"
 
 listModification :: ReadWrite m => ([Bare Value] -> [Bare Value] -> [Bare Value]) -> Value a -> Value b -> EvaluatorEnv m ()
-listModification op (VarV _ vn) v = do
-    varV <- fromJust <$> getVariableValue vn
-    let newVal = listOperation op varV (void v)
-    setVariableValue vn newVal
+listModification op (RefV _ addr) v = do
+    v' <- getValueAtAddress addr
+    let newVal = listOperation op v' (void v)
+    setValueAtAddress addr newVal
 listModification _ _ _ = error "Shouldn't happen: wrong types provided"
 
 --
@@ -161,14 +161,16 @@ evaluateBuiltInProcedure "append_%_to_%" [v1, v2] = evaluateAppendTo v1 v2
 evaluateBuiltInProcedure x y = error $ show x ++ show (length y)
 
 evaluatePrint :: ReadWrite m => Value a -> EvaluatorEnv m ()
-evaluatePrint = io . write . ppValue
+evaluatePrint v = do
+    v' <- loadReferences $ void v
+    (io . write . ppValue) v'
 
 evaluateSwapWith :: ReadWrite m => Value a -> Value a -> EvaluatorEnv m ()
-evaluateSwapWith (VarV _ vn1) (VarV _ vn2) = do
-    v1 <- fromJust <$> getVariableValue vn1
-    v2 <- fromJust <$> getVariableValue vn2
-    setVariableValue vn1 v2
-    setVariableValue vn2 v1
+evaluateSwapWith (RefV _ addr1) (RefV _ addr2) = do
+    v1 <- getValueAtAddress addr1
+    v2 <- getValueAtAddress addr2
+    setValueAtAddress addr1 v2
+    setValueAtAddress addr2 v1
 evaluateSwapWith _ _ = error "Shouldn't happen: wrong types provided"
 
 evaluateAddTo :: ReadWrite m => Value a -> Value a -> EvaluatorEnv m ()

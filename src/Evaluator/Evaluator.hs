@@ -33,9 +33,8 @@ translateFunctions prog = map (translateFunction prog)
 variablesFromTitle :: ReadWrite m => [Bare TitlePart] -> [Bare Value] -> EvaluatorEnv m ([(Name, Bare Value)], [(Name, Int)])
 variablesFromTitle _ [] = return ([], [])
 variablesFromTitle (TitleWords _ _ : ts) vs = variablesFromTitle ts vs
-variablesFromTitle (TitleParam _ pn (RefT _) : ts) ((VarV _ vn):vs) = do
+variablesFromTitle (TitleParam _ pn (RefT _) : ts) ((RefV _ addr):vs) = do
     (vars, refs) <- variablesFromTitle ts vs
-    ~(Just addr) <- getVariableAddress vn
     return (vars, (pn, addr):refs)
 variablesFromTitle (TitleParam _ pn _ : ts) (v:vs) = do
     (vars, refs) <- variablesFromTitle ts vs
@@ -67,7 +66,8 @@ evaluateParameters ts vs = do
 -- Evaluators
 
 evaluateValueExceptReference :: ReadWrite m => Annotated Value -> EvaluatorEnv m (Bare Value)
-evaluateValueExceptReference v@(VarV _ _) = return $ void v
+evaluateValueExceptReference (VarV _ vn) = RefV () . fromJust <$> getVariableAddress vn
+evaluateValueExceptReference (RefV _ addr) = return $ RefV () addr
 evaluateValueExceptReference v = evaluateValue v
 
 evaluateValue :: ReadWrite m => Annotated Value -> EvaluatorEnv m (Bare Value)
@@ -76,11 +76,16 @@ evaluateValue (VarV _ vn) = do
     case r of
         Just v -> return v
         Nothing -> throwHere $ UndefinedVariable vn
+evaluateValue (RefV _ addr) = getValueAtAddress addr
 evaluateValue (ListV _ t es) = do
-    es' <- mapM (`withLocation` evaluateValue) es
-    return $ ListV () t es'
+    l' <- ListV () t <$> mapM (`withLocation` evaluateValue) es
+    saveReferences l'
 evaluateValue (OperatorCall _ fid vs) = evaluateOperator fid vs
-evaluateValue v = return $ void v
+evaluateValue v@(IntV _ _) = return $ void v
+evaluateValue v@(FloatV _ _) = return $ void v
+evaluateValue v@(BoolV _ _) = return $ void v
+evaluateValue v@(CharV _ _) = return $ void v
+evaluateValue (ValueM _ _) = error "Shouldn't happen: values must be solved before evaluating them"
 
 evaluateSentences :: ReadWrite m => [Annotated Sentence] -> EvaluatorEnv m (Maybe (Bare Value))
 evaluateSentences [] = return Nothing
@@ -111,7 +116,7 @@ evaluateSentence (IfElse _ bv lsT lsF) = do
         else evaluateSentences lsF
 evaluateSentence (ForEach _ iN lv ls) = do
     ~(ListV _ _ v') <- withLocation lv evaluateValue
-    let iterateLoop = (\v -> setVariableValue iN v >> evaluateSentences ls)
+    let iterateLoop = (\(RefV _ ref) -> setVariableAddress iN ref >> evaluateSentences ls)
     r <- firstNotNull iterateLoop v'
     removeVariableValue iN
     return r

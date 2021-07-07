@@ -62,7 +62,9 @@ exampleTests = testGroup "example"
 
         exampleTestCase "SeqFib" [] "The 6th fibonacci number is 8",
 
-        exampleTestCase "Sum" [] "The sum of [1, 2, 3.5] is 6.5"
+        exampleTestCase "Sum" [] "The sum of [1, 2, 3.5] is 6.5",
+
+        exampleTestCase "Lists" [] "The shuffled list is [3.0, 1.0, 4.0, 2.0]\nThe first half of the list is [3.0, 1.0]"
     ]
 
 --

@@ -187,6 +187,7 @@ getValueType (OperatorCall _ fid vs) = do
     vTs <- getParameterTypesWithCheck (fid, vs)
     return $ tFun vTs
 getValueType (ValueM _ _) = error "Shouldn't happen: values must be solved before getting their types"
+getValueType (RefV _ _) = error "Shouldn't happen: references can't exist before"
 
 getElementsType :: Type -> Type
 getElementsType (RefT t) = getElementsType t

@@ -30,7 +30,7 @@ data Type = IntT | FloatT | BoolT | CharT | ListT Type | RefT Type | AnyT String
 data Value a =
     ValueM a [MatchablePart a]
     | IntV a Int | FloatV a Float | BoolV a Bool | CharV a Char
-    | ListV a Type [Value a] | VarV a Name
+    | ListV a Type [Value a] | VarV a Name | RefV a Int
     | OperatorCall a FunId [Value a]
     deriving (Eq, Show, Functor, Foldable)
 

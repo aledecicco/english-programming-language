@@ -65,7 +65,8 @@ ppValue (ListV _ CharT cs) = concatMap ppValue cs
 ppValue (ListV _ _ vs) = asList $ map ppValue vs
 ppValue (VarV _ n) = ppName n
 ppValue (ValueM _ _) = error "Shouldn't happen: can't print an unsolved value"
-ppValue (OperatorCall {}) = error "Shouldn't happen: values should be evaluated before printing them"
+ppValue (OperatorCall {}) = error "Shouldn't happen: values must be evaluated before printing them"
+ppValue (RefV _ _) = error "Shouldn't happen: references must be solved before printing them"
 
 ppMatchablePart :: MatchablePart a -> String
 ppMatchablePart (IntP _ n) = show n
