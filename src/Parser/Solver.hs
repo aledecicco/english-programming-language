@@ -83,6 +83,7 @@ matchAsFunctionCall ps =  firstNotNull matchAsFunctionCall'
                 fid = getFunId ft
             r <- firstNotNull matchAllParams posParams
             return $ (fid, ) <$> r
+
         matchAllParams :: [[Annotated MatchablePart]] -> SolverEnv (Maybe [Annotated Value])
         matchAllParams = allOrNone matchAsValue
 
@@ -187,7 +188,7 @@ getValueType (OperatorCall _ fid vs) = do
     vTs <- getParameterTypesWithCheck (fid, vs)
     return $ tFun vTs
 getValueType (ValueM _ _) = error "Shouldn't happen: values must be solved before getting their types"
-getValueType (RefV _ _) = error "Shouldn't happen: references can't exist before"
+getValueType (RefV _ _) = error "Shouldn't happen: references can't exist before evaluating"
 
 getElementsType :: Type -> Type
 getElementsType (RefT t) = getElementsType t
@@ -226,6 +227,7 @@ getParameterTypesWithCheck (fid, vs) = do
     ~(FunSignature (Title _ ft) _) <- fromJust <$> getFunctionSignature fid
     getParameterTypes' [] ft vs
     where
+        -- Returns the type of all arguments given a list of type bindings
         getParameterTypes' :: [(String, Type)] -> [Bare TitlePart] -> [Annotated Value] -> SolverEnv [Type]
         getParameterTypes' _ _ [] = return []
         getParameterTypes' bts (TitleWords {} : tps) vs = getParameterTypes' bts tps vs

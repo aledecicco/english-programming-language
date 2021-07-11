@@ -1,4 +1,4 @@
-module EvaluatorEnv ( module EvaluatorEnv, setCurrentLocation, getCurrentLocation, withLocation, initialLocation ) where
+module EvaluatorEnv ( module EvaluatorEnv, module Location ) where
 
 import Data.List ( find )
 import Control.Monad.Trans.Class ( lift )

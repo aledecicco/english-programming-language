@@ -1,4 +1,4 @@
-module SolverEnv ( module SolverEnv, setCurrentLocation, getCurrentLocation, withLocation, initialLocation, getLocation, getFirstLocation ) where
+module SolverEnv ( module SolverEnv, module Location ) where
 
 import Data.List ( find )
 import Data.Bifunctor ( first, second )

@@ -1,7 +1,7 @@
 # Expressive
 A programming language that resembles English. Write some sentences and watch the interpreter try to understand what you meant.
 
-![Version](https://img.shields.io/badge/version-v2.2.5-blue)
+![Version](https://img.shields.io/badge/version-v2.2.6-blue)
 ![License](https://img.shields.io/badge/license-MIT-brightgreen)
 
 # Syntax
@@ -352,11 +352,13 @@ Modifies the value of the given variable, appending the list to it.
 # Possible improvements:
 - Infer variable aliases from their types in titles
 - Use `each` for generators in function arguments
+- Find a better syntax for specifying function return types
 - Use maps instead of lists for variable references and values in the evaluator
-- Free iterators right after the for-each block
+- Garbage collector
 - Implement importing other files as libraries (without the `Run` procedure)
 - Prevent the `Run` procedure from being called explicitly
 - Add more built-in functions
 - Clean up code with unused variables
-- Unify `throw` and `throwHere` from `SolverEnv` and `EvaluatorEnv`
+- Refactor using more meaningful variable names
+- Separate the README into more files
 - Generate an executable
