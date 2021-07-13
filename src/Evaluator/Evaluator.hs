@@ -60,13 +60,22 @@ evaluateParameters ts vs = do
             (v':) <$> evaluateParameters' ts vs
         evaluateParameters' [] (_:_) = error "Shouldn't happen: can't run out of title parts before running out of values in a function call"
 
+hasIterators :: Value a -> Bool
+hasIterators (IterV {}) = True
+hasIterators (OperatorCall _ _ vs) = any hasIterators vs
+hasIterators _ = False
+
 --
 
 
 -- Evaluators
 
 evaluateValueExceptReference :: ReadWrite m => Annotated Value -> EvaluatorEnv m (Bare Value)
-evaluateValueExceptReference (VarV _ vn) = RefV () . fromJust <$> getVariableAddress vn
+evaluateValueExceptReference (VarV _ vn) = do
+    r <- getVariableAddress vn
+    case r of
+        Just addr -> return $ RefV () addr
+        Nothing -> throwHere $ UndefinedVariable vn
 evaluateValueExceptReference (RefV _ addr) = return $ RefV () addr
 evaluateValueExceptReference v = evaluateValue v
 
@@ -85,6 +94,7 @@ evaluateValue v@(IntV _ _) = return $ void v
 evaluateValue v@(FloatV _ _) = return $ void v
 evaluateValue v@(BoolV _ _) = return $ void v
 evaluateValue v@(CharV _ _) = return $ void v
+evaluateValue (IterV {}) = error "Shouldn't happen: values with iterators must be solved before evaluating them"
 evaluateValue (ValueM _ _) = error "Shouldn't happen: values must be solved before evaluating them"
 
 evaluateSentences :: ReadWrite m => [Annotated Sentence] -> EvaluatorEnv m (Maybe (Bare Value))

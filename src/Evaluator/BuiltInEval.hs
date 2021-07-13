@@ -34,7 +34,6 @@ floatOperation op (FloatV _ f1) (FloatV _ f2) = FloatV () $ f1 `op` f2
 floatOperation op (IntV _ n1) (IntV _ n2) = FloatV () $ fromIntegral n1 `op` fromIntegral n2
 floatOperation _ _ _ = error "Shouldn't happen: wrong types provided"
 
-
 listOperation :: ([Value a] -> [Value b] -> [Value c]) -> Value a -> Value b -> Bare Value
 listOperation op (ListV _ t1 vs1) (ListV _ _ vs2) = ListV () t1 $ map void (vs1 `op` vs2)
 listOperation _ _ _ = error "Shouldn't happen: wrong types provided"

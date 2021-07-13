@@ -132,9 +132,20 @@ matchAsOperatorCall ps = do
     r <- matchAsFunctionCall ps operators
     return $ uncurry (OperatorCall ann) <$> r
 
+matchAsIterator :: [Annotated MatchablePart] -> SolverEnv (Maybe (Annotated Value))
+matchAsIterator (WordP ann "each":ps) = do
+    let (bef, aft) = splitBy ps (WordP () "in")
+    r <- matchAsName bef
+    case r of
+        Just n -> do
+            r <- matchAsValue aft
+            return $ IterV ann n <$> r
+        Nothing -> return Nothing
+matchAsIterator _ = return Nothing
+
 matchAsValue :: [Annotated MatchablePart] -> SolverEnv (Maybe (Annotated Value))
 matchAsValue [ParensP ps] = matchAsValue ps
-matchAsValue ps = firstNotNull (\matcher -> matcher ps) [matchAsPrimitive, matchAsVariable, matchAsOperatorCall]
+matchAsValue ps = firstNotNull (\matcher -> matcher ps) [matchAsPrimitive, matchAsVariable, matchAsOperatorCall, matchAsIterator]
 
 --
 
@@ -187,6 +198,12 @@ getValueType (OperatorCall _ fid vs) = do
     ~(FunSignature _ (Operator tFun)) <- fromJust <$> getFunctionSignature fid
     vTs <- getParameterTypesWithCheck (fid, vs)
     return $ tFun vTs
+getValueType (IterV _ _ lv) = do
+    lt <- getValueType lv
+    let et = ListT $ AnyT "a"
+    if lt `satisfiesType` et
+        then return $ getElementsType lt
+        else throwHere $ WrongTypeValue et lt
 getValueType (ValueM _ _) = error "Shouldn't happen: values must be solved before getting their types"
 getValueType (RefV _ _) = error "Shouldn't happen: references can't exist before evaluating"
 
