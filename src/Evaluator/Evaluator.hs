@@ -53,12 +53,21 @@ evaluateParameters ts vs = do
         evaluateParameters' _ [] = return []
         evaluateParameters' (TitleWords _ _ : ts) vs = evaluateParameters' ts vs
         evaluateParameters' (TitleParam _ _ (RefT _) : ts) (v:vs) = do
-            v' <- withLocation v evaluateValueExceptReference
+            v' <- withLocation v getReference
             (v':) <$> evaluateParameters' ts vs
         evaluateParameters' (TitleParam {} : ts) (v:vs) = do
             v' <- withLocation v evaluateValue
             (v':) <$> evaluateParameters' ts vs
         evaluateParameters' [] (_:_) = error "Shouldn't happen: can't run out of title parts before running out of values in a function call"
+
+        getReference :: ReadWrite m => Annotated Value -> EvaluatorEnv m (Bare Value)
+        getReference (VarV _ vn) = do
+            r <- getVariableAddress vn
+            case r of
+                Just addr -> return $ RefV () addr
+                Nothing -> throwHere $ UndefinedVariable vn
+        getReference v@(RefV _ _) = return $ void v
+        getReference a = error $ "Shouldn't happen: value provided is not a reference" ++ show (void a)
 
 hasIterators :: Value a -> Bool
 hasIterators (IterV {}) = True
@@ -70,15 +79,6 @@ hasIterators _ = False
 
 -- Evaluators
 
-evaluateValueExceptReference :: ReadWrite m => Annotated Value -> EvaluatorEnv m (Bare Value)
-evaluateValueExceptReference (VarV _ vn) = do
-    r <- getVariableAddress vn
-    case r of
-        Just addr -> return $ RefV () addr
-        Nothing -> throwHere $ UndefinedVariable vn
-evaluateValueExceptReference (RefV _ addr) = return $ RefV () addr
-evaluateValueExceptReference v = evaluateValue v
-
 evaluateValue :: ReadWrite m => Annotated Value -> EvaluatorEnv m (Bare Value)
 evaluateValue (VarV _ vn) = do
     r <- getVariableValue vn
@@ -86,10 +86,14 @@ evaluateValue (VarV _ vn) = do
         Just v -> return v
         Nothing -> throwHere $ UndefinedVariable vn
 evaluateValue (RefV _ addr) = getValueAtAddress addr
+evaluateValue (OperatorCall _ fid vs) = do
+    r <- evaluateOperator fid vs
+    case r of
+        (RefV _ addr) -> getValueAtAddress addr
+        _ -> return r
 evaluateValue (ListV _ t es) = do
     l' <- ListV () t <$> mapM (`withLocation` evaluateValue) es
     saveReferences l'
-evaluateValue (OperatorCall _ fid vs) = evaluateOperator fid vs
 evaluateValue v@(IntV _ _) = return $ void v
 evaluateValue v@(FloatV _ _) = return $ void v
 evaluateValue v@(BoolV _ _) = return $ void v

@@ -182,7 +182,7 @@ removeVariableValue = removeVariableAddress
 
 -- Receives a list of new variables to be declared and a list of references to be set and performs an action with those variables
 -- The values of new variables are discarded after the action
--- The original values of the variables references can be modified inside the action
+-- The original values of the variables referenced can be modified inside the action
 withVariables :: Monad m => EvaluatorEnv m (Maybe (Bare Value)) -> [(Name, Bare Value)] -> [(Name, Int)] -> EvaluatorEnv m (Maybe (Bare Value))
 withVariables action newVarVals newVarRefs = do
     -- Save current state
