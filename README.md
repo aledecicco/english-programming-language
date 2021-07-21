@@ -1,7 +1,7 @@
 # Expressive
 A programming language that resembles English. Write some sentences and watch the interpreter try to understand what you meant.
 
-![Version](https://img.shields.io/badge/version-v2.2.7-blue)
+![Version](https://img.shields.io/badge/version-v2.3.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-brightgreen)
 
 # Syntax
@@ -87,13 +87,18 @@ This specifies that the function doesn't return anything, making it a procedure,
 
 ### Let
 ```
-Let %variable names list% be %value%
+Let %variable names list% be %singular or plural type% equal to %value%
 ```
 This allows declaring the value of one or more variables.
 The syntax for the list is the following:
 ```
 ([%name%,] and %name%) | %name%
 ```
+If there is only one element, the type must have the following syntax:
+```
+a %type%
+```
+If there are more than one element, the type is written in plural without `a`.
 
 Note that if the list has more than one element, there has to be a comma after each element except the last one (including the one right before `and`). This is called [serial comma](https://en.wikipedia.org/wiki/Serial_comma).
 
@@ -186,7 +191,7 @@ While %boolean value%:
 ### Examples
 Assign the value `2` to variables `x`, `y`, and `z`:
 ```
-Let x, y, and z be 2.
+Let x, y, and z be numbers equal to 2.
 ```
 
 Make the current function return `6`:
@@ -197,11 +202,6 @@ The result is 2 times 3.
 Call the procedure `print` with `6` as its argument:
 ```
 Print 2 times 3.
-```
-
-Call the procedure `print` for each element of the list `L`:
-```
-For each element in L, print the element.
 ```
 
 Add one to variable `x` until it's larger than `3`:
@@ -223,7 +223,7 @@ If x is larger than 0, print 1, otherwise print 0.
 
 ## Values
 
-Values can be primitives, lists, variables, and operator calls. Available primitives are booleans, numbers, and whole numbers.
+Values can be primitives, lists, variables, and operator calls. Available primitives are booleans, chars, numbers, and whole numbers.
 
 ### Booleans
 The two possible values are refered to with the words `true` and `false`.
@@ -255,7 +255,7 @@ A string literal:
 ```
 "[%character%]"
 ```
-The only way to declare a list by extension is inside a `Let` expression, except for string literals which can be used anywhere. Note that all elements must be of the same type as the one declared for the list.
+The only places where lists can be written by extension is inside `Let` or `For each` expressions, except for string literals which can be used anywhere. Note that all elements must be of the same type as the one declared for the list.
 
 ### Variables
 Variable names can be any series of words except for `be` and `in`, which are the only two reserved keywords. They are referenced using their names, which can optionally be preceded by the word `the`. This applies to all variables (declared in `let` expressions, passed as parameters to a function, or defined as iterators in a `for each` loop).
@@ -266,6 +266,12 @@ Declare variable `L` as the list `[1.1, 2.2, 3.3]`:
 ```
 Let L be a list of floats containing 1.1, 2.2, and 3.3
 ```
+
+Declare variables `L` and `M` as the list `[1, 2, 3]`:
+```
+Let L, and M be lists of floats containing 1, 2, and 3
+```
+
 
 Declare variable `s` as the string `"abc"`:
 ```
@@ -351,6 +357,7 @@ Modifies the value of the given variable, appending the list to it.
 
 # Possible improvements:
 - Infer variable aliases from their types in titles
+- Optional aliases in function parameters and `ForEach` iterators
 - Use `each` for generators in function arguments
 - Find a better syntax for specifying function return types
 - Use maps instead of lists for variable references and values in the evaluator

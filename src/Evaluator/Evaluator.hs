@@ -114,7 +114,7 @@ evaluateSentences ss = do
             return r
 
 evaluateSentence :: ReadWrite m => Annotated Sentence -> EvaluatorEnv m (Maybe (Bare Value))
-evaluateSentence (VarDef _ vNs v) = do
+evaluateSentence (VarDef _ vNs _ v) = do
     v' <- withLocation v evaluateValue
     mapM_ (`setVariableValue` v') vNs
     return Nothing
@@ -128,7 +128,7 @@ evaluateSentence (IfElse _ bv lsT lsF) = do
     if v'
         then evaluateSentences lsT
         else evaluateSentences lsF
-evaluateSentence (ForEach _ iN lv ls) = do
+evaluateSentence (ForEach _ iN _ lv ls) = do
     ~(ListV _ _ v') <- withLocation lv evaluateValue
     let iterateLoop = (\(RefV _ ref) -> setVariableAddress iN ref >> evaluateSentences ls)
     r <- firstNotNull iterateLoop v'

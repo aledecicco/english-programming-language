@@ -75,10 +75,10 @@ sentenceTests = testGroup "sentence"
                 (
                     evaluateSentences $
                         mockLocations [
-                            VarDef () [["x"]] (IntV () 0),
+                            VarDef () [["x"]] (Just IntT) (IntV () 0),
                             While ()
                                 (OperatorCall () "%_is_less_than_%" [VarV () ["x"], IntV () 3])
-                                [VarDef () [["x"]] (OperatorCall () "%_plus_%" [VarV () ["x"], IntV () 1])],
+                                [ProcedureCall () "add_%_to_%" [IntV () 1, VarV () ["x"]]],
                             Result () (VarV () ["x"])
                         ]
                 )
@@ -92,7 +92,7 @@ sentenceTests = testGroup "sentence"
                         mockLocations [
                             If ()
                                 (BoolV () True)
-                                [VarDef () [["x"]] (IntV () 3)],
+                                [VarDef () [["x"]] (Just IntT) (IntV () 3)],
                             Result () (VarV () ["x"])
                         ]
                 )
@@ -104,7 +104,7 @@ sentenceTests = testGroup "sentence"
                 (
                     evaluateSentences $
                         mockLocations [
-                            VarDef () [["x"]] (IntV () 2),
+                            VarDef () [["x"]] (Just IntT) (IntV () 2),
                             ProcedureCall () "add_%_to_%" [IntV () 3, VarV () ["x"]],
                             Result () (VarV () ["x"])
                         ]
@@ -117,7 +117,7 @@ sentenceTests = testGroup "sentence"
                 (
                     evaluateSentences $
                         mockLocations [
-                            VarDef () [["x"]] (IntV () 2),
+                            VarDef () [["x"]] (Just IntT) (IntV () 2),
                             ProcedureCall () "divide_%_by_%" [VarV () ["x"], IntV () 2],
                             Result () (VarV () ["x"])
                         ]
@@ -130,7 +130,7 @@ sentenceTests = testGroup "sentence"
                 (
                     evaluateSentences $
                         mockLocations [
-                            VarDef () [["x"]] (ListV () FloatT [FloatV () 5.0, FloatV () 4.0]),
+                            VarDef () [["x"]] (Just $ ListT FloatT) (ListV () FloatT [FloatV () 5.0, FloatV () 4.0]),
                             ProcedureCall () "append_%_to_%" [ListV () IntT [IntV () 3, IntV () 2, IntV () 1], VarV () ["x"]],
                             Result () (VarV () ["x"])
                         ]
@@ -143,7 +143,7 @@ sentenceTests = testGroup "sentence"
                 (
                     evaluateSentences $
                         mockLocations [
-                            VarDef () [["x"]] (ListV () FloatT [FloatV () 5.0, FloatV () 4.0]),
+                            VarDef () [["x"]] (Just $ ListT FloatT) (ListV () FloatT [FloatV () 5.0, FloatV () 4.0]),
                             ProcedureCall () "append_%_to_%" [ListV () IntT [IntV () 3, IntV () 2, IntV () 1], VarV () ["x"]],
                             Result () (VarV () ["x"])
                         ]
@@ -158,7 +158,7 @@ sentenceTests = testGroup "sentence"
                         [
                             If (0,0)
                                 (BoolV (0,3) False)
-                                [VarDef (1,0) [["x"]] (IntV (1,6) 3)],
+                                [VarDef (1,0) [["x"]] (Just IntT) (IntV (1,6) 3)],
                             Result (2,0) (VarV (2,14) ["x"])
                         ]
                 )
@@ -170,7 +170,7 @@ sentenceTests = testGroup "sentence"
                 (
                     evaluateSentences
                         [
-                            VarDef (0,0) [["x"]] (IntV (0,6) 2),
+                            VarDef (0,0) [["x"]] (Just IntT) (IntV (0,6) 2),
                             ProcedureCall (1,0) "divide_%_by_%" [VarV (1,7) ["x"], FloatV (1,11) 0.0],
                             Result (2,0) (VarV (0,14) ["x"])
                         ]

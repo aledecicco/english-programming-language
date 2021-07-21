@@ -263,7 +263,28 @@ variablesDefinition = do
     firstWord "let"
     ns <- series name
     word "be"
-    VarDef ann ns <$> value
+    ann' <- getCurrentLocation
+    t <-
+        (case ns of
+            [_] -> try $ word "a" >> Just <$> baseType False
+            _ -> try $ Just <$> baseType True)
+        <|> return Nothing
+    v <- case t of
+        Just (ListT eT) ->
+            (do
+                l <- word "containing" >> series valueMatchable
+                return $ ListV ann' eT l)
+            <|> (do
+                word "equal"
+                word "to"
+                valueMatchable)
+            <|> return (ListV ann' eT [])
+        Just _ -> do
+                word "equal"
+                word "to"
+                valueMatchable
+        Nothing -> valueMatchable
+    return $ VarDef ann ns t v
 
 conditionalHeader :: String -> FuzzyParser (Annotated Value)
 conditionalHeader w = firstWord w >> condition
@@ -318,27 +339,28 @@ whileBlock = do
     (c, ss) <- blockSentence $ conditionalHeader "while"
     return $ While ann c ss
 
-forEachHeader :: FuzzyParser (Name, Annotated Value)
+forEachHeader :: FuzzyParser (Name, Type, Annotated Value)
 forEachHeader = do
     firstWord "for"
     word "each"
-    n <- name
+    t <- baseType False
+    n <- parens name
     word "in"
     l <- value
-    return (n, l)
+    return (n, t, l)
 
 simpleForEach :: FuzzyParser (Annotated Sentence)
 simpleForEach = do
     ann <- getCurrentLocation
-    (n, l) <- try $ forEachHeader <* comma
+    (n, t, l) <- try $ forEachHeader <* comma
     s <- simpleSentence
-    return $ ForEach ann n l [s]
+    return $ ForEach ann n t l [s]
 
 forEachBlock :: FuzzyParser (Annotated Sentence)
 forEachBlock = do
     ann <- getCurrentLocation
-    ((n, l), ss) <- blockSentence forEachHeader
-    return $ ForEach ann n l ss
+    ((n, t, l), ss) <- blockSentence forEachHeader
+    return $ ForEach ann n t l ss
 
 -- Parses a return statement
 result :: FuzzyParser (Annotated Sentence)

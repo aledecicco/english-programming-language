@@ -12,6 +12,6 @@ To run:
     Shuffle L.
     Print "The shuffled list is ".
     Print L.
-    Let K be the first half of L.
+    Let K be a list of numbers equal to the first half of L.
     Print "\nThe first half of the list is ".
     Print K.

@@ -1,10 +1,11 @@
-module SolverEnv ( module SolverEnv, module Location ) where
+module SolverEnv ( module SolverEnv, module Location, throwError, catchError ) where
 
 import Data.List ( find )
 import Data.Bifunctor ( first, second )
+import Control.Monad.Except ( throwError, catchError )
 import Control.Monad.Trans.Class ( lift )
 import Control.Monad.Trans.State ( get, gets, modify, runStateT, StateT )
-import Control.Monad.Trans.Except ( throwE, runExcept, Except )
+import Control.Monad.Trans.Except ( runExcept, Except )
 
 import Errors
 import Location
@@ -29,13 +30,10 @@ initialState = ([], [])
 
 -- Errors
 
-throw :: ErrorType -> SolverEnv a
-throw eT = lift . lift . throwE $ Error Nothing eT
-
 throwHere :: ErrorType -> SolverEnv a
 throwHere eT = do
     l <- getCurrentLocation
-    lift . lift . throwE $ Error (Just l) eT
+    throwError $ Error (Just l) eT
 
 --
 

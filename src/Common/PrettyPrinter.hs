@@ -22,7 +22,6 @@ doubleQuote = surround "\"" "\""
 asList :: [String] -> String
 asList xs = surround "[" "]" $ intercalate ", " xs
 
-
 --
 
 
@@ -67,6 +66,7 @@ ppValue (VarV _ n) = ppName n
 ppValue (ValueM _ _) = error "Shouldn't happen: can't print an unsolved value"
 ppValue (OperatorCall {}) = error "Shouldn't happen: values must be evaluated before printing them"
 ppValue (RefV _ _) = error "Shouldn't happen: references must be solved before printing them"
+ppValue (IterV {}) = error "Shouldn't happen: values with iterators must be solved before printing them"
 
 ppMatchablePart :: MatchablePart a -> String
 ppMatchablePart (IntP _ n) = show n
@@ -83,7 +83,9 @@ ppErrorType :: ErrorType -> String
 ppErrorType (WrongTypeValue eT aT) = unwords ["Expected a", ppType eT False, "but got a", ppType aT False, "instead"]
 ppErrorType (WrongTypeParameter eT aT n) = unwords ["Parameter", doubleQuote $ ppName n, "expected a", ppType eT False, "but got a", ppType aT False, "instead"]
 ppErrorType (UnmatchableValue ps) = unwords ["Could not understand", doubleQuote $ ppMatchable ps, "as a value"]
+ppErrorType (UnmatchableValueTypes ps) = unwords ["Could not understand", doubleQuote $ ppMatchable ps, "as a value because of type errors"]
 ppErrorType (UnmatchableSentence ps) = unwords ["Could not understand", doubleQuote $ ppMatchable ps, "as a sentence"]
+ppErrorType (UnmatchableSentenceTypes ps) = unwords ["Could not understand", doubleQuote $ ppMatchable ps, "as a sentence because of type errors"]
 ppErrorType (FunctionAlreadyDefined fid) = unwords ["Funcion", doubleQuote $ ppFunctionId fid, "is already defined"]
 ppErrorType (UndefinedFunction fid) = unwords ["Function", doubleQuote $ ppFunctionId fid, "is not defined"]
 ppErrorType (VariableAlreadyDefined n) = unwords ["Expected variable", doubleQuote $ ppName n, "to be new but it was already defined"]

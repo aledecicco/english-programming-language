@@ -113,6 +113,10 @@ builtInProcedures = map functionFromTuple
         (
             [TitleWords () ["append"], TitleParam () ["m"] (ListT $ AnyT "a"), TitleWords () ["to"], TitleParam () ["n"] (RefT . ListT $ AnyT "a")],
             Procedure
+        ),
+        (
+            [TitleWords () ["set"], TitleParam () ["m"] (RefT $ AnyT "a"), TitleWords () ["to"], TitleParam () ["n"] (AnyT "a")],
+            Procedure
         )
     ]
 

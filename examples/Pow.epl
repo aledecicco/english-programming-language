@@ -3,7 +3,7 @@ To raise a reference to a number (m) to the power of a number (n):
     While n is greater than 0:
         Multiply r by m.
         Subtract 1 from n.
-    Let m be r.
+    Set m to r.
 
 To run:
     Let x be 2.

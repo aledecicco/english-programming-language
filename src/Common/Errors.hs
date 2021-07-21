@@ -11,7 +11,9 @@ data ErrorType =
     WrongTypeValue Type Type
     | WrongTypeParameter Type Type Name
     | UnmatchableValue [Annotated MatchablePart]
+    | UnmatchableValueTypes [Annotated MatchablePart]
     | UnmatchableSentence [Annotated MatchablePart]
+    | UnmatchableSentenceTypes [Annotated MatchablePart]
     | FunctionAlreadyDefined FunId
     | UndefinedFunction FunId
     | VariableAlreadyDefined Name

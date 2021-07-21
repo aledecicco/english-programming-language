@@ -2,6 +2,7 @@ module Utils where
 
 import Control.Monad ( msum, void )
 import Data.List ( intercalate )
+import Data.Maybe ( catMaybes )
 
 import AST
 
@@ -32,5 +33,9 @@ firstNotNull f (x:xs) = do
 -- but only if all of them yielded a result
 allOrNone :: Monad m => (a -> m (Maybe b)) -> [a] -> m (Maybe [b])
 allOrNone f xs = sequence <$> traverse f xs
+
+-- Receives a computation and tries it on each element of a list, returning all the non-empty results
+allNotNull :: Monad m => (a -> m (Maybe b)) -> [a] -> m [b]
+allNotNull f es = catMaybes <$> mapM f es
 
 --

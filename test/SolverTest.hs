@@ -123,31 +123,40 @@ asFunctionCallTests = testGroup "As function call"
             expectedResult
                 (matchAsFunctionCall [IntP (0,0) 2, WordP (0,2) "plus", IntP (0,7) 3] $ map snd builtInOperators)
                 stateWithFunctions
-                (Just ("%_plus_%", [IntV (0,0) 2, IntV (0,7) 3])),
+                [("%_plus_%", [IntV (0,0) 2, IntV (0,7) 3])],
 
         testCase "Addition and multiplication associativity" $
             expectedResult
                 (matchAsFunctionCall [IntP (0,0) 2, WordP (0,2) "times", IntP (0,8) 3, WordP (0,10) "plus", IntP (0,15) 4, WordP (0,17) "times", IntP (0,23) 5] $ map snd builtInOperators)
                 stateWithFunctions
-                (Just ("%_plus_%", [OperatorCall (0,0) "%_times_%" [IntV (0,0) 2, IntV (0,8) 3], OperatorCall (0,15) "%_times_%" [IntV (0,15) 4, IntV (0,23) 5]])),
+                [
+                    ("%_plus_%", [OperatorCall (0,0) "%_times_%" [IntV (0,0) 2, IntV (0,8) 3], OperatorCall (0,15) "%_times_%" [IntV (0,15) 4, IntV (0,23) 5]]),
+                    ("%_times_%", [IntV (0,0) 2, OperatorCall (0,8) "%_plus_%" [IntV (0,8) 3, OperatorCall (0,15) "%_times_%" [IntV (0,15) 4, IntV (0,23) 5]]]),
+                    ("%_times_%", [IntV (0,0) 2, OperatorCall (0,8) "%_times_%" [OperatorCall (0,8) "%_plus_%" [IntV (0,8) 3, IntV (0,15) 4], IntV (0,23) 5]]),
+                    ("%_times_%", [OperatorCall (0,0) "%_plus_%" [OperatorCall (0,0) "%_times_%" [IntV (0,0) 2, IntV (0,8) 3], IntV (0,15) 4], IntV (0,23) 5]),
+                    ("%_times_%", [OperatorCall (0,0) "%_times_%" [IntV (0,0) 2, OperatorCall (0,8) "%_plus_%" [IntV (0,8) 3, IntV (0,15) 4]], IntV (0,23) 5])
+                ],
 
         testCase "Forced associativity with parenthesis" $
             expectedResult
                 (matchAsFunctionCall [ParensP [IntP (0,1) 2, WordP (0,3) "times", IntP (0,9) 3, WordP (0,11) "plus", IntP (0,16) 4], WordP (0,19) "times", IntP (0,25) 5] $ map snd builtInOperators)
                 stateWithFunctions
-                (Just ("%_times_%", [OperatorCall (0,1) "%_plus_%" [OperatorCall (0,1) "%_times_%" [IntV (0,1) 2, IntV (0,9) 3], IntV (0,16) 4], IntV (0,25) 5])),
+                [
+                    ("%_times_%", [OperatorCall (0,1) "%_plus_%" [OperatorCall (0,1) "%_times_%" [IntV (0,1) 2, IntV (0,9) 3], IntV (0,16) 4], IntV (0,25) 5]),
+                    ("%_times_%", [OperatorCall (0,1) "%_times_%" [IntV (0,1) 2, OperatorCall (0,9) "%_plus_%" [IntV (0,9) 3, IntV (0,16) 4]], IntV (0,25) 5])
+                ],
 
         testCase "Wrong type arguments" $
             expectedResult
                 (matchAsFunctionCall [WordP (0,0) "true", WordP (0,5) "plus", WordP (0,10) "false"] $ map snd builtInOperators)
                 stateWithFunctions
-                (Just ("%_plus_%", [BoolV (0,0) True, BoolV (0,10) False])),
+                [("%_plus_%", [BoolV (0,0) True, BoolV (0,10) False])],
 
         testCase "Wrong functions category" $
             expectedResult
                 (matchAsFunctionCall [IntP (0,0) 2, WordP (0,2) "plus", IntP (0,7) 3] $ map snd builtInProcedures)
                 stateWithFunctions
-                Nothing
+                []
     ]
 
 asOperatorCallTests :: TestTree
@@ -157,7 +166,7 @@ asOperatorCallTests = testGroup "As operator call"
             expectedResult
                 (matchAsOperatorCall [WordP (0,0) "print", IntP (0,6) 3])
                 stateWithFunctions
-                Nothing
+                []
     ]
 
 
@@ -168,7 +177,7 @@ asProcedureCallTests = testGroup "As procedure call"
             expectedResult
                 (matchAsProcedureCall [IntP (0,0) 2, WordP (0,2) "plus", IntP (0,7) 3])
                 stateWithFunctions
-                Nothing
+                []
     ]
 
 getValueTypeTests :: TestTree
@@ -246,24 +255,31 @@ solveValueTests = testGroup "Solve value"
     [
         testCase "Matchable" $
             expectedResult
-                (solveValue $ ValueM (0,0) [IntP (0,0) 2, WordP (0,2) "times", IntP (0,8) 3, WordP (0,10) "plus", IntP (0,15) 4, WordP (0,17) "times", IntP (0,23) 5])
+                (solveValueWithType IntT $ ValueM (0,0) [IntP (0,0) 2, WordP (0,2) "times", IntP (0,8) 3, WordP (0,10) "plus", IntP (0,15) 4, WordP (0,17) "times", IntP (0,23) 5])
                 stateWithFunctions
                 (OperatorCall (0,0) "%_plus_%" [OperatorCall (0,0) "%_times_%" [IntV (0,0) 2, IntV (0,8) 3], OperatorCall (0,15) "%_times_%" [IntV (0,15) 4, IntV (0,23) 5]]),
 
         testCase "List" $
             expectedResult
-                (solveValue $ ListV (0,0) IntT [ValueM (0,1) [IntP (0,1) 2, WordP (0,3) "times", IntP (0,9) 3], ValueM (0,11) [IntP (0,11) 4, WordP (0,13) "times", IntP (0,19) 5]])
+                (solveValueWithType (ListT IntT) $ ListV (0,0) IntT [ValueM (0,1) [IntP (0,1) 2, WordP (0,3) "times", IntP (0,9) 3], ValueM (0,11) [IntP (0,11) 4, WordP (0,13) "times", IntP (0,19) 5]])
                 stateWithFunctions
                 (ListV (0,0) IntT [OperatorCall (0,1) "%_times_%" [IntV (0,1) 2, IntV (0,9) 3], OperatorCall (0,11) "%_times_%" [IntV (0,11) 4, IntV (0,19) 5]]),
 
         testCase "Matchable with wrong type arguments" $
-            expectedSuccess
-                (solveValue $ ValueM (0,0) [WordP (0,0) "true", WordP (0,5) "plus", WordP (0,10) "false"])
-                stateWithFunctions,
+            expectedError
+                (solveValueWithType IntT $ ValueM (0,0) [WordP (0,0) "true", WordP (0,5) "plus", WordP (0,10) "false"])
+                stateWithFunctions
+                (Error (Just (0,0)) (WrongTypeParameter FloatT BoolT ["m"])),
+
+        testCase "Ambiguous matchable with wrong type arguments" $
+            expectedError
+                (solveValueWithType IntT $ ValueM (0,0) [WordP (0,0) "true", WordP (0,5) "plus", WordP (0,10) "false", WordP (0,16) "plus", WordP (0,21) "true"])
+                stateWithFunctions
+                (Error (Just (0,0)) (UnmatchableValueTypes [WordP (0,0) "true", WordP (0,5) "plus", WordP (0,10) "false", WordP (0,16) "plus", WordP (0,21) "true"])),
 
         testCase "List with wrong items" $
             expectedError
-                (solveValue $ ListV (0,0) IntT [BoolV (0,1) True, BoolV (0,7) False])
+                (solveValueWithType (ListT IntT) $ ListV (0,0) IntT [BoolV (0,1) True, BoolV (0,7) False])
                 initialState
                 (Error (Just (0,1)) $ WrongTypeValue IntT BoolT)
     ]

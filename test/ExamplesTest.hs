@@ -32,7 +32,7 @@ testExample :: FilePath -> [String] -> String -> IO ()
 testExample fn i o = do
     fc <- readFile fn
     case parseProgram fc of
-        Left e -> assertFailure $ "Example failed parsing, the error was:\n" ++ show e
+        Left e -> assertFailure $ "Example failed parsing, the error was:\n" ++ e
         Right p ->
             case solveProgram p of
                 Left e -> assertFailure $ "Example failed solving, the error was:\n" ++ show e

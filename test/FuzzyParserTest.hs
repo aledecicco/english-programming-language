@@ -424,7 +424,7 @@ functionDefinitionTests = testGroup "Function definition"
                     (Title (1,19) [TitleWords (1,19) ["the", "double", "of"], TitleParam (1,33) ["m"] FloatT])
                     (Just FloatT)
                     [
-                        VarDef (2,3) [["r"]] (ValueM (2,12) [WordP (2,12) "m", WordP (2,14) "times", IntP (2,20) 2]),
+                        VarDef (2,3) [["r"]] Nothing (ValueM (2,12) [WordP (2,12) "m", WordP (2,14) "times", IntP (2,20) 2]),
                         Result (3,3) (ValueM (3,17) [WordP (3,17) "r"])
                     ]
                 ),
@@ -432,12 +432,12 @@ functionDefinitionTests = testGroup "Function definition"
         testCase "Procedure" $
             expectedResult
                 functionDefinition
-                "To double a number (m):\n  Let r be m times 2."
+                "To double a number (m):\n  Let r be a number equal to m times 2."
                 (FunDef (1,1)
                     (Title (1,4) [TitleWords (1,4) ["double"], TitleParam (1,11) ["m"] FloatT])
                     Nothing
                     [
-                        VarDef (2,3) [["r"]] (ValueM (2,12) [WordP (2,12) "m", WordP (2,14) "times", IntP (2,20) 2])
+                        VarDef (2,3) [["r"]] (Just FloatT) (ValueM (2,30) [WordP (2,30) "m", WordP (2,32) "times", IntP (2,38) 2])
                     ]
                 ),
 
