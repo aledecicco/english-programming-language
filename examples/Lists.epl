@@ -1,4 +1,4 @@
-To shuffle a list of numbers (L):
+To shuffle a reference to a list of numbers (L):
     Swap the element of L at 1 with the element of L at 3.
     Swap the element of L at 0 with the element of L at 2.
     Swap the element of L at 1 with the element of L at 2.

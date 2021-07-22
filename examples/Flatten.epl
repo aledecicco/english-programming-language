@@ -1,6 +1,6 @@
 A list of numbers equal to a list of lists of numbers (L) flattened:
     Let R be a list of numbers.
-    For each list in L, append the list to R.
+    For each list of numbers (M) in L, append M to R.
     The result is R.
 
 To run:
@@ -11,14 +11,4 @@ To run:
     Let N be a list of numbers equal to M flattened.
     Print M.
     Print " flattened is ".
-    Print N.
-    Swap the element of A at 1 with the element of B at 1.
-    Swap (the element of (the element of M at 0) at 1) with (the element of (the element of M at 1) at 1).
-    Print "\n".
-    Print A.
-    Print "\n".
-    Print B.
-    Print "\n".
-    Print M.
-    Print "\n".
     Print N.

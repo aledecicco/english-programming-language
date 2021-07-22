@@ -66,8 +66,8 @@ builtInOperators = map functionFromTuple
             relationalType
         ),
         (
-            [TitleWords () ["the", "element", "of"], TitleParam () ["l"] (ListT $ AnyT "a"), TitleWords () ["at"], TitleParam () ["m"] IntT],
-            Operator (\[ListT t, IntT] -> RefT t)
+            [TitleWords () ["the", "element", "of"], TitleParam () ["l"] (RefT $ ListT $ AnyT "a"), TitleWords () ["at"], TitleParam () ["m"] IntT],
+            Operator (\[RefT (ListT t), IntT] -> RefT t)
         ),
         (
             [TitleWords () ["the", "length", "of"], TitleParam () ["l"] (ListT $ AnyT "a")],

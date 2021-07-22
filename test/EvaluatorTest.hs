@@ -127,29 +127,19 @@ sentenceTests = testGroup "sentence"
 
         testCase "Append to" $
             expectedResult
-                (
-                    evaluateSentences $
+                (do
+                    r <- evaluateSentences $
                         mockLocations [
                             VarDef () [["x"]] (Just $ ListT FloatT) (ListV () FloatT [FloatV () 5.0, FloatV () 4.0]),
                             ProcedureCall () "append_%_to_%" [ListV () IntT [IntV () 3, IntV () 2, IntV () 1], VarV () ["x"]],
                             Result () (VarV () ["x"])
                         ]
+                    case r of
+                        Just v -> Just <$> loadReferences v
+                        Nothing -> return Nothing
                 )
                 stateWithFunctions
-                (ListV () FloatT [RefV () 0, RefV () 1, RefV () 3, RefV () 4, RefV () 5]),
-
-        testCase "Append to" $
-            expectedResult
-                (
-                    evaluateSentences $
-                        mockLocations [
-                            VarDef () [["x"]] (Just $ ListT FloatT) (ListV () FloatT [FloatV () 5.0, FloatV () 4.0]),
-                            ProcedureCall () "append_%_to_%" [ListV () IntT [IntV () 3, IntV () 2, IntV () 1], VarV () ["x"]],
-                            Result () (VarV () ["x"])
-                        ]
-                )
-                stateWithFunctions
-                (ListV () FloatT [RefV () 0, RefV () 1, RefV () 3, RefV () 4, RefV () 5]),
+                (ListV () FloatT [FloatV () 5.0, FloatV () 4.0, IntV () 3, IntV () 2, IntV () 1]),
 
         testCase "Variable not in scope after if" $
             expectedError

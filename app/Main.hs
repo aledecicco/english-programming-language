@@ -18,4 +18,4 @@ main = do
                     r <- evaluateProgram p' d
                     case r of
                         Left e -> putStrLn $ "\n" ++ ppError e
-                        Right f -> putChar '\n'
+                        Right _ -> putChar '\n'

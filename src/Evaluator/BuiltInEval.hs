@@ -126,11 +126,17 @@ evaluateIsGreaterThanOrEqualTo :: ReadWrite m => Bare Value -> Bare Value -> Eva
 evaluateIsGreaterThanOrEqualTo v1 v2 = return $ relationalOperation (>=) v1 v2
 
 evaluateElementOfListAt :: ReadWrite m => Bare Value -> Bare Value -> EvaluatorEnv m (Bare Value)
-evaluateElementOfListAt (ListV _ _ []) _ = throwHere EmptyList
-evaluateElementOfListAt (ListV _ _ xs) (IntV _ n)
-    | n < 0 = throwHere $ OutOfBoundsIndex n
-    | n < length xs = return . void $ xs !! n
-    | otherwise = throwHere $ OutOfBoundsIndex n
+evaluateElementOfListAt (RefV _ addr) (IntV _ n)= do
+    l <- getValueAtAddress addr
+    evaluateElementOfListAt' l n
+    where
+        evaluateElementOfListAt' :: ReadWrite m => Bare Value -> Int -> EvaluatorEnv m (Bare Value)
+        evaluateElementOfListAt' (ListV _ _ []) _ = throwHere EmptyList
+        evaluateElementOfListAt' (ListV _ _ xs) n
+            | n < 0 = throwHere $ OutOfBoundsIndex n
+            | n < length xs = return $ xs !! n
+            | otherwise = throwHere $ OutOfBoundsIndex n
+        evaluateElementOfListAt' _ _ = error "Shouldn't happen: wrong types provided"
 evaluateElementOfListAt _ _ = error "Shouldn't happen: wrong types provided"
 
 evaluateLengthOf :: ReadWrite m => Bare Value -> EvaluatorEnv m (Bare Value)
@@ -162,7 +168,7 @@ evaluateBuiltInProcedure x y = error $ show x ++ show (length y)
 
 evaluatePrint :: ReadWrite m => Bare Value -> EvaluatorEnv m ()
 evaluatePrint v = do
-    v' <- loadReferences $ void v
+    v' <- loadReferences v
     (io . write . ppValue) v'
 
 evaluateSwapWith :: ReadWrite m => Bare Value -> Bare Value -> EvaluatorEnv m ()

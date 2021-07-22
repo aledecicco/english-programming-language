@@ -53,53 +53,59 @@ evaluateParameters ts vs = do
         evaluateParameters' _ [] = return []
         evaluateParameters' (TitleWords _ _ : ts) vs = evaluateParameters' ts vs
         evaluateParameters' (TitleParam _ _ (RefT _) : ts) (v:vs) = do
-            v' <- withLocation v getReference
+            v' <- withLocation v evaluateUpToReference
             (v':) <$> evaluateParameters' ts vs
         evaluateParameters' (TitleParam {} : ts) (v:vs) = do
             v' <- withLocation v evaluateValue
             (v':) <$> evaluateParameters' ts vs
         evaluateParameters' [] (_:_) = error "Shouldn't happen: can't run out of title parts before running out of values in a function call"
 
-        getReference :: ReadWrite m => Annotated Value -> EvaluatorEnv m (Bare Value)
-        getReference (VarV _ vn) = do
-            r <- getVariableAddress vn
-            case r of
-                Just addr -> return $ RefV () addr
-                Nothing -> throwHere $ UndefinedVariable vn
-        getReference v@(RefV _ _) = return $ void v
-        getReference a = error $ "Shouldn't happen: value provided is not a reference" ++ show (void a)
-
 hasIterators :: Value a -> Bool
 hasIterators (IterV {}) = True
 hasIterators (OperatorCall _ _ vs) = any hasIterators vs
 hasIterators _ = False
+
+copyValue :: ReadWrite m => Bare Value -> EvaluatorEnv m (Bare Value)
+copyValue (ListV _ eT es) = ListV () eT <$> mapM copyValue es
+copyValue (RefV _ addr) = do
+    v <- getValueAtAddress addr
+    v' <- copyValue v
+    RefV () <$> addValue v'
+copyValue v = return v
 
 --
 
 
 -- Evaluators
 
-evaluateValue :: ReadWrite m => Annotated Value -> EvaluatorEnv m (Bare Value)
-evaluateValue (VarV _ vn) = do
+evaluateReferences :: ReadWrite m => Bare Value -> EvaluatorEnv m (Bare Value)
+evaluateReferences (VarV _ vn) = do
     r <- getVariableValue vn
     case r of
-        Just v -> return v
+        Just v -> evaluateReferences v
         Nothing -> throwHere $ UndefinedVariable vn
-evaluateValue (RefV _ addr) = getValueAtAddress addr
-evaluateValue (OperatorCall _ fid vs) = do
-    r <- evaluateOperator fid vs
+evaluateReferences (RefV _ addr) = getValueAtAddress addr >>= evaluateReferences
+evaluateReferences l@(ListV {}) = copyValue l
+evaluateReferences v = return v
+
+evaluateUpToReference :: ReadWrite m => Annotated Value -> EvaluatorEnv m (Bare Value)
+evaluateUpToReference (VarV _ vn) = do
+    r <- getVariableAddress vn
     case r of
-        (RefV _ addr) -> getValueAtAddress addr
-        _ -> return r
-evaluateValue (ListV _ t es) = do
-    l' <- ListV () t <$> mapM (`withLocation` evaluateValue) es
-    saveReferences l'
-evaluateValue v@(IntV _ _) = return $ void v
-evaluateValue v@(FloatV _ _) = return $ void v
-evaluateValue v@(BoolV _ _) = return $ void v
-evaluateValue v@(CharV _ _) = return $ void v
+        Just addr -> return $ RefV () addr
+        Nothing -> throwHere $ UndefinedVariable vn
+evaluateUpToReference v@(RefV _ _) = return $ void v
+evaluateUpToReference (OperatorCall _ fid vs) = evaluateOperator fid vs
+evaluateUpToReference v = return $ void v
+
+evaluateValue :: ReadWrite m => Annotated Value -> EvaluatorEnv m (Bare Value)
+evaluateValue (ListV _ eT es) = do
+    es' <- mapM (`withLocation` evaluateValue) es
+    addrs <- mapM addValue es'
+    return $ ListV () eT (map (RefV ()) addrs)
 evaluateValue (IterV {}) = error "Shouldn't happen: values with iterators must be solved before evaluating them"
 evaluateValue (ValueM _ _) = error "Shouldn't happen: values must be solved before evaluating them"
+evaluateValue v = evaluateUpToReference v >>= evaluateReferences
 
 evaluateSentences :: ReadWrite m => [Annotated Sentence] -> EvaluatorEnv m (Maybe (Bare Value))
 evaluateSentences [] = return Nothing

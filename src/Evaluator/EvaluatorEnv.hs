@@ -119,14 +119,9 @@ getValueAtAddress addr = lift $ gets (\(_, _, avs, _) -> avs !! addr)
 
 -- Replaces the references to values contained in a value with the referenced values
 loadReferences :: Monad m => Bare Value -> EvaluatorEnv m (Bare Value)
-loadReferences (ListV _ t refs) = ListV () t <$> mapM loadReferences refs
+loadReferences (ListV _ eT refs) = ListV () eT <$> mapM loadReferences refs
 loadReferences (RefV _ addr) = getValueAtAddress addr >>= loadReferences
 loadReferences v = return v
-
--- Replaces the values contained in a value with references to those values, saving them to memory first
-saveReferences :: Monad m => Bare Value -> EvaluatorEnv m (Bare Value)
-saveReferences (ListV _ t es) = ListV () t <$> mapM ((RefV () <$>) . addValue) es
-saveReferences v = return v
 
 setValueAtAddress :: Monad m => Int -> Bare Value -> EvaluatorEnv m ()
 setValueAtAddress addr v = changeValues $ replaceNth addr v
@@ -187,24 +182,14 @@ withVariables :: Monad m => EvaluatorEnv m (Maybe (Bare Value)) -> [(Name, Bare 
 withVariables action newVarVals newVarRefs = do
     -- Save current state
     varRefs <- lift $ gets (\(_, vas, _, _) -> vas)
-    varValsLen <- lift $ length <$> gets (\(_, _, vals, _) -> vals)
-    p <- lift $ gets (\(_, _, _, p) -> p)
     -- Perform the action using only the given variables
     changeReferences $ const []
     mapM_ (uncurry addVariableValue) newVarVals
     mapM_ (uncurry setVariableAddress) newVarRefs
     r <- action
-    -- Load values referenced in the result before cleaning the stack
-    r' <- case r of
-        Just v -> Just <$> loadReferences v
-        Nothing -> return Nothing
     -- Restore the state
     changeReferences $ const varRefs
-    changeValues $ take varValsLen
-    changePointer $ const p
     -- Save loaded values back to the stack and return the result
-    case r' of
-        Just v' -> Just <$> saveReferences v'
-        Nothing -> return Nothing
+    return r
 
 --
