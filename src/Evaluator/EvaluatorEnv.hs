@@ -1,10 +1,10 @@
 module EvaluatorEnv ( module EvaluatorEnv, module Location ) where
 
 import Data.List ( find )
-import qualified Data.Map.Lazy as M
-import qualified Data.IntMap.Lazy as IM
+import qualified Data.Map.Strict as M
+import qualified Data.IntMap.Strict as IM
 import Control.Monad.Trans.Class ( lift )
-import Control.Monad.Trans.State.Lazy ( gets, modify, runStateT, StateT )
+import Control.Monad.Trans.State.Strict ( gets, modify, runStateT, StateT )
 import Control.Monad.Trans.Except ( throwE, runExceptT, ExceptT )
 
 import Errors

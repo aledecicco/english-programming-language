@@ -2,7 +2,7 @@ module EvaluatorTest ( tests ) where
 
 import Test.Tasty ( testGroup, TestTree )
 import Test.Tasty.HUnit ( HasCallStack, testCase, assertFailure, Assertion, (@?=) )
-import qualified Data.Map.Lazy as M
+import qualified Data.Map.Strict as M
 
 import BuiltInDefs ( builtInProcedures, builtInOperators )
 import Errors

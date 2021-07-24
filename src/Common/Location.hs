@@ -1,6 +1,6 @@
 module Location where
 
-import Control.Monad.Trans.State.Lazy ( put, get, gets, modify, runStateT, StateT )
+import Control.Monad.Trans.State.Strict ( put, get, gets, modify, runStateT, StateT )
 
 import AST
 
