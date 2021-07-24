@@ -1,8 +1,10 @@
 module EvaluatorEnv ( module EvaluatorEnv, module Location ) where
 
 import Data.List ( find )
+import qualified Data.Map.Lazy as M
+import qualified Data.IntMap.Lazy as IM
 import Control.Monad.Trans.Class ( lift )
-import Control.Monad.Trans.State ( gets, modify, runStateT, StateT )
+import Control.Monad.Trans.State.Lazy ( gets, modify, runStateT, StateT )
 import Control.Monad.Trans.Except ( throwE, runExceptT, ExceptT )
 
 import Errors
@@ -14,14 +16,11 @@ import AST
 
 -- Type definitions
 
-type FunData = (FunId, FunCallable)
-type Reference = (Name, Int)
+type FunData = M.Map FunId FunCallable -- A mapping between function ids and their callables
+type VarData = [M.Map Name Int] -- One mapping between variable names and their addresses for each scope
+type RefData = IM.IntMap (Bare Value) -- A mapping between addresses and their values
 
--- Function callables
--- A mapping between variable names and their addresses
--- A list of values, where the index of each value is its address
--- The stack pointer
-type EvaluatorData = ([FunData], [Reference], [Bare Value], Int)
+type EvaluatorData = (FunData, VarData, RefData, Int)
 type EvaluatorEnv m a = LocationT (StateT EvaluatorData (ExceptT Error m)) a
 
 class Monad m => ReadWrite m where
@@ -38,7 +37,7 @@ runEvaluatorEnv :: EvaluatorEnv m a -> EvaluatorData -> Location -> m (Either Er
 runEvaluatorEnv f d s = runExceptT $ runStateT (runLocationT f s) d
 
 initialState :: EvaluatorData
-initialState = ([], [], [], 0)
+initialState = (M.empty, [], IM.empty, 0)
 
 --
 
@@ -58,76 +57,48 @@ throwHere eT = do
 
 -- Auxiliary
 
-removeById :: Eq a => a -> [(a, b)] -> [(a, b)]
-removeById id = filter (\p -> fst p /= id)
+changeFunctions :: Monad m => (FunData -> FunData) -> EvaluatorEnv m ()
+changeFunctions m = lift $ modify (\(fs, vs, rs, p) -> (m fs, vs, rs, p))
 
-changeFunctions :: Monad m => ([FunData] -> [FunData]) -> EvaluatorEnv m ()
-changeFunctions m = lift $ modify (\(fs, rs, vs, p) -> (m fs, rs, vs, p))
+changeVariables :: Monad m => (VarData -> VarData) -> EvaluatorEnv m ()
+changeVariables m = lift $ modify (\(fs, vs, rs, p) -> (fs, m vs, rs, p))
 
-changeReferences :: Monad m => ([Reference] -> [Reference]) -> EvaluatorEnv m ()
-changeReferences m = lift $ modify (\(fs, rs, vs, p) -> (fs, m rs, vs, p))
-
-changeValues :: Monad m => ([Bare Value] -> [Bare Value]) -> EvaluatorEnv m ()
-changeValues m = lift $ modify (\(fs, rs, vs, p) -> (fs, rs, m vs, p))
+changeReferences :: Monad m => (RefData -> RefData) -> EvaluatorEnv m ()
+changeReferences m = lift $ modify (\(fs, vs, rs, p) -> (fs, vs, m rs, p))
 
 changePointer :: Monad m => (Int -> Int) -> EvaluatorEnv m ()
-changePointer m = lift $ modify (\(fs, rs, vs, p) -> (fs, rs, vs, m p))
-
+changePointer m = lift $ modify (\(fs, vs, rs, p) -> (fs, vs, rs, m p))
 --
 
 
 -- Functions
 
-getFunctionCallable :: Monad m => FunId -> EvaluatorEnv m (Maybe FunCallable)
-getFunctionCallable fid = lift $ gets (\(fs, _, _, _) -> lookup fid fs)
+getFunctionCallable :: Monad m => FunId -> EvaluatorEnv m FunCallable
+getFunctionCallable fid = lift $ gets (\(fs, _, _, _) -> fs M.! fid)
 
 setFunctionCallable :: Monad m => FunId -> FunCallable -> EvaluatorEnv m ()
-setFunctionCallable fid f = do
-    r <- getFunctionCallable fid
-    removeFunctionCallable fid
-    changeFunctions ((fid, f):)
-
-removeFunctionCallable :: Monad m => FunId -> EvaluatorEnv m ()
-removeFunctionCallable fid = changeFunctions $ removeById fid
+setFunctionCallable fid f = changeFunctions $ M.insert fid f
 
 setFunctions :: Monad m => [(FunId, FunCallable)] -> EvaluatorEnv m ()
-setFunctions = changeFunctions . const
+setFunctions fs = changeFunctions $ const (M.fromList fs)
 
 --
 
 
 -- References
 
-getVariableAddress :: Monad m => Name -> EvaluatorEnv m (Maybe Int)
-getVariableAddress vn = lift $ gets (\(_, vas, _, _) -> lookup vn vas)
-
-setVariableAddress :: Monad m => Name -> Int -> EvaluatorEnv m ()
-setVariableAddress vn addr = do
-    removeVariableAddress vn
-    changeReferences ((vn, addr):)
-
-removeVariableAddress :: Monad m => Name -> EvaluatorEnv m ()
-removeVariableAddress vn = changeReferences $ removeById vn
-
---
-
-
--- Values
-
 getValueAtAddress :: Monad m => Int -> EvaluatorEnv m (Bare Value)
-getValueAtAddress addr = lift $ gets (\(_, _, avs, _) -> avs !! addr)
+getValueAtAddress addr = lift $ gets (\(_, _, rs, _) -> rs IM.! addr)
+
+
+setValueAtAddress :: Monad m => Int -> Bare Value -> EvaluatorEnv m ()
+setValueAtAddress addr v = changeReferences $ IM.insert addr v
 
 -- Replaces the references to values contained in a value with the referenced values
 loadReferences :: Monad m => Bare Value -> EvaluatorEnv m (Bare Value)
 loadReferences (ListV _ eT refs) = ListV () eT <$> mapM loadReferences refs
 loadReferences (RefV _ addr) = getValueAtAddress addr >>= loadReferences
 loadReferences v = return v
-
-setValueAtAddress :: Monad m => Int -> Bare Value -> EvaluatorEnv m ()
-setValueAtAddress addr v = changeValues $ replaceNth addr v
-    where
-        replaceNth :: Int -> a -> [a] -> [a]
-        replaceNth n v l = take n l ++ [v] ++ drop (n+1) l
 
 -- Defines a new value at the next empty position and returns its address
 addValue :: Monad m => Bare Value -> EvaluatorEnv m Int
@@ -151,45 +122,46 @@ setStackPointer p = changePointer $ const p
 --
 
 
+
+
 -- Variables
 
-getVariableValue :: Monad m => Name -> EvaluatorEnv m (Maybe (Bare Value))
-getVariableValue vn = do
-    r <- getVariableAddress vn
-    case r of
-        Just addr -> Just <$> getValueAtAddress addr
-        Nothing -> return Nothing
+variableIsDefined :: Monad m => Name -> EvaluatorEnv m Bool
+variableIsDefined vn = lift $ gets (\(_, vs:_, _, _) -> M.member vn vs)
 
-addVariableValue :: Monad m => Name -> Bare Value -> EvaluatorEnv m ()
-addVariableValue vn v = do
-    addr <- addValue v
-    setVariableAddress vn addr
+getVariableAddress :: Monad m => Name -> EvaluatorEnv m Int
+getVariableAddress vn = lift $ gets (\(_, vs:_, _, _) -> vs M.! vn)
+
+setVariableAddress :: Monad m => Name -> Int -> EvaluatorEnv m ()
+setVariableAddress vn addr = changeVariables (\(vs:vss) -> M.insert vn addr vs : vss)
+
+removeVariable :: Monad m => Name -> EvaluatorEnv m ()
+removeVariable vn = changeVariables (\(vs:vss) -> M.delete vn vs : vss)
+
+getVariableValue :: Monad m => Name -> EvaluatorEnv m (Bare Value)
+getVariableValue vn = getVariableAddress vn >>= getValueAtAddress
 
 setVariableValue :: Monad m => Name -> Bare Value -> EvaluatorEnv m ()
 setVariableValue vn v = do
-    r <- getVariableAddress vn
-    case r of
-        Just addr -> setValueAtAddress addr v
-        Nothing -> addVariableValue vn v
-
-removeVariableValue :: Monad m => Name -> EvaluatorEnv m ()
-removeVariableValue = removeVariableAddress
+    isDef <- variableIsDefined vn
+    if isDef
+        then getVariableAddress vn >>= (`setValueAtAddress` v)
+        else addValue v >>= setVariableAddress vn
 
 -- Receives a list of new variables to be declared and a list of references to be set and performs an action with those variables
--- The values of new variables are discarded after the action
+-- New variables are discarded after the action
 -- The original values of the variables referenced can be modified inside the action
 withVariables :: Monad m => EvaluatorEnv m (Maybe (Bare Value)) -> [(Name, Bare Value)] -> [(Name, Int)] -> EvaluatorEnv m (Maybe (Bare Value))
 withVariables action newVarVals newVarRefs = do
-    -- Save current state
-    varRefs <- lift $ gets (\(_, vas, _, _) -> vas)
-    -- Perform the action using only the given variables
-    changeReferences $ const []
-    mapM_ (uncurry addVariableValue) newVarVals
+    -- Create a new empty scope
+    changeVariables (M.empty:)
+    -- Populate it with the given variables
+    mapM_ (uncurry setVariableValue) newVarVals
     mapM_ (uncurry setVariableAddress) newVarRefs
+    -- Perform the action using only the given variables
     r <- action
-    -- Restore the state
-    changeReferences $ const varRefs
-    -- Save loaded values back to the stack and return the result
+    -- Restore the state and return the result
+    changeVariables tail
     return r
 
 --

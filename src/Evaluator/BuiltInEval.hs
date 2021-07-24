@@ -3,9 +3,6 @@
 module BuiltInEval where
 
 import Control.Monad.Trans.Class ( lift )
-import Control.Monad ( void )
-import Data.List ( intercalate )
-import Data.Maybe ( fromJust )
 
 import PrettyPrinter
 import EvaluatorEnv
@@ -35,7 +32,7 @@ floatOperation op (IntV _ n1) (IntV _ n2) = FloatV () $ fromIntegral n1 `op` fro
 floatOperation _ _ _ = error "Shouldn't happen: wrong types provided"
 
 listOperation :: ([Bare Value] -> [Bare Value] -> [Bare Value]) -> Bare Value -> Bare Value -> Bare Value
-listOperation op (ListV _ t1 vs1) (ListV _ _ vs2) = ListV () t1 $ map void (vs1 `op` vs2)
+listOperation op (ListV _ t1 vs1) (ListV _ _ vs2) = ListV () t1 $ vs1 `op` vs2
 listOperation _ _ _ = error "Shouldn't happen: wrong types provided"
 
 relationalOperation :: (forall a. (Ord a) => a -> a -> Bool) -> Bare Value -> Bare Value -> Bare Value
@@ -62,7 +59,7 @@ floatModification _ _ _ = error "Shouldn't happen: wrong types provided"
 listModification :: ReadWrite m => ([Bare Value] -> [Bare Value] -> [Bare Value]) -> Bare Value -> Bare Value -> EvaluatorEnv m ()
 listModification op (RefV _ addr) v = do
     v' <- getValueAtAddress addr
-    let newVal = listOperation op v' (void v)
+    let newVal = listOperation op v' v
     setValueAtAddress addr newVal
 listModification _ _ _ = error "Shouldn't happen: wrong types provided"
 
@@ -106,12 +103,12 @@ evaluateDividedBy v1 v2 = return $ floatOperation (/) v1 v2
 evaluateIsEqualTo :: ReadWrite m => Bare Value -> Bare Value -> EvaluatorEnv m (Bare Value)
 evaluateIsEqualTo (IntV _ n) (FloatV _ f) = return $ BoolV () (fromIntegral n == f)
 evaluateIsEqualTo (FloatV _ f) (IntV _ n) = return $ BoolV () (fromIntegral n == f)
-evaluateIsEqualTo v1 v2 = return $ BoolV () (void v1 == void v2)
+evaluateIsEqualTo v1 v2 = return $ BoolV () (v1 == v2)
 
 evaluateIsNotEqualTo :: ReadWrite m => Bare Value -> Bare Value -> EvaluatorEnv m (Bare Value)
 evaluateIsNotEqualTo (IntV _ n) (FloatV _ f) = return $ BoolV () (fromIntegral n /= f)
 evaluateIsNotEqualTo (FloatV _ f) (IntV _ n) = return $ BoolV () (fromIntegral n /= f)
-evaluateIsNotEqualTo v1 v2 = return $ BoolV () (void v1 /= void v2)
+evaluateIsNotEqualTo v1 v2 = return $ BoolV () (v1 /= v2)
 
 evaluateIsLessThan :: ReadWrite m => Bare Value -> Bare Value -> EvaluatorEnv m (Bare Value)
 evaluateIsLessThan v1 v2 = return $ relationalOperation (<) v1 v2
@@ -164,7 +161,8 @@ evaluateBuiltInProcedure "subtract_%_from_%" [v1, v2] = evaluateSubtractFrom v1 
 evaluateBuiltInProcedure "divide_%_by_%" [v1, v2] = evaluateDivideBy v1 v2
 evaluateBuiltInProcedure "append_%_to_%" [v1, v2] = evaluateAppendTo v1 v2
 evaluateBuiltInProcedure "set_%_to_%" [v1, v2] = evaluateSetTo v1 v2
-evaluateBuiltInProcedure x y = error $ show x ++ show (length y)
+evaluateBuiltInProcedure "" _ = error "Shouldn't happen: a procedure can't have the empty string as id"
+evaluateBuiltInProcedure _ _ = error "Shouldn't happen: undefined procedure"
 
 evaluatePrint :: ReadWrite m => Bare Value -> EvaluatorEnv m ()
 evaluatePrint v = do

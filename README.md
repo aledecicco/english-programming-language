@@ -1,7 +1,7 @@
 # Expressive
 A programming language that resembles English. Write some sentences and watch the interpreter try to understand what you meant.
 
-![Version](https://img.shields.io/badge/version-v2.3.1-blue)
+![Version](https://img.shields.io/badge/version-v2.4.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-brightgreen)
 
 # Syntax
@@ -360,7 +360,6 @@ Modifies the value of the given variable, appending the list to it.
 - Optional aliases in function parameters and `ForEach` iterators
 - Use `each` for generators in function arguments
 - Find a better syntax for specifying function return types
-- Use maps instead of lists for variable references and values in the evaluator
 - Garbage collector
 - Some sort of try-catch expression
 - Implement importing other files as libraries (without the `Run` procedure)

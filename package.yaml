@@ -1,5 +1,5 @@
 name:                english-programming-language
-version:             2.3.1
+version:             2.4.0
 license:             MIT
 author:              "Alejandro De Cicco"
 maintainer:          "alejandrodecicco99@gmail.com"
@@ -15,6 +15,7 @@ dependencies:
 - tasty-hunit
 - tasty-rerun
 - mtl
+- containers
 
 library:
   source-dirs:

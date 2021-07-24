@@ -58,9 +58,9 @@ exampleTests = testGroup "example"
     [
         exampleTestCase "Pow" [] "2 to the power of 3 is 8",
 
-        exampleTestCase "RecFib" [] "The 6th fibonacci number is 8",
+        exampleTestCase "RecFib" [] "The 20th fibonacci number is 6765",
 
-        exampleTestCase "SeqFib" [] "The 6th fibonacci number is 8",
+        exampleTestCase "SeqFib" [] "The 20th fibonacci number is 6765",
 
         exampleTestCase "Sum" [] "The sum of [1, 2, 3.5] is 6.5",
 

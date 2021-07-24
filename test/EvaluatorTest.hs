@@ -2,6 +2,7 @@ module EvaluatorTest ( tests ) where
 
 import Test.Tasty ( testGroup, TestTree )
 import Test.Tasty.HUnit ( HasCallStack, testCase, assertFailure, Assertion, (@?=) )
+import qualified Data.Map.Lazy as M
 
 import BuiltInDefs ( builtInProcedures, builtInOperators )
 import Errors
@@ -16,8 +17,9 @@ import AST
 
 stateWithFunctions :: EvaluatorData
 stateWithFunctions =
-    let (_, rs, vs, p) = initialState
-    in (translateFunctions [] (builtInOperators ++ builtInProcedures), rs, vs, p)
+    let (_, _, rs, p) = initialState
+        fs = translateFunctions [] (builtInOperators ++ builtInProcedures)
+    in (M.fromList fs, [M.empty], rs, p)
 
 -- Asserts that an evaluator action yields a specific result with the given environment
 expectedResult :: HasCallStack => EvaluatorEnv IO (Maybe (Bare Value)) -> EvaluatorData -> Bare Value -> Assertion

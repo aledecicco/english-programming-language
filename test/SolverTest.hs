@@ -1,6 +1,5 @@
 module SolverTest ( tests ) where
 
-import Control.Monad ( void )
 import Test.Tasty ( testGroup, TestTree )
 import Test.Tasty.HUnit ( HasCallStack, testCase, assertFailure, Assertion, (@?=) )
 
@@ -18,7 +17,8 @@ import AST
 stateWithFunctions :: SolverData
 stateWithFunctions =
     let (_, vs) = initialState
-    in (builtInOperators ++ builtInProcedures, vs)
+        fs = builtInOperators ++ builtInProcedures
+    in (fs, vs)
 
 -- Asserts that a parser action yields a specific result with the given environment
 expectedResult :: (HasCallStack, Eq a, Show a) => SolverEnv a -> SolverData -> a -> Assertion

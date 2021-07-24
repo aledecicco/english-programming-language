@@ -1,6 +1,5 @@
 module Utils where
 
-import Control.Monad ( msum, void )
 import Data.List ( intercalate )
 import Data.Maybe ( catMaybes )
 

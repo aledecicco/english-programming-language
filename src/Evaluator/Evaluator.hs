@@ -1,13 +1,12 @@
 module Evaluator ( module Evaluator, ReadWrite(..) ) where
 
 import Data.List ( find )
-import Data.Maybe ( fromJust, mapMaybe )
-import Control.Monad ( void )
+import Control.Monad ( void, unless )
 
 import EvaluatorEnv
 import BuiltInDefs
 import BuiltInEval
-import SolverEnv ( SolverData, getLocation )
+import SolverEnv ( SolverData )
 import Utils ( firstNotNull )
 import Errors
 import AST
@@ -24,7 +23,7 @@ translateFunctions prog = map (translateFunction prog)
         translateFunction p (fid, FunSignature t _) =
             case findDefinition p t of
                 (Just (FunDef _ _ _ ss)) -> (fid, FunCallable t ss)
-                -- if a function is not found in the written program, then it must be a built-in function
+                -- If a function is not found in the written program, then it must be a built-in function
                 Nothing -> (fid, FunCallable t [])
         findDefinition :: Program -> Title a -> Maybe (Annotated Block)
         findDefinition p t = find (\(FunDef _ t' _ _) -> void t == void t') p
@@ -80,20 +79,18 @@ copyValue v = return v
 
 evaluateReferences :: ReadWrite m => Bare Value -> EvaluatorEnv m (Bare Value)
 evaluateReferences (VarV _ vn) = do
-    r <- getVariableValue vn
-    case r of
-        Just v -> evaluateReferences v
-        Nothing -> throwHere $ UndefinedVariable vn
+    isDef <- variableIsDefined vn
+    unless isDef $ throwHere (UndefinedVariable vn)
+    getVariableValue vn >>= evaluateReferences
 evaluateReferences (RefV _ addr) = getValueAtAddress addr >>= evaluateReferences
 evaluateReferences l@(ListV {}) = copyValue l
 evaluateReferences v = return v
 
 evaluateUpToReference :: ReadWrite m => Annotated Value -> EvaluatorEnv m (Bare Value)
 evaluateUpToReference (VarV _ vn) = do
-    r <- getVariableAddress vn
-    case r of
-        Just addr -> return $ RefV () addr
-        Nothing -> throwHere $ UndefinedVariable vn
+    isDef <- variableIsDefined vn
+    unless isDef $ throwHere (UndefinedVariable vn)
+    RefV () <$> getVariableAddress vn
 evaluateUpToReference v@(RefV _ _) = return $ void v
 evaluateUpToReference (OperatorCall _ fid vs) = evaluateOperator fid vs
 evaluateUpToReference v = return $ void v
@@ -120,9 +117,10 @@ evaluateSentences ss = do
             return r
 
 evaluateSentence :: ReadWrite m => Annotated Sentence -> EvaluatorEnv m (Maybe (Bare Value))
-evaluateSentence (VarDef _ vNs _ v) = do
+evaluateSentence (VarDef _ ~(vn:vns) _ v) = do
     v' <- withLocation v evaluateValue
-    mapM_ (`setVariableValue` v') vNs
+    setVariableValue vn v'
+    mapM_ (\vn -> copyValue v' >>= setVariableValue vn) vns
     return Nothing
 evaluateSentence (If _ bv ls) = do
     ~(BoolV _ v') <- withLocation bv evaluateValue
@@ -138,7 +136,7 @@ evaluateSentence (ForEach _ iN _ lv ls) = do
     ~(ListV _ _ v') <- withLocation lv evaluateValue
     let iterateLoop = (\(RefV _ ref) -> setVariableAddress iN ref >> evaluateSentences ls)
     r <- firstNotNull iterateLoop v'
-    removeVariableValue iN
+    removeVariable iN
     return r
 evaluateSentence s@(Until _ bv ls) = do
     ~(BoolV _ v') <- withLocation bv evaluateValue
@@ -167,7 +165,7 @@ evaluateSentence (SentenceM _ _) = error "Shouldn't happen: sentences must be so
 evaluateOperator :: ReadWrite m => FunId -> [Annotated Value] -> EvaluatorEnv m (Bare Value)
 evaluateOperator fid vs
     | isBuiltInFunction fid = do
-        ~(FunCallable (Title _ t) _) <- fromJust <$> getFunctionCallable fid
+        (FunCallable (Title _ t) _) <- getFunctionCallable fid
         vs' <- evaluateParameters t vs
         evaluateBuiltInOperator fid vs'
     | otherwise = do
@@ -179,14 +177,14 @@ evaluateOperator fid vs
 evaluateProcedure :: ReadWrite m => FunId -> [Annotated Value] -> EvaluatorEnv m ()
 evaluateProcedure fid vs
     | isBuiltInFunction fid = do
-        ~(FunCallable (Title _ t) _) <- fromJust <$> getFunctionCallable fid
+        (FunCallable (Title _ t) _) <- getFunctionCallable fid
         vs' <- evaluateParameters t vs
         evaluateBuiltInProcedure fid vs'
     | otherwise = void $ evaluateUserDefinedFunction fid vs
 
 evaluateUserDefinedFunction :: ReadWrite m => FunId -> [Annotated Value] -> EvaluatorEnv m (Maybe (Bare Value))
 evaluateUserDefinedFunction fid vs = do
-    ~(FunCallable (Title _ t) ss) <- fromJust <$> getFunctionCallable fid
+    (FunCallable (Title _ t) ss) <- getFunctionCallable fid
     vs' <- evaluateParameters t vs
     (vars, refs) <- variablesFromTitle t vs'
     withVariables (evaluateSentences ss) vars refs

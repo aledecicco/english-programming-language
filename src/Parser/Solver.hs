@@ -3,7 +3,7 @@
 module Solver where
 
 import Data.Char ( isUpper, toLower )
-import Data.Maybe ( fromJust, isNothing, catMaybes )
+import Data.Maybe ( fromJust, catMaybes )
 import Data.List ( find )
 import Control.Monad ( unless, when, void )
 
@@ -241,7 +241,7 @@ checkValueType v t = do
     t' <- withLocation v getValueType
     unless (t' `satisfiesType` t) $ throwHere (WrongTypeValue t t')
 
-checkProcedureCallType :: Sentence Location -> SolverEnv ()
+checkProcedureCallType :: Annotated Sentence -> SolverEnv ()
 checkProcedureCallType (ProcedureCall ann fid vs) = void $ getParameterTypesWithCheck (fid, vs)
 checkProcedureCallType _ = error "Shouldn't happen: sentence given is not a procedure call"
 
@@ -336,7 +336,7 @@ solveValueWithType :: Type -> Annotated Value -> SolverEnv (Annotated Value)
 solveValueWithType t = solveValue (`checkValueType` t)
 
 solveValueWithAnyType :: Annotated Value -> SolverEnv (Annotated Value)
-solveValueWithAnyType = solveValue $ void . getValueType
+solveValueWithAnyType = solveValue (void . getValueType)
 
 solveSentence :: Maybe Type -> Annotated Sentence -> SolverEnv (Annotated Sentence)
 solveSentence _ (VarDef ann vNs (Just t) v) = do
@@ -383,7 +383,7 @@ solveSentence _ (SentenceM ann ps) = do
         [] -> throwHere $ UnmatchableSentence ps
         [s] -> checkProcedureCallType s >> return s
         vs -> do
-            let trySentence = (\s -> checkProcedureCallType s >> return (Just s) `catchError` (\_ -> return Nothing))
+            let trySentence = (\s -> (checkProcedureCallType s >> return (Just s)) `catchError` (\_ -> return Nothing))
             r <- catMaybes <$> mapM trySentence vs
             case r of
                 [s] -> return s

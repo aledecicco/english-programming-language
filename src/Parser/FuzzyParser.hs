@@ -2,9 +2,9 @@
 
 module FuzzyParser where
 
-import Data.Void (Void)
+import Data.Void ( Void )
 import Data.Char ( toUpper )
-import Control.Monad (void, when)
+import Control.Monad ( void )
 
 import Text.Megaparsec
 import Text.Megaparsec.Char

@@ -1,4 +1,4 @@
-A number equal to the fibonacci sequence at a whole number (position):
+A whole number equal to the fibonacci sequence at a whole number (position):
     If the position is less than or equal to 2:
         The result is 1.
     Otherwise:
@@ -7,7 +7,7 @@ A number equal to the fibonacci sequence at a whole number (position):
         The result is X plus Y.
 
 To run:
-    Let n be 6.
+    Let n be 20.
     Print "The ".
     Print n.
     Print "th fibonacci number is ".

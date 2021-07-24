@@ -1,6 +1,5 @@
 module SolverEnv ( module SolverEnv, module Location, throwError, catchError ) where
 
-import Data.List ( find )
 import Data.Bifunctor ( first, second )
 import Control.Monad.Except ( throwError, catchError )
 import Control.Monad.Trans.Class ( lift )
@@ -93,6 +92,13 @@ removeFunctionSignature fid =
     let removeFid = filter (\fd -> fst fd /= fid)
     in changeFunctions removeFid
 
+functionIsDefined :: FunId -> SolverEnv Bool
+functionIsDefined fid = do
+    r <- getFunctionSignature fid
+    case r of
+        Just _ -> return True
+        _ -> return False
+
 getOperatorSignatures :: SolverEnv [FunSignature]
 getOperatorSignatures = do
     fs <- fst <$> lift get
@@ -102,13 +108,6 @@ getProcedureSignatures :: SolverEnv [FunSignature]
 getProcedureSignatures = do
     fs <- fst <$> lift get
     return $ [f | (_, f@(FunSignature _ Procedure)) <- fs]
-
-functionIsDefined :: FunId -> SolverEnv Bool
-functionIsDefined fid = do
-    r <- getFunctionSignature fid
-    case r of
-        Just _ -> return True
-        _ -> return False
 
 setFunctions :: [(FunId, FunSignature)] -> SolverEnv ()
 setFunctions = changeFunctions . const

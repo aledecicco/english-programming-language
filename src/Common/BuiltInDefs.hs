@@ -39,7 +39,7 @@ builtInOperators = map functionFromTuple
         ),
         (
             [TitleParam () ["m"] FloatT, TitleWords () ["divided", "by"], TitleParam () ["n"] FloatT],
-            binaryType
+            Operator (\[_, _] -> FloatT)
         ),
         (
             [TitleParam () ["m"] (AnyT "a"), TitleWords () ["is", "equal", "to"], TitleParam () ["n"] (AnyT "a")],
