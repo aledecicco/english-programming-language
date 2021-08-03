@@ -31,10 +31,20 @@ ppFunctionId :: FunId -> String
 ppFunctionId ('_':cs) = " " ++ ppFunctionId cs
 ppFunctionId ('%':cs) = "..." ++ ppFunctionId cs
 ppFunctionId (c:cs) = c : ppFunctionId cs
-ppFunctionId "" = error "Shouldn't happen: a function can't have the empty string as id"
+ppFunctionId "" = ""
+
+ppOrdinal :: Int -> String
+ppOrdinal p = ppOrdinal' $ show (p+1)
+    where
+        ppOrdinal' :: String -> String
+        ppOrdinal' "1" = "1st"
+        ppOrdinal' "2" = "2nd"
+        ppOrdinal' "3" = "3rd"
+        ppOrdinal' (n:ns) = n : ppOrdinal' ns
+        ppOrdinal' [] = "th"
 
 ppType :: Type -> Bool -> String
-ppType (AnyT a) _ = "any " ++ doubleQuote a
+ppType (AnyT _) False = "thing of any type"
 ppType IntT False = "whole number"
 ppType FloatT False = "number"
 ppType BoolT False = "boolean"
@@ -42,6 +52,7 @@ ppType CharT False = "character"
 ppType (ListT CharT) False = "string"
 ppType (ListT t) False = "list of " ++ ppType t True
 ppType (RefT t) False = "reference to a " ++ ppType t False
+ppType (AnyT _) True = "things of any type"
 ppType IntT True = "whole numbers"
 ppType FloatT True = "numbers"
 ppType BoolT True = "booleans"
@@ -81,7 +92,7 @@ ppMatchable ps = unwords $ map ppMatchablePart ps
 
 ppErrorType :: ErrorType -> String
 ppErrorType (WrongTypeValue eT aT) = unwords ["Expected a", ppType eT False, "but got a", ppType aT False, "instead"]
-ppErrorType (WrongTypeParameter eT aT n) = unwords ["Parameter", doubleQuote $ ppName n, "expected a", ppType eT False, "but got a", ppType aT False, "instead"]
+ppErrorType (WrongTypeParameter eT aT n fid) = unwords [ppOrdinal n, "parameter of", doubleQuote $ ppFunctionId fid, "expected a", ppType eT False, "but got a", ppType aT False, "instead"]
 ppErrorType (UnmatchableValue ps) = unwords ["Could not understand", doubleQuote $ ppMatchable ps, "as a value"]
 ppErrorType (UnmatchableValueTypes ps) = unwords ["Could not understand", doubleQuote $ ppMatchable ps, "as a value because of type errors"]
 ppErrorType (UnmatchableSentence ps) = unwords ["Could not understand", doubleQuote $ ppMatchable ps, "as a sentence"]

@@ -9,7 +9,7 @@ import AST
 
 data ErrorType =
     WrongTypeValue Type Type
-    | WrongTypeParameter Type Type Name
+    | WrongTypeParameter Type Type Int FunId
     | UnmatchableValue [Annotated MatchablePart]
     | UnmatchableValueTypes [Annotated MatchablePart]
     | UnmatchableSentence [Annotated MatchablePart]

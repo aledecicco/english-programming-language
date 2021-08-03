@@ -248,28 +248,28 @@ checkProcedureCallType _ = error "Shouldn't happen: sentence given is not a proc
 getParameterTypesWithCheck :: (FunId, [Annotated Value]) -> SolverEnv [Type]
 getParameterTypesWithCheck (fid, vs) = do
     ~(FunSignature (Title _ ft) _) <- fromJust <$> getFunctionSignature fid
-    getParameterTypes' [] ft vs
+    getParameterTypes' [] ft vs 0
     where
         -- Returns the type of all arguments given a list of type bindings
-        getParameterTypes' :: [(String, Type)] -> [Bare TitlePart] -> [Annotated Value] -> SolverEnv [Type]
-        getParameterTypes' _ _ [] = return []
-        getParameterTypes' bts (TitleWords {} : tps) vs = getParameterTypes' bts tps vs
-        getParameterTypes' bts (TitleParam _ n pt : tps) (v:vs) = do
+        getParameterTypes' :: [(String, Type)] -> [Bare TitlePart] -> [Annotated Value] -> Int -> SolverEnv [Type]
+        getParameterTypes' _ _ [] _ = return []
+        getParameterTypes' bts (TitleWords {} : tps) vs pos = getParameterTypes' bts tps vs pos
+        getParameterTypes' bts (TitleParam _ n pt : tps) (v:vs) pos = do
             ann <- getCurrentLocation
             at <- withLocation v getValueType
-            unless (at `satisfiesType` pt) $ throwHere (WrongTypeParameter pt at n)
+            unless (at `satisfiesType` pt) $ throwHere (WrongTypeParameter pt at pos fid)
             let at' = solveTypeReferences pt at
             r <- case solveTypeBindings pt at' of
                 Just (tF, (tid, bt)) ->
                     case lookup tid bts of
                         Just bt' -> do
-                            unless (bt `satisfiesType` bt') $ throwHere (WrongTypeParameter (tF bt') at' n)
-                            getParameterTypes' bts tps vs
-                        Nothing -> getParameterTypes' ((tid, bt):bts) tps vs
-                Nothing -> getParameterTypes' bts tps vs
+                            unless (bt `satisfiesType` bt') $ throwHere (WrongTypeParameter (tF bt') at' pos fid)
+                            getParameterTypes' bts tps vs (pos+1)
+                        Nothing -> getParameterTypes' ((tid, bt):bts) tps vs (pos+1)
+                Nothing -> getParameterTypes' bts tps vs (pos+1)
             setCurrentLocation ann
             return (at':r)
-        getParameterTypes' _ [] (_:_) = error "Shouldn't happen: can't run out of title parts before running out of values in a function call"
+        getParameterTypes' _ [] (_:_) _ = error "Shouldn't happen: can't run out of title parts before running out of values in a function call"
 
         -- Returns the type bound by the given parameter and argument, and a function to build the whole type
         solveTypeBindings :: Type -> Type -> Maybe (Type -> Type, (String, Type))

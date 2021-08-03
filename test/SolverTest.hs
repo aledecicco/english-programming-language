@@ -214,19 +214,19 @@ getValueTypeTests = testGroup "Get value type"
             expectedError
                 (getValueType $ OperatorCall (0,0) "%_appended_to_%" [ListV (0,0) BoolT [BoolV (0,1) True, BoolV (0,7) False], ListV (0,21) IntT [IntV (0,22) 3, IntV (0,24) 4]])
                 stateWithFunctions
-                (Error (Just (0,21)) $ WrongTypeParameter (ListT BoolT) (ListT IntT) ["n"]),
+                (Error (Just (0,21)) $ WrongTypeParameter (ListT BoolT) (ListT IntT) 1 "%_appended_to_%"),
 
         testCase "Wrong type arguments" $
             expectedError
                 (getValueType $ OperatorCall (0,0) "%_plus_%" [IntV (0,0) 1, BoolV (0,3) True])
                 stateWithFunctions
-                (Error (Just (0,3)) $ WrongTypeParameter FloatT BoolT ["n"]),
+                (Error (Just (0,3)) $ WrongTypeParameter FloatT BoolT 1 "%_plus_%"),
 
         testCase "Wrong type lists" $
             expectedError
                 (getValueType $ OperatorCall (0,0) "%_appended_to_%" [ListV (0,0) BoolT [BoolV (0,1) True, BoolV (0,6) False], ListV (0,20) IntT [IntV (0,21) 3, IntV (0,23) 4]])
                 stateWithFunctions
-                (Error (Just (0,20)) $ WrongTypeParameter (ListT BoolT) (ListT IntT) ["n"])
+                (Error (Just (0,20)) $ WrongTypeParameter (ListT BoolT) (ListT IntT) 1 "%_appended_to_%")
     ]
 
 setVariableTypeTests :: TestTree
@@ -291,7 +291,7 @@ solveValueTests = testGroup "Solve value"
             expectedError
                 (solveValueWithType IntT $ ValueM (0,0) [WordP (0,0) "true", WordP (0,5) "plus", WordP (0,10) "false"])
                 stateWithFunctions
-                (Error (Just (0,0)) (WrongTypeParameter FloatT BoolT ["m"])),
+                (Error (Just (0,0)) (WrongTypeParameter FloatT BoolT 0 "%_plus_%")),
 
         testCase "Ambiguous matchable with wrong type arguments" $
             expectedError
