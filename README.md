@@ -255,7 +255,7 @@ A string literal:
 ```
 "[%character%]"
 ```
-The only places where lists can be written by extension is inside `Let` or `For each` expressions, except for string literals which can be used anywhere. Note that all elements must be of the same type as the one declared for the list.
+The only places where lists can be written by extension is inside `Let` expressions, except for string literals which can be used anywhere. Note that all elements must be of the same type as the one declared for the list.
 
 ### Variables
 Variable names can be any series of words except for `be` and `in`, which are the only two reserved keywords. They are referenced using their names, which can optionally be preceded by the word `the`. This applies to all variables (declared in `let` expressions, passed as parameters to a function, or defined as iterators in a `for each` loop).
@@ -360,7 +360,7 @@ Modifies the value of the given variable, appending the list to it.
 - Optional aliases in function parameters and `ForEach` iterators
 - Use `each` for generators in function arguments
 - Find a better syntax for specifying function return types
-- Garbage collector
+- Garbage collector (try to, and in case of error?)
 - Some sort of try-catch expression
 - Implement importing other files as libraries (without the `Run` procedure)
 - Prevent the `Run` procedure from being called explicitly
@@ -371,3 +371,5 @@ Modifies the value of the given variable, appending the list to it.
 - Separate the README into more files
 - Generate an executable
 - Clean test cases and examples
+- Add "breaks" and "break all" for loops, and "returns" for procedures (stop the loop, stop all loops, and exit?)
+- Add positions indexed from 1 (for accessing lists)

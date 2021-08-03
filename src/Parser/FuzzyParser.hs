@@ -266,24 +266,23 @@ variablesDefinition = do
     ann' <- getCurrentLocation
     t <-
         (case ns of
-            [_] -> try $ word "a" >> Just <$> baseType False
-            _ -> try $ Just <$> baseType True)
+            [_] -> try (word "a" >> Just <$> baseType False)
+            _ -> try (Just <$> baseType True))
         <|> return Nothing
+    let listElems eT = do
+            l <- word "containing" >> series valueMatchable
+            return $ ListV ann' eT l
+        emptyList eT = return $ ListV ann' eT []
+        typedVal = do
+            word "equal"
+            word "to"
+            valueMatchable
+        untypedVal = valueMatchable
     v <- case t of
         Just (ListT eT) ->
-            (do
-                l <- word "containing" >> series valueMatchable
-                return $ ListV ann' eT l)
-            <|> (do
-                word "equal"
-                word "to"
-                valueMatchable)
-            <|> return (ListV ann' eT [])
-        Just _ -> do
-                word "equal"
-                word "to"
-                valueMatchable
-        Nothing -> valueMatchable
+           listElems eT <|> typedVal <|> emptyList eT
+        Just _ -> typedVal
+        Nothing -> untypedVal
     return $ VarDef ann ns t v
 
 conditionalHeader :: String -> FuzzyParser (Annotated Value)
@@ -346,7 +345,7 @@ forEachHeader = do
     t <- baseType False
     n <- parens name
     word "in"
-    l <- value
+    l <- valueMatchable
     return (n, t, l)
 
 simpleForEach :: FuzzyParser (Annotated Sentence)

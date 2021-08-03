@@ -17,9 +17,9 @@ import AST
 
 stateWithFunctions :: EvaluatorData
 stateWithFunctions =
-    let (_, _, rs, p) = initialState
+    let (_, _, rs, p, me) = initialState
         fs = translateFunctions [] (builtInOperators ++ builtInProcedures)
-    in (M.fromList fs, [M.empty], rs, p)
+    in (M.fromList fs, [M.empty], rs, p, me)
 
 -- Asserts that an evaluator action yields a specific result with the given environment
 expectedResult :: HasCallStack => EvaluatorEnv IO (Maybe (Bare Value)) -> EvaluatorData -> Bare Value -> Assertion

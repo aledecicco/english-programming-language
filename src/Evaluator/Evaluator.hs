@@ -117,50 +117,57 @@ evaluateSentences ss = do
             return r
 
 evaluateSentence :: ReadWrite m => Annotated Sentence -> EvaluatorEnv m (Maybe (Bare Value))
-evaluateSentence (VarDef _ ~(vn:vns) _ v) = do
-    v' <- withLocation v evaluateValue
-    setVariableValue vn v'
-    mapM_ (\vn -> copyValue v' >>= setVariableValue vn) vns
-    return Nothing
-evaluateSentence (If _ bv ls) = do
-    ~(BoolV _ v') <- withLocation bv evaluateValue
-    if v'
-        then evaluateSentences ls
-        else return Nothing
-evaluateSentence (IfElse _ bv lsT lsF) = do
-    ~(BoolV _ v') <- withLocation bv evaluateValue
-    if v'
-        then evaluateSentences lsT
-        else evaluateSentences lsF
-evaluateSentence (ForEach _ iN _ lv ls) = do
-    ~(ListV _ _ v') <- withLocation lv evaluateValue
-    let iterateLoop = (\(RefV _ ref) -> setVariableAddress iN ref >> evaluateSentences ls)
-    r <- firstNotNull iterateLoop v'
-    removeVariable iN
-    return r
-evaluateSentence s@(Until _ bv ls) = do
-    ~(BoolV _ v') <- withLocation bv evaluateValue
-    if v'
-        then return Nothing
-        else  do
-            r <- evaluateSentences ls
-            case r of
-                (Just v'') -> return $ Just v''
-                Nothing -> evaluateSentence s
-evaluateSentence s@(While _ bv ls) = do
-    ~(BoolV _ v') <- withLocation bv evaluateValue
-    if v'
-        then do
-            r <- evaluateSentences ls
-            case r of
-                (Just v'') -> return $ Just v''
-                Nothing -> evaluateSentence s
-        else return Nothing
-evaluateSentence (Result _ v) = do
-    v' <- withLocation v evaluateValue
-    return $ Just v'
-evaluateSentence (ProcedureCall _ fid vs) = evaluateProcedure fid vs >> return Nothing
-evaluateSentence (SentenceM _ _) = error "Shouldn't happen: sentences must be solved before evaluating them"
+evaluateSentence s = tick >> evaluateSentence' s
+    where
+        evaluateSentence' :: ReadWrite m => Annotated Sentence -> EvaluatorEnv m (Maybe (Bare Value))
+        evaluateSentence' (VarDef _ ~(vn:vns) _ v) = do
+            v' <- withLocation v evaluateValue
+            setVariableValue vn v'
+            mapM_ (\vn -> copyValue v' >>= setVariableValue vn) vns
+            return Nothing
+        evaluateSentence' (If _ bv ls) = do
+            ~(BoolV _ v') <- withLocation bv evaluateValue
+            if v'
+                then evaluateSentences ls
+                else return Nothing
+        evaluateSentence' (IfElse _ bv lsT lsF) = do
+            ~(BoolV _ v') <- withLocation bv evaluateValue
+            if v'
+                then evaluateSentences lsT
+                else evaluateSentences lsF
+        evaluateSentence' (ForEach _ iN _ lv ls) = do
+            ~(ListV _ _ v') <- case lv of
+                (ListV {}) -> withLocation lv evaluateValue
+                _ -> do
+                    ~(RefV _ addr) <- withLocation lv evaluateUpToReference
+                    getValueAtAddress addr
+            let iterateLoop = (\(RefV _ ref) -> setVariableAddress iN ref >> evaluateSentences ls)
+            r <- firstNotNull iterateLoop v'
+            removeVariable iN
+            return r
+        evaluateSentence' s@(Until _ bv ls) = do
+            ~(BoolV _ v') <- withLocation bv evaluateValue
+            if v'
+                then return Nothing
+                else do
+                    r <- evaluateSentences ls
+                    case r of
+                        (Just v'') -> return $ Just v''
+                        Nothing -> evaluateSentence s
+        evaluateSentence' s@(While _ bv ls) = do
+            ~(BoolV _ v') <- withLocation bv evaluateValue
+            if v'
+                then do
+                    r <- evaluateSentences ls
+                    case r of
+                        (Just v'') -> return $ Just v''
+                        Nothing -> evaluateSentence s
+                else return Nothing
+        evaluateSentence' (Result _ v) = do
+            v' <- withLocation v evaluateValue
+            return $ Just v'
+        evaluateSentence' (ProcedureCall _ fid vs) = evaluateProcedure fid vs >> return Nothing
+        evaluateSentence' (SentenceM _ _) = error "Shouldn't happen: sentences must be solved before evaluating them"
 
 evaluateOperator :: ReadWrite m => FunId -> [Annotated Value] -> EvaluatorEnv m (Bare Value)
 evaluateOperator fid vs

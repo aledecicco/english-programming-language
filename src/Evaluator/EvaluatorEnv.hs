@@ -1,11 +1,12 @@
 module EvaluatorEnv ( module EvaluatorEnv, module Location ) where
 
-import Data.List ( find )
-import qualified Data.Map.Strict as M
-import qualified Data.IntMap.Strict as IM
+import Control.Monad ( when )
 import Control.Monad.Trans.Class ( lift )
 import Control.Monad.Trans.State.Strict ( gets, modify, runStateT, StateT )
 import Control.Monad.Trans.Except ( throwE, runExceptT, ExceptT )
+import qualified Data.Map.Strict as M
+import qualified Data.IntMap.Strict as IM
+import qualified Data.IntSet as IS
 
 import Errors
 import Location
@@ -20,7 +21,7 @@ type FunData = M.Map FunId FunCallable -- A mapping between function ids and the
 type VarData = [M.Map Name Int] -- One mapping between variable names and their addresses for each scope
 type RefData = IM.IntMap (Bare Value) -- A mapping between addresses and their values
 
-type EvaluatorData = (FunData, VarData, RefData, Int)
+type EvaluatorData = (FunData, VarData, RefData, Int, Int)
 type EvaluatorEnv m a = LocationT (StateT EvaluatorData (ExceptT Error m)) a
 
 class Monad m => ReadWrite m where
@@ -37,7 +38,8 @@ runEvaluatorEnv :: EvaluatorEnv m a -> EvaluatorData -> Location -> m (Either Er
 runEvaluatorEnv f d s = runExceptT $ runStateT (runLocationT f s) d
 
 initialState :: EvaluatorData
-initialState = (M.empty, [], IM.empty, 0)
+initialState = (M.empty, [], IM.empty, 0, initMaxMem)
+    where initMaxMem = 4
 
 --
 
@@ -58,23 +60,27 @@ throwHere eT = do
 -- Auxiliary
 
 changeFunctions :: Monad m => (FunData -> FunData) -> EvaluatorEnv m ()
-changeFunctions m = lift $ modify (\(fs, vs, rs, p) -> (m fs, vs, rs, p))
+changeFunctions m = lift $ modify (\(fs, vs, rs, p, me) -> (m fs, vs, rs, p, me))
 
 changeVariables :: Monad m => (VarData -> VarData) -> EvaluatorEnv m ()
-changeVariables m = lift $ modify (\(fs, vs, rs, p) -> (fs, m vs, rs, p))
+changeVariables m = lift $ modify (\(fs, vs, rs, p, me) -> (fs, m vs, rs, p, me))
 
 changeReferences :: Monad m => (RefData -> RefData) -> EvaluatorEnv m ()
-changeReferences m = lift $ modify (\(fs, vs, rs, p) -> (fs, vs, m rs, p))
+changeReferences m = lift $ modify (\(fs, vs, rs, p, me) -> (fs, vs, m rs, p, me))
 
 changePointer :: Monad m => (Int -> Int) -> EvaluatorEnv m ()
-changePointer m = lift $ modify (\(fs, vs, rs, p) -> (fs, vs, rs, m p))
+changePointer m = lift $ modify (\(fs, vs, rs, p, me) -> (fs, vs, rs, m p, me))
+
+changeMaxMemory :: Monad m => (Int -> Int) -> EvaluatorEnv m ()
+changeMaxMemory m = lift $ modify (\(fs, vs, rs, p, me) -> (fs, vs, rs, p, m me))
+
 --
 
 
 -- Functions
 
 getFunctionCallable :: Monad m => FunId -> EvaluatorEnv m FunCallable
-getFunctionCallable fid = lift $ gets (\(fs, _, _, _) -> fs M.! fid)
+getFunctionCallable fid = lift $ gets (\(fs, _, _, _, _) -> fs M.! fid)
 
 setFunctionCallable :: Monad m => FunId -> FunCallable -> EvaluatorEnv m ()
 setFunctionCallable fid f = changeFunctions $ M.insert fid f
@@ -88,8 +94,7 @@ setFunctions fs = changeFunctions $ const (M.fromList fs)
 -- References
 
 getValueAtAddress :: Monad m => Int -> EvaluatorEnv m (Bare Value)
-getValueAtAddress addr = lift $ gets (\(_, _, rs, _) -> rs IM.! addr)
-
+getValueAtAddress addr = lift $ gets (\(_, _, rs, _, _) -> rs IM.! addr)
 
 setValueAtAddress :: Monad m => Int -> Bare Value -> EvaluatorEnv m ()
 setValueAtAddress addr v = changeReferences $ IM.insert addr v
@@ -103,34 +108,21 @@ loadReferences v = return v
 -- Defines a new value at the next empty position and returns its address
 addValue :: Monad m => Bare Value -> EvaluatorEnv m Int
 addValue v = do
-    p <- getStackPointer
+    p <- lift $ gets (\(_, _, _, p, _) -> p)
     setValueAtAddress p v
-    setStackPointer (p+1)
+    changePointer (+1)
     return p
 
 --
 
 
--- Stack pointer
-
-getStackPointer :: Monad m => EvaluatorEnv m Int
-getStackPointer = lift $ gets (\(_, _, _, p) -> p)
-
-setStackPointer :: Monad m => Int -> EvaluatorEnv m ()
-setStackPointer p = changePointer $ const p
-
---
-
-
-
-
 -- Variables
 
 variableIsDefined :: Monad m => Name -> EvaluatorEnv m Bool
-variableIsDefined vn = lift $ gets (\(_, vs:_, _, _) -> M.member vn vs)
+variableIsDefined vn = lift $ gets (\(_, vs:_, _, _, _) -> M.member vn vs)
 
 getVariableAddress :: Monad m => Name -> EvaluatorEnv m Int
-getVariableAddress vn = lift $ gets (\(_, vs:_, _, _) -> vs M.! vn)
+getVariableAddress vn = lift $ gets (\(_, vs:_, _, _, _) -> vs M.! vn)
 
 setVariableAddress :: Monad m => Name -> Int -> EvaluatorEnv m ()
 setVariableAddress vn addr = changeVariables (\(vs:vss) -> M.insert vn addr vs : vss)
@@ -163,5 +155,44 @@ withVariables action newVarVals newVarRefs = do
     -- Restore the state and return the result
     changeVariables tail
     return r
+
+--
+
+
+-- Garbage collector
+
+getUsedMemory :: Monad m => EvaluatorEnv m Int
+getUsedMemory = lift $ gets (\(_, _, rs, _, _) -> IM.size rs)
+
+-- Starts the garbage collector if neccessary
+tick :: Monad m => EvaluatorEnv m ()
+tick = do
+    usedMem <- getUsedMemory
+    maxMem <- lift $ gets (\(_, _, _, _, me) -> me)
+    when (usedMem >= maxMem) collectGarbage
+
+collectGarbage :: Monad m => EvaluatorEnv m ()
+collectGarbage = do
+    rAddrs <- getReachableAddresses
+    let keysSet = IS.fromList rAddrs
+    changeReferences (`IM.restrictKeys` keysSet)
+    usedMem <- getUsedMemory
+    changeMaxMemory $ const (usedMem * 2)
+
+getReachableAddresses :: Monad m => EvaluatorEnv m [Int]
+getReachableAddresses = do
+    scopes <- lift $ gets (\(_, vs, _, _, _) -> vs)
+    let varAddrs = concatMap M.elems scopes
+    varVals <- mapM getValueAtAddress varAddrs
+    valsAddrs <- concat <$> mapM getReachableFromValue varVals
+    return (varAddrs ++ valsAddrs)
+    where
+        getReachableFromValue :: Monad m => Bare Value -> EvaluatorEnv m [Int]
+        getReachableFromValue (RefV _ addr) = do
+            v <- getValueAtAddress addr
+            (addr:) <$> getReachableFromValue v
+        getReachableFromValue (ListV _ _ refs) = concat <$> mapM getReachableFromValue refs
+        getReachableFromValue (IterV _ v) = getReachableFromValue v
+        getReachableFromValue _ = return []
 
 --
