@@ -136,14 +136,13 @@ evaluateSentence s = tick >> evaluateSentence' s
                 then evaluateSentences lsT
                 else evaluateSentences lsF
         evaluateSentence' (ForEach _ iN _ lv ls) = do
-            ~(ListV _ _ v') <- case lv of
-                (ListV {}) -> withLocation lv evaluateValue
-                _ -> do
-                    ~(RefV _ addr) <- withLocation lv evaluateUpToReference
-                    getValueAtAddress addr
+            ~(RefV _ addr) <- withLocation lv evaluateUpToReference
+            ~(ListV _ _ es) <- getValueAtAddress addr
             let iterateLoop = (\(RefV _ ref) -> setVariableAddress iN ref >> evaluateSentences ls)
-            r <- firstNotNull iterateLoop v'
+            setVariableAddress ("_":iN) addr
+            r <- firstNotNull iterateLoop es
             removeVariable iN
+            removeVariable ("_":iN)
             return r
         evaluateSentence' s@(Until _ bv ls) = do
             ~(BoolV _ v') <- withLocation bv evaluateValue

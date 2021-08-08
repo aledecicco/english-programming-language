@@ -192,7 +192,6 @@ getReachableAddresses = do
             v <- getValueAtAddress addr
             (addr:) <$> getReachableFromValue v
         getReachableFromValue (ListV _ _ refs) = concat <$> mapM getReachableFromValue refs
-        getReachableFromValue (IterV _ v) = getReachableFromValue v
         getReachableFromValue _ = return []
 
 --

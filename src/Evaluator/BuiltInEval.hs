@@ -144,7 +144,9 @@ evaluateAppendedTo :: ReadWrite m => Bare Value -> Bare Value -> EvaluatorEnv m 
 evaluateAppendedTo v1 v2 = return $ listOperation (++) v1 v2
 
 evaluateTheListFromTo :: ReadWrite m => Bare Value -> Bare Value -> EvaluatorEnv m (Bare Value)
-evaluateTheListFromTo (IntV _ vF) (IntV _ vT) = return $ ListV () IntT [IntV () n | n <- [vF..vT]]
+evaluateTheListFromTo (IntV _ vF) (IntV _ vT) = do
+    addrs <- mapM addValue [IntV () n | n <- [vF..vT]]
+    return $ ListV () IntT (map (RefV ()) addrs)
 evaluateTheListFromTo _ _ = error "Shouldn't happen: wrong types provided"
 
 --

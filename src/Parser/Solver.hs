@@ -73,6 +73,28 @@ matchAsName (WordP _ w : ps) = do
         Nothing -> return Nothing
 matchAsName _ = return Nothing
 
+matchAsType :: [MatchablePart a] -> SolverEnv (Maybe Type)
+matchAsType ps = do
+    r <- matchAsName ps
+    case r of
+        Just ws -> return $ matchAsType' ws False
+        Nothing -> return Nothing
+    where
+        matchAsType' :: Name -> Bool -> Maybe Type
+        matchAsType' ["whole", "number"] False = Just IntT
+        matchAsType' ["number"] False = Just FloatT
+        matchAsType' ["boolean"] False = Just BoolT
+        matchAsType' ["character"] False = Just CharT
+        matchAsType' ["string"] False = Just $ ListT CharT
+        matchAsType' ("list":"of":ws) False = ListT <$> matchAsType' ws True
+        matchAsType' ["whole", "numbers"] True = Just IntT
+        matchAsType' ["numbers"] True = Just FloatT
+        matchAsType' ["booleans"] True = Just BoolT
+        matchAsType' ["characters"] True = Just CharT
+        matchAsType' ["strings"] True = Just $ ListT CharT
+        matchAsType' ("lists":"of":ws) True = ListT <$> matchAsType' ws True
+        matchAsType' _ _ = Nothing
+
 matchAsFunctionCall :: [Annotated MatchablePart] -> [FunSignature] -> SolverEnv [(FunId, [Annotated Value])]
 matchAsFunctionCall ps fs = concat <$> mapM (matchAsFunctionCall' ps) fs
     where
@@ -138,11 +160,11 @@ matchAsOperatorCall ps = do
 matchAsIterator :: [Annotated MatchablePart] -> SolverEnv [Annotated Value]
 matchAsIterator (WordP ann "each":ps) = do
     let (bef, aft) = splitBy ps (WordP () "in")
-    r <- matchAsName bef
+    r <- matchAsType bef
     case r of
-        Just _ -> do
+        Just t -> do
             r <- matchAsValue aft
-            return $ IterV ann <$> r
+            return $ map (IterV ann t) r
         Nothing -> return []
 matchAsIterator _ = return []
 
@@ -200,11 +222,11 @@ getValueType (OperatorCall _ fid vs) = do
     ~(FunSignature _ (Operator tFun)) <- fromJust <$> getFunctionSignature fid
     vTs <- getParameterTypesWithCheck (fid, vs)
     return $ tFun vTs
-getValueType (IterV _ lv) = do
-    lt <- getValueType lv
-    let et = ListT $ AnyT "a"
+getValueType (IterV _ t lv) = do
+    lt <- withLocation lv getValueType
+    let et = ListT t
     if lt `satisfiesType` et
-        then return $ getElementsType lt
+        then return $ RefT (getElementsType lt)
         else throwHere $ WrongTypeValue et lt
 getValueType (ValueM _ _) = error "Shouldn't happen: values must be solved before getting their types"
 getValueType (RefV _ _) = error "Shouldn't happen: references can't exist before evaluating"
