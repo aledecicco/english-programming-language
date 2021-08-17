@@ -1,6 +1,6 @@
 A list of numbers equal to a list of lists of numbers (L) flattened:
     Let R be a list of numbers.
-    For each list of numbers (M) in L, append M to R.
+    Append each list of numbers in L to R.
     The result is R.
 
 To run:

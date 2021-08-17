@@ -1,17 +1,24 @@
-To shuffle a reference to a list of numbers (L):
+To shuffle a reference to a string (L):
     Swap the element of L at 1 with the element of L at 3.
     Swap the element of L at 0 with the element of L at 2.
     Swap the element of L at 1 with the element of L at 2.
 
-A list of numbers equal to the first half of a list of numbers (L):
-    Let K be a list of numbers containing the element of L at 0, and the element of L at 1.
+A string equal to the first half of a string (L):
+    Let K be a string containing the element of L at 0, and the element of L at 1.
     The result is K.
 
 To run:
-    Let L be a list of numbers containing 1.0, 2.0, 3.0, and 4.0.
+    Let L be "1234".
     Shuffle L.
     Print "The shuffled list is ".
     Print L.
-    Let K be a list of numbers equal to the first half of L.
+    Let K be a string equal to the first half of L.
     Print "\nThe first half of the list is ".
     Print K.
+    Print "\n".
+    For each character (C) in "5678":
+        Print C.
+        Print " -> ".
+        Set C to '9'.
+        Print C.
+        Print "\n".

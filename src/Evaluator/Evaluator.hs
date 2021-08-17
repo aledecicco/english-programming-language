@@ -91,15 +91,14 @@ evaluateUpToReference (VarV _ vn) = do
     isDef <- variableIsDefined vn
     unless isDef $ throwHere (UndefinedVariable vn)
     RefV () <$> getVariableAddress vn
-evaluateUpToReference v@(RefV _ _) = return $ void v
 evaluateUpToReference (OperatorCall _ fid vs) = evaluateOperator fid vs
-evaluateUpToReference v = return $ void v
-
-evaluateValue :: ReadWrite m => Annotated Value -> EvaluatorEnv m (Bare Value)
-evaluateValue (ListV _ eT es) = do
+evaluateUpToReference (ListV _ eT es) = do
     es' <- mapM (`withLocation` evaluateValue) es
     addrs <- mapM addValue es'
     return $ ListV () eT (map (RefV ()) addrs)
+evaluateUpToReference v = return $ void v
+
+evaluateValue :: ReadWrite m => Annotated Value -> EvaluatorEnv m (Bare Value)
 evaluateValue (IterV {}) = error "Shouldn't happen: values with iterators must be solved before evaluating them"
 evaluateValue (ValueM _ _) = error "Shouldn't happen: values must be solved before evaluating them"
 evaluateValue v = evaluateUpToReference v >>= evaluateReferences
@@ -123,7 +122,7 @@ evaluateSentence s = tick >> evaluateSentence' s
         evaluateSentence' (VarDef _ ~(vn:vns) _ v) = do
             v' <- withLocation v evaluateValue
             setVariableValue vn v'
-            mapM_ (\vn -> copyValue v' >>= setVariableValue vn) vns
+            mapM_ (\vn' -> copyValue v' >>= setVariableValue vn') vns
             return Nothing
         evaluateSentence' (If _ bv ls) = do
             ~(BoolV _ v') <- withLocation bv evaluateValue
@@ -136,13 +135,22 @@ evaluateSentence s = tick >> evaluateSentence' s
                 then evaluateSentences lsT
                 else evaluateSentences lsF
         evaluateSentence' (ForEach _ iN _ lv ls) = do
-            ~(RefV _ addr) <- withLocation lv evaluateUpToReference
-            ~(ListV _ _ es) <- getValueAtAddress addr
+            let auxName = "_" : iN
+            lv' <- withLocation lv evaluateUpToReference
+            es <- case lv' of
+                (ListV _ _ es) -> do
+                    addr <- addValue lv'
+                    setVariableAddress auxName addr
+                    return es
+                (RefV _ addr) -> do
+                    ~(ListV _ _ es) <- getValueAtAddress addr
+                    setVariableAddress auxName addr
+                    return es
+                _ -> error "Shouldn't happen: wrong type in loop"
             let iterateLoop = (\(RefV _ ref) -> setVariableAddress iN ref >> evaluateSentences ls)
-            setVariableAddress ("_":iN) addr
             r <- firstNotNull iterateLoop es
             removeVariable iN
-            removeVariable ("_":iN)
+            removeVariable auxName
             return r
         evaluateSentence' s@(Until _ bv ls) = do
             ~(BoolV _ v') <- withLocation bv evaluateValue

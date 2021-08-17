@@ -64,7 +64,7 @@ exampleTests = testGroup "example"
 
         exampleTestCase "Sum" [] "The sum of [1, 2, 3.5] is 6.5",
 
-        exampleTestCase "Lists" [] "The shuffled list is [3.0, 1.0, 4.0, 2.0]\nThe first half of the list is [3.0, 1.0]",
+        exampleTestCase "Lists" [] "The shuffled list is 3142\nThe first half of the list is 31\n5 -> 9\n6 -> 9\n7 -> 9\n8 -> 9\n",
 
         exampleTestCase "Flatten" [] "[[1, 2, 3], [4, 5, 6], [7, 8, 9]] flattened is [1, 2, 3, 4, 5, 6, 7, 8, 9]"
     ]
