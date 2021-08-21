@@ -311,7 +311,6 @@ ifBlock = do
         elseBlock :: FuzzyParser [Annotated Sentence]
         elseBlock = snd <$> listWithHeader (word "Otherwise") sentence
 
-
 simpleUntil :: FuzzyParser (Annotated Sentence)
 simpleUntil = do
     ann <- getCurrentLocation

@@ -87,20 +87,6 @@ sentenceTests = testGroup "sentence"
                 stateWithFunctions
                 (IntV () 3),
 
-        testCase "Variable in scope after if" $
-            expectedResult
-                (
-                    evaluateSentences $
-                        mockLocations [
-                            If ()
-                                (BoolV () True)
-                                [VarDef () [["x"]] (Just IntT) (IntV () 3)],
-                            Result () (VarV () ["x"])
-                        ]
-                )
-                stateWithFunctions
-                (IntV () 3),
-
         testCase "Add to" $
             expectedResult
                 (
@@ -143,7 +129,21 @@ sentenceTests = testGroup "sentence"
                 stateWithFunctions
                 (ListV () FloatT [FloatV () 5.0, FloatV () 4.0, IntV () 3, IntV () 2, IntV () 1]),
 
-        testCase "Variable not in scope after if" $
+        testCase "Variable not in scope after true if" $
+            expectedError
+                (
+                    evaluateSentences
+                        [
+                            If (0,0)
+                                (BoolV (0,3) True)
+                                [VarDef (1,0) [["x"]] (Just IntT) (IntV (1,6) 3)],
+                            Result (2,0) (VarV (2,14) ["x"])
+                        ]
+                )
+                stateWithFunctions
+                (Error (Just (2,14)) $ UndefinedVariable ["x"]),
+
+        testCase "Variable not in scope after false if" $
             expectedError
                 (
                     evaluateSentences

@@ -414,7 +414,7 @@ solveSentence _ (SentenceM ann ps) = do
 solveSentence _ (ProcedureCall {}) = error "Shouldn't happen: procedure calls can only be created by solving a matchable"
 
 solveSentences :: [Annotated Sentence] -> Maybe Type -> SolverEnv [Annotated Sentence]
-solveSentences ss rt = mapM (`withLocation` solveSentence rt) ss
+solveSentences ss rt = restoringVariables $ mapM (`withLocation` solveSentence rt) ss
 
 solveBlock :: Annotated Block -> SolverEnv (Annotated Block)
 solveBlock (FunDef ann t rt ss) = do
@@ -435,6 +435,6 @@ solveProgram p = runSolverEnv (solveProgram' p) initialState initialLocation
             registerFunctions p
             mainIsDef <- functionIsDefined "run"
             unless mainIsDef $ throwError (Error Nothing (UndefinedFunction "run"))
-            mapM (\b -> solveBlock b <* resetVariables) p
+            mapM (restoringVariables . solveBlock) p
 
 --

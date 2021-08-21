@@ -3,7 +3,7 @@ module SolverEnv ( module SolverEnv, module Location, throwError, catchError ) w
 import Data.Bifunctor ( first, second )
 import Control.Monad.Except ( throwError, catchError )
 import Control.Monad.Trans.Class ( lift )
-import Control.Monad.Trans.State ( get, gets, modify, runStateT, StateT )
+import Control.Monad.Trans.State ( gets, modify, runStateT, StateT )
 import Control.Monad.Trans.Except ( runExcept, Except )
 
 import Errors
@@ -71,8 +71,12 @@ variableIsDefined vn = do
         Just _ -> return True
         _ -> return False
 
-resetVariables :: SolverEnv ()
-resetVariables = changeVariables $ const []
+restoringVariables :: SolverEnv a -> SolverEnv a
+restoringVariables action = do
+    vs <- lift $ gets snd
+    r <- action
+    changeVariables $ const vs
+    return r
 
 --
 
@@ -101,12 +105,12 @@ functionIsDefined fid = do
 
 getOperatorSignatures :: SolverEnv [FunSignature]
 getOperatorSignatures = do
-    fs <- fst <$> lift get
+    fs <- lift $ gets fst
     return $ [f | (_, f@(FunSignature _ (Operator _))) <- fs]
 
 getProcedureSignatures :: SolverEnv [FunSignature]
 getProcedureSignatures = do
-    fs <- fst <$> lift get
+    fs <- lift $ gets fst
     return $ [f | (_, f@(FunSignature _ Procedure)) <- fs]
 
 setFunctions :: [(FunId, FunSignature)] -> SolverEnv ()

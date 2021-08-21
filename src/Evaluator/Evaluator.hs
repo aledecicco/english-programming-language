@@ -105,8 +105,7 @@ evaluateValue v = evaluateUpToReference v >>= evaluateReferences
 
 evaluateSentences :: ReadWrite m => [Annotated Sentence] -> EvaluatorEnv m (Maybe (Bare Value))
 evaluateSentences [] = return Nothing
-evaluateSentences ss = do
-    firstNotNull evaluateSentenceWithLocation ss
+evaluateSentences ss = inContainedScope $ firstNotNull evaluateSentenceWithLocation ss
     where
         evaluateSentenceWithLocation :: ReadWrite m => Annotated Sentence -> EvaluatorEnv m (Maybe (Bare Value))
         evaluateSentenceWithLocation s = do
@@ -201,7 +200,7 @@ evaluateUserDefinedFunction fid vs = do
     (FunCallable (Title _ t) ss) <- getFunctionCallable fid
     vs' <- evaluateParameters t vs
     (vars, refs) <- variablesFromTitle t vs'
-    withVariables (evaluateSentences ss) vars refs
+    inNewScope (evaluateSentences ss) vars refs
 
 --
 

@@ -143,8 +143,8 @@ setVariableValue vn v = do
 -- Receives a list of new variables to be declared and a list of references to be set and performs an action with those variables
 -- New variables are discarded after the action
 -- The original values of the variables referenced can be modified inside the action
-withVariables :: Monad m => EvaluatorEnv m (Maybe (Bare Value)) -> [(Name, Bare Value)] -> [(Name, Int)] -> EvaluatorEnv m (Maybe (Bare Value))
-withVariables action newVarVals newVarRefs = do
+inNewScope :: Monad m => EvaluatorEnv m a -> [(Name, Bare Value)] -> [(Name, Int)] -> EvaluatorEnv m a
+inNewScope action newVarVals newVarRefs = do
     -- Create a new empty scope
     changeVariables (M.empty:)
     -- Populate it with the given variables
@@ -154,6 +154,13 @@ withVariables action newVarVals newVarRefs = do
     r <- action
     -- Restore the state and return the result
     changeVariables tail
+    return r
+
+inContainedScope :: Monad m => EvaluatorEnv m a -> EvaluatorEnv m a
+inContainedScope action = do
+    vars <- lift $ M.keysSet . head <$> gets (\(_, vs, _, _, _) -> vs)
+    r <- action
+    changeVariables (\(vs:vss) -> M.restrictKeys vs vars : vss)
     return r
 
 --
