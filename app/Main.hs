@@ -2,7 +2,7 @@ module Main where
 
 import FuzzyParser ( parseProgram )
 import Solver ( solveProgram )
-import Evaluator ( evaluateProgram, ReadWrite(..) )
+import Evaluator ( evaluateProgram )
 import PrettyPrinter ( ppError )
 
 

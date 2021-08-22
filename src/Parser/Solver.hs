@@ -7,7 +7,7 @@ import Data.Maybe ( fromJust, catMaybes )
 import Data.List ( find )
 import Control.Monad ( unless, when, void )
 
-import Utils ( getFunId, firstNotNull, allOrNone, allNotNull )
+import Utils ( getFunId, allNotNull, hasIterators )
 import BuiltInDefs
 import SolverEnv
 import AST
@@ -307,6 +307,9 @@ getParameterTypesWithCheck (fid, vs) = do
         solveTypeReferences (ListT t1) (ListT t2) = ListT $ solveTypeReferences t1 t2
         solveTypeReferences _ t = t
 
+checkNoIterators :: Annotated Value -> SolverEnv ()
+checkNoIterators v = when (hasIterators v) $ throwHere ForbiddenIteratorUsed
+
 --
 
 
@@ -350,20 +353,31 @@ solveValue valFun (ValueM _ ps) = do
                 [] -> throwHere $ UnmatchableValueTypes ps
 solveValue valFun l@((ListV ann eT es)) = do
     valFun l
-    es' <- mapM (`withLocation` solveValueWithType eT) es
+    es' <- mapM (`withLocation` solveValueWithType eT True) es
     return $ ListV ann eT es'
 solveValue valFun v = valFun v >> return v
 
-solveValueWithType :: Type -> Annotated Value -> SolverEnv (Annotated Value)
-solveValueWithType t = solveValue (`checkValueType` t)
+solveValueWithType :: Type -> Bool -> Annotated Value -> SolverEnv (Annotated Value)
+solveValueWithType t allowIters v = do
+    v' <- solveValue (`checkValueType` t) v
+    unless allowIters $ withLocation v checkNoIterators
+    return v'
 
 solveValueWithAnyType :: Annotated Value -> SolverEnv (Annotated Value)
-solveValueWithAnyType = solveValue (void . getValueType)
+solveValueWithAnyType v = do
+    ann <- getCurrentLocation
+    v' <- solveValue (void . getValueType) v
+    setCurrentLocation ann
+    checkNoIterators v
+    return v'
+
 
 solveSentence :: Maybe Type -> Annotated Sentence -> SolverEnv (Annotated Sentence)
 solveSentence _ (VarDef ann vNs (Just t) v) = do
+    v' <- case v of
+        (ListV {}) -> withLocation v (solveValueWithType t True)
+        _ -> withLocation v (solveValueWithType t False)
     mapM_ (`setNewVariableType` t) vNs
-    v' <- withLocation v (solveValueWithType t)
     return $ VarDef ann vNs (Just t) v'
 solveSentence _ (VarDef ann vNs Nothing v) = do
     v' <- withLocation v solveValueWithAnyType
@@ -371,32 +385,32 @@ solveSentence _ (VarDef ann vNs Nothing v) = do
     mapM_ (`setNewVariableType` t) vNs
     return $ VarDef ann vNs Nothing v'
 solveSentence rt (If ann v ls) = do
-    v' <- withLocation v $ solveValueWithType BoolT
+    v' <- withLocation v $ solveValueWithType BoolT False
     ls' <- solveSentences ls rt
     return $ If ann v' ls'
 solveSentence rt (IfElse ann v lsT lsF) = do
-    v' <- withLocation v $ solveValueWithType BoolT
+    v' <- withLocation v $ solveValueWithType BoolT False
     lsT' <- solveSentences lsT rt
     lsF' <- solveSentences lsF rt
     return $ IfElse ann v' lsT' lsF'
 solveSentence rt (ForEach ann iN iT v ls) = do
-    v' <- withLocation v $ solveValueWithType (ListT iT)
+    v' <- withLocation v $ solveValueWithType (ListT iT) False
     setNewVariableType iN (RefT iT)
     ls' <- solveSentences ls rt
     removeVariableType iN
     return $ ForEach ann iN iT v' ls'
 solveSentence rt (Until ann v ls) = do
-    v' <- withLocation v $ solveValueWithType BoolT
+    v' <- withLocation v $ solveValueWithType BoolT False
     ls' <- solveSentences ls rt
     return $ Until ann v' ls'
 solveSentence rt (While ann v ls) = do
-    v' <- withLocation v $ solveValueWithType BoolT
+    v' <- withLocation v $ solveValueWithType BoolT False
     ls' <- solveSentences ls rt
     return $ While ann v' ls'
 solveSentence rt (Result ann v) =
     case rt of
         Just t -> do
-            v' <- withLocation v $ solveValueWithType t
+            v' <- withLocation v $ solveValueWithType t False
             return $ Result ann v'
         Nothing -> throwHere ResultInProcedure
 solveSentence _ (SentenceM ann ps) = do

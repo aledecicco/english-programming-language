@@ -108,6 +108,7 @@ ppErrorType ExpectedResult = "Expected a result statement before end of operator
 ppErrorType EmptyList = "Expected a list with at least one element"
 ppErrorType (OutOfBoundsIndex i) = unwords ["Tried to access a list at index", show i, "which is out of bounds"]
 ppErrorType DivisionByZero = "Division by zero"
+ppErrorType ForbiddenIteratorUsed = "Can't use iterators here"
 
 ppError :: Error -> String
 ppError (Error l eT) =

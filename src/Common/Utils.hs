@@ -37,4 +37,16 @@ allOrNone f xs = sequence <$> traverse f xs
 allNotNull :: Monad m => (a -> m (Maybe b)) -> [a] -> m [b]
 allNotNull f es = catMaybes <$> mapM f es
 
+hasIterators :: Value a -> Bool
+hasIterators (IterV {}) = True
+hasIterators (OperatorCall _ _ vs) = any hasIterators vs
+hasIterators (ListV _ _ es) = any hasIterators es
+hasIterators (RefV _ _) = False
+hasIterators (VarV _ _) = False
+hasIterators (IntV _ _) = False
+hasIterators (FloatV _ _) = False
+hasIterators (BoolV _ _) = False
+hasIterators (CharV _ _) = False
+hasIterators (ValueM _ _) = error "Shouldn't happen: values must be solved before checking for iterators"
+
 --

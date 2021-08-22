@@ -24,6 +24,7 @@ data ErrorType =
     | EmptyList
     | OutOfBoundsIndex Int
     | DivisionByZero
+    | ForbiddenIteratorUsed
     deriving (Eq, Show)
 
 data Error = Error (Maybe Location) ErrorType

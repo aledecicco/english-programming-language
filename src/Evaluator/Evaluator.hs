@@ -7,7 +7,7 @@ import EvaluatorEnv
 import BuiltInDefs
 import BuiltInEval
 import SolverEnv ( SolverData )
-import Utils ( firstNotNull )
+import Utils ( firstNotNull, hasIterators )
 import Errors
 import AST
 
@@ -43,9 +43,9 @@ variablesFromTitle [] (_:_) = error "Shouldn't happen: can't run out of title pa
 -- Finishes evaluating the arguments of a function call if necessary
 evaluateParameters :: ReadWrite m => [Bare TitlePart] -> [Annotated Value] -> EvaluatorEnv m [Bare Value]
 evaluateParameters ts vs = do
-    l <- getCurrentLocation
+    ann <- getCurrentLocation
     r <- evaluateParameters' ts vs
-    setCurrentLocation l
+    setCurrentLocation ann
     return r
     where
         evaluateParameters' :: ReadWrite m => [Bare TitlePart] -> [Annotated Value] -> EvaluatorEnv m [Bare Value]
@@ -59,11 +59,6 @@ evaluateParameters ts vs = do
             (v':) <$> evaluateParameters' ts vs
         evaluateParameters' [] (_:_) = error "Shouldn't happen: can't run out of title parts before running out of values in a function call"
 
-hasIterators :: Value a -> Bool
-hasIterators (IterV {}) = True
-hasIterators (OperatorCall _ _ vs) = any hasIterators vs
-hasIterators _ = False
-
 copyValue :: ReadWrite m => Bare Value -> EvaluatorEnv m (Bare Value)
 copyValue (ListV _ eT es) = ListV () eT <$> mapM copyValue es
 copyValue (RefV _ addr) = do
@@ -71,6 +66,23 @@ copyValue (RefV _ addr) = do
     v' <- copyValue v
     RefV () <$> addValue v'
 copyValue v = return v
+
+getIteratorValues :: ReadWrite m => Annotated Value -> EvaluatorEnv m [Bare Value]
+getIteratorValues (IterV _ _ lv)
+    | hasIterators lv = do
+        vs <- getIteratorValues lv
+        return $ concatMap (\(ListV _ _ es) -> es) vs
+    | otherwise = do
+        lv' <- withLocation lv evaluateUpToReference
+        case lv' of
+            (ListV _ _ es) -> return es
+            (RefV _ addr) -> do
+                ~(ListV _ _ es) <- getValueAtAddress addr
+                return es
+            _ -> error "Shouldn't happen: wrong type in iterator"
+getIteratorValues (OperatorCall _ fid vs) = undefined
+getIteratorValues _ = undefined
+
 
 --
 
