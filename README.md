@@ -1,7 +1,7 @@
 # EPL
 A programming language that resembles English. Write some sentences and watch the interpreter try to understand what you meant.
 
-![Version](https://img.shields.io/badge/version-v3.1.0-blue)
+![Version](https://img.shields.io/badge/version-v3.2.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-brightgreen)
 
 # Syntax
@@ -356,12 +356,8 @@ Modifies the value of the given variable, dividing it by the number.
 Modifies the value of the given variable, appending the list to it.
 
 # Possible improvements:
-- Infer variable aliases from their types in titles
-- Optional aliases in function parameters and `ForEach` iterators
-- Use `each` for generators in function arguments
 - Find a better syntax for specifying function return types
-- Garbage collector (try to, and in case of error?)
-- Some sort of try-catch expression
+- Some sort of try-catch expression (try to, and in case of error?)
 - Implement importing other files as libraries (without the `Run` procedure)
 - Prevent the `Run` procedure from being called explicitly
 - Add more built-in functions
