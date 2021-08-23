@@ -7,7 +7,6 @@ To run:
     Let B be a list of numbers containing 4, 5, and 6.
     Let C be a list of numbers containing 7, 8, and 9.
     Let M be a list of lists of numbers containing A, B, and C.
-    Let N be a list of numbers equal to M flattened.
     Print M.
     Print " flattened is ".
-    Print N.
+    Print M flattened.

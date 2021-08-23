@@ -66,7 +66,9 @@ exampleTests = testGroup "example"
 
         exampleTestCase "Lists" [] "The shuffled list is 3142\nThe first half of the list is 31\n5 -> 9\n6 -> 9\n7 -> 9\n8 -> 9\n",
 
-        exampleTestCase "Flatten" [] "[[1, 2, 3], [4, 5, 6], [7, 8, 9]] flattened is [1, 2, 3, 4, 5, 6, 7, 8, 9]"
+        exampleTestCase "Flatten" [] "[[1, 2, 3], [4, 5, 6], [7, 8, 9]] flattened is [1, 2, 3, 4, 5, 6, 7, 8, 9]",
+
+        exampleTestCase "Iterators" [] "[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]"
     ]
 
 --

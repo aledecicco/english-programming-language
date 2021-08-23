@@ -1,0 +1,8 @@
+A list of whole numbers equal to the first ten positive whole numbers:
+    Let M be a list of whole numbers containing 3, 2, and 1.
+    Let L be a list of whole numbers containing 0, the element of M at 2, each number in the list from 2 to 8, and 3 times 3.
+    Add 1 to each whole number in L.
+    The result is L.
+
+To run:
+    Print the first ten positive whole numbers.
