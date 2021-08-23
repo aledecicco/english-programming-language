@@ -421,7 +421,7 @@ functionDefinitionTests = testGroup "Function definition"
                 functionDefinition
                 "A number equal to the double of a number (m):\n  Let r be m times 2.\n  The result is r."
                 (FunDef (1,1)
-                    (Title (1,19) [TitleWords (1,19) ["the", "double", "of"], TitleParam (1,33) ["m"] FloatT])
+                    (Title (1,19) [TitleWords (1,19) ["the", "double", "of"], TitleParam (1,33) [["m"]] FloatT])
                     (Just FloatT)
                     [
                         VarDef (2,3) [["r"]] Nothing (ValueM (2,12) [WordP (2,12) "m", WordP (2,14) "times", IntP (2,20) 2]),
@@ -434,7 +434,7 @@ functionDefinitionTests = testGroup "Function definition"
                 functionDefinition
                 "To double a number (m):\n  Let r be a number equal to m times 2."
                 (FunDef (1,1)
-                    (Title (1,4) [TitleWords (1,4) ["double"], TitleParam (1,11) ["m"] FloatT])
+                    (Title (1,4) [TitleWords (1,4) ["double"], TitleParam (1,11) [["m"]] FloatT])
                     Nothing
                     [
                         VarDef (2,3) [["r"]] (Just FloatT) (ValueM (2,30) [WordP (2,30) "m", WordP (2,32) "times", IntP (2,38) 2])
@@ -447,7 +447,7 @@ functionDefinitionTests = testGroup "Function definition"
                 functionDefinition
                 "Whether a number (m) is whole:\n  The result is false."
                 (FunDef (1,1)
-                    (Title (1,9) [TitleParam (1,9) ["m"] FloatT, TitleWords (1,22) ["is", "whole"]])
+                    (Title (1,9) [TitleParam (1,9) [["m"]] FloatT, TitleWords (1,22) ["is", "whole"]])
                     (Just BoolT)
                     [
                         Result (2,3) (ValueM (2,17) [WordP (2,17) "false"])
@@ -480,9 +480,9 @@ titleTests = testGroup "Title"
                 "Definition with a number (m) and a number (n)"
                 (Title (1,1) [
                     TitleWords (1,1) ["Definition", "with"],
-                    TitleParam (1,17) ["m"] FloatT,
+                    TitleParam (1,17) [["m"]] FloatT,
                     TitleWords (1,30) ["and"],
-                    TitleParam (1,34) ["n"] FloatT
+                    TitleParam (1,34) [["n"]] FloatT
                 ]),
 
         testCase "Consecutive arguments" $
@@ -491,11 +491,17 @@ titleTests = testGroup "Title"
                 "Definition with a number (m) a number (n)"
                 (Title (1,1) [
                     TitleWords (1,1) ["Definition", "with"],
-                    TitleParam (1,17) ["m"] FloatT
+                    TitleParam (1,17) [["m"]] FloatT
                 ]),
 
         testCase "Missing name" $
-            expectedFailure title "Definition with a number"
+            expectedResult
+                title
+                "Definition with a number"
+                (Title (1,1) [
+                    TitleWords (1,1) ["Definition", "with"],
+                    TitleParam (1,17) [] FloatT
+                ])
     ]
 
 titleWordsTests :: TestTree
@@ -533,22 +539,25 @@ titleParamTests = testGroup "Title parameter"
             expectedBareResult
                 (titleParam True)
                 "A number (m)"
-                (TitleParam () ["m"] FloatT),
+                (TitleParam () [["m"]] FloatT),
 
         testCase "Followed by words" $
             expectedBareResult
                 (titleParam True)
                 "A number (m) function definition"
-                (TitleParam () ["m"] FloatT),
+                (TitleParam () [["m"]] FloatT),
 
         testCase "Two parameters" $
             expectedBareResult
                 (titleParam True)
                 "A number (m) a number (n)"
-                (TitleParam () ["m"] FloatT),
+                (TitleParam () [["m"]] FloatT),
 
         testCase "Missing name" $
-            expectedFailure (titleParam True) "A number",
+            expectedBareResult
+                (titleParam True)
+                "A number"
+                (TitleParam () [] FloatT),
 
         testCase "Missing article uppercase" $
             expectedFailure (titleParam True) "number (m)",

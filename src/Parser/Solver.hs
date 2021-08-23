@@ -7,7 +7,7 @@ import Data.Maybe ( fromJust, catMaybes )
 import Data.List ( find )
 import Control.Monad ( unless, when, void )
 
-import Utils ( getFunId, allNotNull, hasIterators )
+import Utils ( getFunId, allNotNull, hasIterators, typeName )
 import BuiltInDefs
 import SolverEnv
 import AST
@@ -58,6 +58,21 @@ splitBy (p:ps) p' =
         else
             let (bef, aft) = splitBy ps p'
             in (p:bef, aft)
+
+
+possibleAliases :: Type -> Bool -> [Name]
+possibleAliases (ListT CharT) False = [["list"], ["list", "of", "chars"], ["string"]]
+possibleAliases (ListT t) False = ["list"] : map (["list", "of"]++) (possibleAliases t True)
+possibleAliases (ListT CharT) True = [["lists"], ["lists", "of", "chars"], ["strings"]]
+possibleAliases (ListT t) True = ["lists"] : map (["lists", "of"]++) (possibleAliases t True)
+possibleAliases (RefT t) p = possibleAliases t p
+possibleAliases t p = [typeName t p]
+
+addAliases :: [TitlePart a] -> [TitlePart a]
+addAliases [] = []
+addAliases (TitleWords ann ws : ts) = TitleWords ann ws : addAliases ts
+addAliases (TitleParam ann [] t : ts) = TitleParam ann (possibleAliases t False) t : addAliases ts -- ToDo: avoid repeating
+addAliases (TitleParam ann ns t : ts) = TitleParam ann ns t : addAliases ts
 
 --
 
@@ -315,6 +330,9 @@ checkNoIterators v = when (hasIterators v) $ throwHere ForbiddenIteratorUsed
 
 -- Registration
 
+registerAliases :: Program -> SolverEnv Program
+registerAliases = return . map (\(FunDef ann (Title ann' ft) rt ss) -> FunDef ann (Title ann' $ addAliases ft) rt ss)
+
 registerFunctions :: Program -> SolverEnv ()
 registerFunctions = mapM_ (`withLocation` registerFunction)
     where
@@ -330,7 +348,7 @@ registerParameters :: Annotated Title -> SolverEnv ()
 registerParameters (Title _ ts) = mapM_ (`withLocation` registerParameter) ts
     where
         registerParameter :: Annotated TitlePart -> SolverEnv ()
-        registerParameter (TitleParam ann vn t) = setNewVariableType vn t
+        registerParameter (TitleParam ann vns t) = mapM_ (`setNewVariableType` t) vns
         registerParameter _ = return ()
 
 --
@@ -445,10 +463,11 @@ solveProgram p = runSolverEnv (solveProgram' p) initialState initialLocation
     where
         solveProgram' :: Program -> SolverEnv Program
         solveProgram' p = do
+            p' <- registerAliases p
             setFunctions $ builtInOperators ++ builtInProcedures
-            registerFunctions p
+            registerFunctions p'
             mainIsDef <- functionIsDefined "run"
             unless mainIsDef $ throwError (Error Nothing (UndefinedFunction "run"))
-            mapM (restoringVariables . solveBlock) p
+            mapM (restoringVariables . solveBlock) p'
 
 --

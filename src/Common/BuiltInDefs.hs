@@ -26,59 +26,59 @@ builtInOperators :: [(FunId, FunSignature)]
 builtInOperators = map functionFromTuple
     [
         (
-            [TitleParam () ["m"] FloatT, TitleWords () ["plus"], TitleParam () ["n"] FloatT],
+            [TitleParam () [] FloatT, TitleWords () ["plus"], TitleParam () [] FloatT],
             binaryType
         ),
         (
-            [TitleParam () ["m"] FloatT, TitleWords () ["times"], TitleParam () ["n"] FloatT],
+            [TitleParam () [] FloatT, TitleWords () ["times"], TitleParam () [] FloatT],
             binaryType
         ),
         (
-            [TitleParam () ["m"] FloatT, TitleWords () ["minus"], TitleParam () ["n"] FloatT],
+            [TitleParam () [] FloatT, TitleWords () ["minus"], TitleParam () [] FloatT],
             binaryType
         ),
         (
-            [TitleParam () ["m"] FloatT, TitleWords () ["divided", "by"], TitleParam () ["n"] FloatT],
+            [TitleParam () [] FloatT, TitleWords () ["divided", "by"], TitleParam () [] FloatT],
             Operator (\[_, _] -> FloatT)
         ),
         (
-            [TitleParam () ["m"] (AnyT "a"), TitleWords () ["is", "equal", "to"], TitleParam () ["n"] (AnyT "a")],
+            [TitleParam () [] (AnyT "a"), TitleWords () ["is", "equal", "to"], TitleParam () [] (AnyT "a")],
             relationalType
         ),
         (
-            [TitleParam () ["m"] (AnyT "a"), TitleWords () ["is", "not", "equal", "to"], TitleParam () ["n"] (AnyT "a")],
+            [TitleParam () [] (AnyT "a"), TitleWords () ["is", "not", "equal", "to"], TitleParam () [] (AnyT "a")],
             relationalType
         ),
         (
-            [TitleParam () ["m"] FloatT, TitleWords () ["is", "less", "than"], TitleParam () ["n"] FloatT],
+            [TitleParam () [] FloatT, TitleWords () ["is", "less", "than"], TitleParam () [] FloatT],
             relationalType
         ),
         (
-            [TitleParam () ["m"] FloatT, TitleWords () ["is", "less", "than", "or", "equal", "to"], TitleParam () ["n"] FloatT],
+            [TitleParam () [] FloatT, TitleWords () ["is", "less", "than", "or", "equal", "to"], TitleParam () [] FloatT],
             relationalType
         ),
         (
-            [TitleParam () ["m"] FloatT, TitleWords () ["is", "greater", "than"], TitleParam () ["n"] FloatT],
+            [TitleParam () [] FloatT, TitleWords () ["is", "greater", "than"], TitleParam () [] FloatT],
             relationalType
         ),
         (
-            [TitleParam () ["m"] FloatT, TitleWords () ["is", "greater", "than", "or", "equal", "to"], TitleParam () ["n"] FloatT],
+            [TitleParam () [] FloatT, TitleWords () ["is", "greater", "than", "or", "equal", "to"], TitleParam () [] FloatT],
             relationalType
         ),
         (
-            [TitleWords () ["the", "element", "of"], TitleParam () ["l"] (RefT $ ListT $ AnyT "a"), TitleWords () ["at"], TitleParam () ["m"] IntT],
+            [TitleWords () ["the", "element", "of"], TitleParam () [] (RefT $ ListT $ AnyT "a"), TitleWords () ["at"], TitleParam () [] IntT],
             Operator (\[RefT (ListT t), IntT] -> RefT t)
         ),
         (
-            [TitleWords () ["the", "length", "of"], TitleParam () ["l"] (ListT $ AnyT "a")],
+            [TitleWords () ["the", "length", "of"], TitleParam () [] (ListT $ AnyT "a")],
             Operator (\[ListT t] -> IntT)
         ),
         (
-            [TitleParam () ["m"] (ListT $ AnyT "a"), TitleWords () ["appended", "to"], TitleParam () ["n"] (ListT $ AnyT "a")],
+            [TitleParam () [] (ListT $ AnyT "a"), TitleWords () ["appended", "to"], TitleParam () [] (ListT $ AnyT "a")],
             Operator (\[ListT t1, ListT t2] -> if t1 == FloatT || t2 == FloatT then ListT FloatT else ListT t1)
         ),
         (
-            [TitleWords () ["the", "list", "from"], TitleParam () ["m"] IntT, TitleWords () ["to"], TitleParam () ["n"] IntT],
+            [TitleWords () ["the", "list", "from"], TitleParam () [] IntT, TitleWords () ["to"], TitleParam () [] IntT],
             Operator (\[IntT, IntT] -> ListT IntT)
         )
     ]
@@ -87,35 +87,35 @@ builtInProcedures :: [(FunId, FunSignature)]
 builtInProcedures = map functionFromTuple
     [
         (
-            [TitleWords () ["print"], TitleParam () ["v"] $ AnyT "a"],
+            [TitleWords () ["print"], TitleParam () [] $ AnyT "a"],
             Procedure
         ),
         (
-            [TitleWords () ["swap"], TitleParam () ["v"] $ RefT (AnyT "a"), TitleWords () ["with"], TitleParam () ["w"] $ RefT (AnyT "a")],
+            [TitleWords () ["swap"], TitleParam () [] $ RefT (AnyT "a"), TitleWords () ["with"], TitleParam () [] $ RefT (AnyT "a")],
             Procedure
         ),
         (
-            [TitleWords () ["add"], TitleParam () ["m"] FloatT, TitleWords () ["to"], TitleParam () ["n"] (RefT FloatT)],
+            [TitleWords () ["add"], TitleParam () [] FloatT, TitleWords () ["to"], TitleParam () [] (RefT FloatT)],
             Procedure
         ),
         (
-            [TitleWords () ["multiply"], TitleParam () ["m"] (RefT FloatT), TitleWords () ["by"], TitleParam () ["n"] FloatT],
+            [TitleWords () ["multiply"], TitleParam () [] (RefT FloatT), TitleWords () ["by"], TitleParam () [] FloatT],
             Procedure
         ),
         (
-            [TitleWords () ["subtract"], TitleParam () ["m"] FloatT, TitleWords () ["from"], TitleParam () ["n"] (RefT FloatT)],
+            [TitleWords () ["subtract"], TitleParam () [] FloatT, TitleWords () ["from"], TitleParam () [] (RefT FloatT)],
             Procedure
         ),
         (
-            [TitleWords () ["divide"], TitleParam () ["m"] (RefT FloatT), TitleWords () ["by"], TitleParam () ["n"] FloatT],
+            [TitleWords () ["divide"], TitleParam () [] (RefT FloatT), TitleWords () ["by"], TitleParam () [] FloatT],
             Procedure
         ),
         (
-            [TitleWords () ["append"], TitleParam () ["m"] (ListT $ AnyT "a"), TitleWords () ["to"], TitleParam () ["n"] (RefT . ListT $ AnyT "a")],
+            [TitleWords () ["append"], TitleParam () [] (ListT $ AnyT "a"), TitleWords () ["to"], TitleParam () [] (RefT . ListT $ AnyT "a")],
             Procedure
         ),
         (
-            [TitleWords () ["set"], TitleParam () ["m"] (RefT $ AnyT "a"), TitleWords () ["to"], TitleParam () ["n"] (AnyT "a")],
+            [TitleWords () ["set"], TitleParam () [] (RefT $ AnyT "a"), TitleWords () ["to"], TitleParam () [] (AnyT "a")],
             Procedure
         )
     ]

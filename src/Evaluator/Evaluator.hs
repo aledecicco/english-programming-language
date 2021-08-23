@@ -29,15 +29,15 @@ translateFunctions prog = map (translateFunction prog)
         findDefinition p t = find (\(FunDef _ t' _ _) -> void t == void t') p
 
 -- Returns a list of new variables to be declared and a list of references to be set according to the signature of a function
-variablesFromTitle :: ReadWrite m => [Bare TitlePart] -> [Bare Value] -> EvaluatorEnv m ([(Name, Bare Value)], [(Name, Int)])
+variablesFromTitle :: ReadWrite m => [Bare TitlePart] -> [Bare Value] -> EvaluatorEnv m ([([Name], Bare Value)], [([Name], Int)])
 variablesFromTitle _ [] = return ([], [])
 variablesFromTitle (TitleWords _ _ : ts) vs = variablesFromTitle ts vs
-variablesFromTitle (TitleParam _ pn (RefT _) : ts) ((RefV _ addr):vs) = do
+variablesFromTitle (TitleParam _ pns (RefT _) : ts) ((RefV _ addr):vs) = do
     (vars, refs) <- variablesFromTitle ts vs
-    return (vars, (pn, addr):refs)
-variablesFromTitle (TitleParam _ pn _ : ts) (v:vs) = do
+    return (vars, (pns, addr):refs)
+variablesFromTitle (TitleParam _ pns _ : ts) (v:vs) = do
     (vars, refs) <- variablesFromTitle ts vs
-    return ((pn, v):vars, refs)
+    return ((pns, v):vars, refs)
 variablesFromTitle [] (_:_) = error "Shouldn't happen: can't run out of title parts before running out of values in a function call"
 
 -- Finishes evaluating the arguments of a function call if necessary

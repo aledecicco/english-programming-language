@@ -8,7 +8,7 @@ import PrettyPrinter ( ppError )
 
 main :: IO ()
 main = do
-    fc <- readFile "examples/Iterators.epl"
+    fc <- readFile "examples/Lists.epl"
     case parseProgram fc of
         Left e -> putStrLn e
         Right p ->

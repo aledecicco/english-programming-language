@@ -49,4 +49,22 @@ hasIterators (BoolV _ _) = False
 hasIterators (CharV _ _) = False
 hasIterators (ValueM _ _) = error "Shouldn't happen: values must be solved before checking for iterators"
 
+typeName :: Type -> Bool -> Name
+typeName (AnyT _) False = ["thing", "of", "any", "type"]
+typeName IntT False = ["whole", "number"]
+typeName FloatT False = ["number"]
+typeName BoolT False = ["boolean"]
+typeName CharT False = ["character"]
+typeName (ListT CharT) False = ["string"]
+typeName (ListT t) False = ["list", "of"] ++ typeName t True
+typeName (RefT t) False = ["reference", "to", "a"] ++ typeName t False
+typeName (AnyT _) True = ["things", "of", "any", "type"]
+typeName IntT True = ["whole", "numbers"]
+typeName FloatT True = ["numbers"]
+typeName BoolT True = ["booleans"]
+typeName CharT True = ["characters"]
+typeName (ListT CharT) True = ["strings"]
+typeName (ListT t) True = ["lists", "of"] ++ typeName t True
+typeName (RefT t) True = ["references", "to"] ++ typeName t True
+
 --

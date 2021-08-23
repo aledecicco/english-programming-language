@@ -43,7 +43,7 @@ data Sentence a =
     | ProcedureCall a FunId [Value a]
     deriving (Eq, Show, Functor, Foldable)
 
-data TitlePart a = TitleWords a [String] | TitleParam a Name Type
+data TitlePart a = TitleWords a [String] | TitleParam a [Name] Type
     deriving (Eq, Show, Functor, Foldable)
 
 data Title a = Title a [TitlePart a]

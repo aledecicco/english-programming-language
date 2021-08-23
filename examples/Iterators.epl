@@ -1,8 +1,11 @@
-A list of whole numbers equal to the first ten positive whole numbers:
+A list of whole numbers equal to the first five positive whole numbers:
     Let M be a list of whole numbers containing 3, 2, and 1.
-    Let L be a list of whole numbers containing 0, the element of M at 2, each number in the list from 2 to 8, and 3 times 3.
+    Let L be a list of whole numbers containing 0, the element of M at 2, each number in the list from 2 to 3, and 2 plus 2.
     Add 1 to each whole number in L.
     The result is L.
 
 To run:
-    Print the first ten positive whole numbers.
+    Let L be the first five positive whole numbers.
+    Let M be a list of lists of whole numbers containing the list from 1 to each whole number in L.
+    Let N be a list of whole numbers containing each whole number in each list of whole numbers in M.
+    Print N.

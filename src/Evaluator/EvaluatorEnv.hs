@@ -143,13 +143,17 @@ setVariableValue vn v = do
 -- Receives a list of new variables to be declared and a list of references to be set and performs an action with those variables
 -- New variables are discarded after the action
 -- The original values of the variables referenced can be modified inside the action
-inNewScope :: Monad m => EvaluatorEnv m a -> [(Name, Bare Value)] -> [(Name, Int)] -> EvaluatorEnv m a
+inNewScope :: Monad m => EvaluatorEnv m a -> [([Name], Bare Value)] -> [([Name], Int)] -> EvaluatorEnv m a
 inNewScope action newVarVals newVarRefs = do
     -- Create a new empty scope
     changeVariables (M.empty:)
     -- Populate it with the given variables
-    mapM_ (uncurry setVariableValue) newVarVals
-    mapM_ (uncurry setVariableAddress) newVarRefs
+    mapM_ (\(n:ns, v) -> do
+        setVariableValue n v
+        addr <- getVariableAddress n
+        mapM_ (`setVariableAddress` addr) ns
+        ) newVarVals
+    mapM_ (\(ns, addr) -> mapM_ (`setVariableAddress` addr) ns) newVarRefs
     -- Perform the action using only the given variables
     r <- action
     -- Restore the state and return the result

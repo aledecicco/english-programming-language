@@ -78,21 +78,21 @@ sepByTitleTests = testGroup "Sep by title"
         testCase "Addition" $
             sepByTitle
                 [IntP () 2, WordP () "plus", IntP () 3]
-                [TitleParam () ["m"] FloatT, TitleWords () ["plus"], TitleParam () ["n"] FloatT]
+                [TitleParam () [] FloatT, TitleWords () ["plus"], TitleParam () [] FloatT]
             @?=
             [[[IntP () 2], [IntP () 3]]],
 
         testCase "Addition with recursive arguments" $
             sepByTitle
                 [IntP () 2, WordP () "times", IntP () 3, WordP () "plus", IntP () 4, WordP () "times", IntP () 5]
-                [TitleParam () ["m"] FloatT, TitleWords () ["plus"], TitleParam () ["n"] FloatT]
+                [TitleParam () [] FloatT, TitleWords () ["plus"], TitleParam () [] FloatT]
             @?=
             [[[IntP () 2, WordP () "times", IntP () 3],[IntP () 4, WordP () "times", IntP () 5]]],
 
         testCase "Multiplication with recursive arguments" $
             sepByTitle
                 [IntP () 2, WordP () "times", IntP () 3, WordP () "plus", IntP () 4, WordP () "times", IntP () 5]
-                [TitleParam () ["m"] FloatT, TitleWords () ["times"], TitleParam () ["n"] FloatT]
+                [TitleParam () [] FloatT, TitleWords () ["times"], TitleParam () [] FloatT]
             @?=
             [
                 [[IntP () 2], [IntP () 3, WordP () "plus", IntP () 4, WordP () "times", IntP () 5]],

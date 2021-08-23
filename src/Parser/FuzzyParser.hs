@@ -229,7 +229,7 @@ titleParam isFirst = do
     ann <- getCurrentLocation
     if isFirst then firstWord "a" else word "a"
     t <- referenceType <|> baseType False
-    a <- parens name <?> "parameter name"
+    a <- ((:[]) <$> parens name) <|> return []
     return $ TitleParam ann a t
 
 --

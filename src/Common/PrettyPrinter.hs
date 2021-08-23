@@ -5,6 +5,7 @@ import Control.Monad ( void )
 
 import AST
 import Errors ( Error(..), ErrorType(..) )
+import Utils ( typeName )
 
 --
 
@@ -44,23 +45,8 @@ ppOrdinal p = ppOrdinal' $ show (p+1)
         ppOrdinal' (n:ns) = n : ppOrdinal' ns
         ppOrdinal' [] = "th"
 
-ppType :: Type -> Bool -> String
-ppType (AnyT _) False = "thing of any type"
-ppType IntT False = "whole number"
-ppType FloatT False = "number"
-ppType BoolT False = "boolean"
-ppType CharT False = "character"
-ppType (ListT CharT) False = "string"
-ppType (ListT t) False = "list of " ++ ppType t True
-ppType (RefT t) False = "reference to a " ++ ppType t False
-ppType (AnyT _) True = "things of any type"
-ppType IntT True = "whole numbers"
-ppType FloatT True = "numbers"
-ppType BoolT True = "booleans"
-ppType CharT True = "characters"
-ppType (ListT CharT) True = "strings"
-ppType (ListT t) True = "lists of " ++ ppType t True
-ppType (RefT t) True = "references to " ++ ppType t True
+ppType :: Type -> String
+ppType t = ppName $ typeName t False
 
 ppName :: Name -> String
 ppName = unwords
@@ -76,7 +62,7 @@ ppValue (ListV _ CharT cs) = concatMap ppValue cs
 ppValue (ListV _ _ vs) = asList $ map ppValue vs
 ppValue (VarV _ n) = ppName n
 ppValue (ValueM _ _) = error "Shouldn't happen: can't print an unsolved value"
-ppValue v@(OperatorCall {}) = error $ "Shouldn't happen: values must be evaluated before printing them"
+ppValue v@(OperatorCall {}) = error "Shouldn't happen: values must be evaluated before printing them"
 ppValue (RefV _ _) = error "Shouldn't happen: references must be solved before printing them"
 ppValue (IterV {}) = error "Shouldn't happen: values with iterators must be solved before printing them"
 
@@ -92,8 +78,8 @@ ppMatchable :: [MatchablePart a] -> String
 ppMatchable ps = unwords $ map ppMatchablePart ps
 
 ppErrorType :: ErrorType -> String
-ppErrorType (WrongTypeValue eT aT) = unwords ["Expected a", ppType eT False, "but got a", ppType aT False, "instead"]
-ppErrorType (WrongTypeParameter eT aT n fid) = unwords [ppOrdinal n, "parameter of", doubleQuote $ ppFunctionId fid, "expected a", ppType eT False, "but got a", ppType aT False, "instead"]
+ppErrorType (WrongTypeValue eT aT) = unwords ["Expected a", ppType eT, "but got a", ppType aT, "instead"]
+ppErrorType (WrongTypeParameter eT aT n fid) = unwords [ppOrdinal n, "parameter of", doubleQuote $ ppFunctionId fid, "expected a", ppType eT, "but got a", ppType aT, "instead"]
 ppErrorType (UnmatchableValue ps) = unwords ["Could not understand", doubleQuote $ ppMatchable ps, "as a value"]
 ppErrorType (UnmatchableValueTypes ps) = unwords ["Could not understand", doubleQuote $ ppMatchable ps, "as a value because of type errors"]
 ppErrorType (UnmatchableSentence ps) = unwords ["Could not understand", doubleQuote $ ppMatchable ps, "as a sentence"]
@@ -102,7 +88,7 @@ ppErrorType (FunctionAlreadyDefined fid) = unwords ["Funcion", doubleQuote $ ppF
 ppErrorType (UndefinedFunction fid) = unwords ["Function", doubleQuote $ ppFunctionId fid, "is not defined"]
 ppErrorType (VariableAlreadyDefined n) = unwords ["Expected variable", doubleQuote $ ppName n, "to be new but it was already defined"]
 ppErrorType (UndefinedVariable n) = unwords ["Variable", doubleQuote $ ppName n, "is not defined"]
-ppErrorType (MismatchingTypeAssigned eT aT n) = unwords ["Could not assign a", ppType aT False, "to variable", doubleQuote $ ppName n, "which is a", ppType eT False]
+ppErrorType (MismatchingTypeAssigned eT aT n) = unwords ["Could not assign a", ppType aT, "to variable", doubleQuote $ ppName n, "which is a", ppType eT]
 ppErrorType ResultInProcedure = "Found unexpected result statement in procedure"
 ppErrorType ExpectedResult = "Expected a result statement before end of operator"
 ppErrorType EmptyList = "Expected a list with at least one element"
