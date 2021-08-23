@@ -360,7 +360,7 @@ solveValue valFun v = valFun v >> return v
 solveValueWithType :: Type -> Bool -> Annotated Value -> SolverEnv (Annotated Value)
 solveValueWithType t allowIters v = do
     v' <- solveValue (`checkValueType` t) v
-    unless allowIters $ withLocation v checkNoIterators
+    unless allowIters $ withLocation v' checkNoIterators
     return v'
 
 solveValueWithAnyType :: Annotated Value -> SolverEnv (Annotated Value)
@@ -368,7 +368,7 @@ solveValueWithAnyType v = do
     ann <- getCurrentLocation
     v' <- solveValue (void . getValueType) v
     setCurrentLocation ann
-    checkNoIterators v
+    checkNoIterators v'
     return v'
 
 

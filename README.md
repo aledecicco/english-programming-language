@@ -1,11 +1,11 @@
-# Expressive
+# EPL
 A programming language that resembles English. Write some sentences and watch the interpreter try to understand what you meant.
 
-![Version](https://img.shields.io/badge/version-v3.0.0-blue)
+![Version](https://img.shields.io/badge/version-v3.1.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-brightgreen)
 
 # Syntax
-An Expressive program is composed of a series of function definitions. Those functions can either be operators, which return a value, or procedures, which don't return anything.
+An EPL program is composed of a series of function definitions. Those functions can either be operators, which return a value, or procedures, which don't return anything.
 
 Each function has a title and a list of sentences. Titles are used to specify the name, return type, and arguments of a function. Sentences are expressions which tell the interpreter to define certain variables or call certain functions.
 

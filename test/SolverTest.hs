@@ -255,13 +255,13 @@ solveValueTests = testGroup "Solve value"
     [
         testCase "Matchable" $
             expectedResult
-                (solveValueWithType IntT $ ValueM (0,0) [IntP (0,0) 2, WordP (0,2) "times", IntP (0,8) 3, WordP (0,10) "plus", IntP (0,15) 4, WordP (0,17) "times", IntP (0,23) 5])
+                (solveValueWithType IntT False $ ValueM (0,0) [IntP (0,0) 2, WordP (0,2) "times", IntP (0,8) 3, WordP (0,10) "plus", IntP (0,15) 4, WordP (0,17) "times", IntP (0,23) 5])
                 stateWithFunctions
                 (OperatorCall (0,0) "%_plus_%" [OperatorCall (0,0) "%_times_%" [IntV (0,0) 2, IntV (0,8) 3], OperatorCall (0,15) "%_times_%" [IntV (0,15) 4, IntV (0,23) 5]]),
 
         testCase "List" $
             expectedResult
-                (solveValueWithType (ListT IntT) $ ListV (0,0) IntT [ValueM (0,1) [IntP (0,1) 2, WordP (0,3) "times", IntP (0,9) 3], ValueM (0,11) [IntP (0,11) 4, WordP (0,13) "times", IntP (0,19) 5]])
+                (solveValueWithType (ListT IntT) False $  ListV (0,0) IntT [ValueM (0,1) [IntP (0,1) 2, WordP (0,3) "times", IntP (0,9) 3], ValueM (0,11) [IntP (0,11) 4, WordP (0,13) "times", IntP (0,19) 5]])
                 stateWithFunctions
                 (ListV (0,0) IntT [OperatorCall (0,1) "%_times_%" [IntV (0,1) 2, IntV (0,9) 3], OperatorCall (0,11) "%_times_%" [IntV (0,11) 4, IntV (0,19) 5]]),
 
@@ -271,6 +271,7 @@ solveValueTests = testGroup "Solve value"
                     setVariableType ["L"] (ListT IntT)
                     solveValueWithType
                         IntT
+                        False
                         (ValueM (0,0) [WordP (0,0) "the", WordP (0,4) "element", WordP (0,12) "of", WordP (0,15) "L", WordP (0,17) "at", IntP (0,20) 2, WordP (0,22) "plus", IntP (0,27) 2])
                 )
                 stateWithFunctions
@@ -282,6 +283,7 @@ solveValueTests = testGroup "Solve value"
                     setVariableType ["L"] (ListT CharT)
                     solveValueWithType
                         CharT
+                        False
                         (ValueM (0,0) [WordP (0,0) "the", WordP (0,4) "element", WordP (0,12) "of", WordP (0,15) "L", WordP (0,17) "at", IntP (0,20) 2, WordP (0,22) "plus", IntP (0,27) 2])
                 )
                 stateWithFunctions
@@ -289,19 +291,19 @@ solveValueTests = testGroup "Solve value"
 
         testCase "Matchable with wrong type arguments" $
             expectedError
-                (solveValueWithType IntT $ ValueM (0,0) [WordP (0,0) "true", WordP (0,5) "plus", WordP (0,10) "false"])
+                (solveValueWithType IntT False $ ValueM (0,0) [WordP (0,0) "true", WordP (0,5) "plus", WordP (0,10) "false"])
                 stateWithFunctions
                 (Error (Just (0,0)) (WrongTypeParameter FloatT BoolT 0 "%_plus_%")),
 
         testCase "Ambiguous matchable with wrong type arguments" $
             expectedError
-                (solveValueWithType IntT $ ValueM (0,0) [WordP (0,0) "true", WordP (0,5) "plus", WordP (0,10) "false", WordP (0,16) "plus", WordP (0,21) "true"])
+                (solveValueWithType IntT False $ ValueM (0,0) [WordP (0,0) "true", WordP (0,5) "plus", WordP (0,10) "false", WordP (0,16) "plus", WordP (0,21) "true"])
                 stateWithFunctions
                 (Error (Just (0,0)) (UnmatchableValueTypes [WordP (0,0) "true", WordP (0,5) "plus", WordP (0,10) "false", WordP (0,16) "plus", WordP (0,21) "true"])),
 
         testCase "List with wrong items" $
             expectedError
-                (solveValueWithType (ListT IntT) $ ListV (0,0) IntT [BoolV (0,1) True, BoolV (0,7) False])
+                (solveValueWithType (ListT IntT) False $ ListV (0,0) IntT [BoolV (0,1) True, BoolV (0,7) False])
                 initialState
                 (Error (Just (0,1)) $ WrongTypeValue IntT BoolT)
     ]

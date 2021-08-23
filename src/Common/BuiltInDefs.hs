@@ -121,6 +121,14 @@ builtInProcedures = map functionFromTuple
     ]
 
 isBuiltInFunction :: FunId -> Bool
-isBuiltInFunction fid =
-    let builtInIds = map fst (builtInOperators ++ builtInProcedures)
+isBuiltInFunction fid = isBuiltInOperator fid || isBuiltInProcedure fid
+
+isBuiltInOperator :: FunId -> Bool
+isBuiltInOperator fid =
+    let builtInIds = map fst builtInOperators
+    in fid `elem` builtInIds
+
+isBuiltInProcedure :: FunId -> Bool
+isBuiltInProcedure fid =
+    let builtInIds = map fst builtInProcedures
     in fid `elem` builtInIds
