@@ -59,7 +59,6 @@ splitBy (p:ps) p' =
             let (bef, aft) = splitBy ps p'
             in (p:bef, aft)
 
-
 possibleAliases :: Type -> Bool -> [Name]
 possibleAliases (ListT CharT) False = [["list"], ["list", "of", "chars"], ["string"]]
 possibleAliases (ListT t) False = ["list"] : map (["list", "of"]++) (possibleAliases t True)
@@ -67,6 +66,23 @@ possibleAliases (ListT CharT) True = [["lists"], ["lists", "of", "chars"], ["str
 possibleAliases (ListT t) True = ["lists"] : map (["lists", "of"]++) (possibleAliases t True)
 possibleAliases (RefT t) p = possibleAliases t p
 possibleAliases t p = [typeName t p]
+
+typeLevel :: Type -> Int
+typeLevel (ListT t) = 1 + typeLevel t
+typeLevel (RefT t) = typeLevel t
+typeLevel _ = 1
+
+getTypes :: [TitlePart a] -> [Type]
+getTypes [] = []
+getTypes (TitleWords _ _ : ts) = getTypes ts
+getTypes (TitleParam _ _ t : ts) = t : getTypes ts
+
+computeAliases :: [TitlePart a] -> SolverEnv [b]
+computeAliases ts = do
+    let types = getTypes ts
+        typeLevels = map typeLevel types
+        maxType = maximum typeLevels
+    return []
 
 addAliases :: [TitlePart a] -> [TitlePart a]
 addAliases [] = []
@@ -388,7 +404,6 @@ solveValueWithAnyType v = do
     setCurrentLocation ann
     checkNoIterators v'
     return v'
-
 
 solveSentence :: Maybe Type -> Annotated Sentence -> SolverEnv (Annotated Sentence)
 solveSentence _ (VarDef ann vNs (Just t) v) = do

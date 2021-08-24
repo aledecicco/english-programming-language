@@ -115,7 +115,6 @@ nameTests = testGroup "Name"
                 "be"
     ]
 
-
 typeNameTests :: TestTree
 typeNameTests = testGroup "Type name"
     [
@@ -268,7 +267,6 @@ integerTests = testGroup "Integer"
             expectedFailure integer "- 11"
     ]
 
-
 floatTests :: TestTree
 floatTests = testGroup "Float"
     [
@@ -348,7 +346,6 @@ seriesTests = testGroup "Series"
                 (series integer)
                 "11, 12, and 13"
                 [11, 12, 13],
-
 
         testCase "Without commas" $
             expectedResult
@@ -440,7 +437,6 @@ functionDefinitionTests = testGroup "Function definition"
                         VarDef (2,3) [["r"]] (Just FloatT) (ValueM (2,30) [WordP (2,30) "m", WordP (2,32) "times", IntP (2,38) 2])
                     ]
                 ),
-
 
         testCase "Predicate" $
             expectedResult
@@ -620,7 +616,6 @@ valueTests = testGroup "Value"
                 value
                 "a list of numbers containing a, b, and c"
                 (ListV () FloatT [ValueM () [WordP () "a"], ValueM () [WordP () "b"], ValueM () [WordP () "c"]]),
-
 
         testCase "Empty list" $
             expectedBareResult

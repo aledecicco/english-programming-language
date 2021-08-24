@@ -45,7 +45,6 @@ changeFunctions m = lift $ modify (first m)
 changeVariables :: ([(Name, Type)] -> [(Name, Type)]) -> SolverEnv ()
 changeVariables m = lift $ modify (second m)
 
-
 --
 
 

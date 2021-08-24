@@ -85,7 +85,6 @@ referenceType = (do
     RefT <$> baseType False)
     <?> "reference type"
 
-
 -- Parses any word and checks that it's not reserved
 identifier :: FuzzyParser String
 identifier = do
@@ -431,7 +430,6 @@ runFuzzyParser p s =
                 pos = (unPos $ sourceLine sPos, unPos $ sourceColumn sPos)
             in Left $ Error (Just pos) (ParseError msg')
         Right a -> Right a
-
 
 parseProgram :: String -> Either Error Program
 parseProgram = runFuzzyParser parseProgram'

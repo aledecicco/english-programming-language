@@ -169,7 +169,6 @@ asOperatorCallTests = testGroup "As operator call"
                 []
     ]
 
-
 asProcedureCallTests :: TestTree
 asProcedureCallTests = testGroup "As procedure call"
     [
