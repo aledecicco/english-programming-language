@@ -168,7 +168,7 @@ sentenceTests = testGroup "sentence"
                         ]
                 )
                 stateWithFunctions
-                (Error (Just (1,0)) DivisionByZero)
+                (Error (Just (1,0)) (CodeError ["Division by zero"]))
     ]
     where
         mockLocations :: Functor a => [a ()] -> [Annotated a]

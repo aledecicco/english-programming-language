@@ -4,6 +4,8 @@ module FuzzyParser where
 
 import Data.Void ( Void )
 import Data.Char ( toUpper )
+import Data.List ( intercalate )
+import Data.List.NonEmpty ( NonEmpty((:|)) )
 import Control.Monad ( void )
 
 import Text.Megaparsec
@@ -11,6 +13,7 @@ import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
 import AST
+import Errors
 
 --
 
@@ -18,7 +21,6 @@ import AST
 -- Parser definitions
 
 type FuzzyParser = Parsec Void String
-type Error = ParseErrorBundle String Void
 
 -- Parses whitespace including new lines
 scn :: FuzzyParser ()
@@ -418,13 +420,20 @@ matchablePart = do
 -- Main
 
 -- Parses a string using a specific parser and returns its result or the error it yielded
-runFuzzyParser :: FuzzyParser a -> String -> Either String a
+runFuzzyParser :: FuzzyParser a -> String -> Either Error a
 runFuzzyParser p s =
     case parse p "" s of
-        Left e -> Left $ errorBundlePretty e
+        Left (ParseErrorBundle (err :| _) pState) ->
+            let msg = lines $ parseErrorTextPretty err
+                msg' = intercalate ". " $ map (\(c:cs) -> toUpper c : cs) msg
+                (_, pState') = reachOffset (errorOffset err) pState
+                sPos = pstateSourcePos pState'
+                pos = (unPos $ sourceLine sPos, unPos $ sourceColumn sPos)
+            in Left $ Error (Just pos) (ParseError msg')
         Right a -> Right a
 
-parseProgram :: String -> Either String Program
+
+parseProgram :: String -> Either Error Program
 parseProgram = runFuzzyParser parseProgram'
     where
         parseProgram' :: FuzzyParser Program

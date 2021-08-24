@@ -16,21 +16,21 @@ import AST
 expectedResult :: (HasCallStack, Eq a, Show a) => FuzzyParser a -> String -> a -> Assertion
 expectedResult p s r =
     case runFuzzyParser p s of
-        Left e -> assertFailure $ "Parser failed, the error was:\n" ++ e
+        Left e -> assertFailure $ "Parser failed, the error was:\n" ++ show e
         Right r' -> r' @?= r
 
 -- Asserts that a parser action yields a specific result ignoring annotations with the given environment
 expectedBareResult :: (HasCallStack, Eq (a ()), Show (a ()), Functor a) => FuzzyParser (a b) -> String -> a () -> Assertion
 expectedBareResult p s r =
     case runFuzzyParser p s of
-        Left e -> assertFailure $ "Parser failed, the error was:\n" ++ e
+        Left e -> assertFailure $ "Parser failed, the error was:\n" ++ show e
         Right r' -> void r' @?= r
 
 -- Asserts that a parser succeeds when parsing a given string
 expectedSuccess :: HasCallStack => FuzzyParser a -> String -> Assertion
 expectedSuccess p s =
     case runFuzzyParser p s of
-        Left e -> assertFailure $ "Parser failed, the error was:\n" ++ e
+        Left e -> assertFailure $ "Parser failed, the error was:\n" ++ show e
         Right _ -> return ()
 
 -- Asserts that a parser fails to parse a given string

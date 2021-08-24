@@ -91,10 +91,9 @@ ppErrorType (UndefinedVariable n) = unwords ["Variable", doubleQuote $ ppName n,
 ppErrorType (MismatchingTypeAssigned eT aT n) = unwords ["Could not assign a", ppType aT, "to variable", doubleQuote $ ppName n, "which is a", ppType eT]
 ppErrorType ResultInProcedure = "Found unexpected result statement in procedure"
 ppErrorType ExpectedResult = "Expected a result statement before end of operator"
-ppErrorType EmptyList = "Expected a list with at least one element"
-ppErrorType (OutOfBoundsIndex i) = unwords ["Tried to access a list at index", show i, "which is out of bounds"]
-ppErrorType DivisionByZero = "Division by zero"
 ppErrorType ForbiddenIteratorUsed = "Can't use iterators here"
+ppErrorType (CodeError ss) = unwords ss
+ppErrorType (ParseError s) = s
 
 ppError :: Error -> String
 ppError (Error l eT) =
@@ -102,4 +101,4 @@ ppError (Error l eT) =
         hM = case l of
             (Just (ln, cn)) -> unwords ["An error occured in line", show ln, "column", show cn]
             Nothing -> "An error occured"
-    in hM ++ ":\n" ++ errM
+    in hM ++ ":\n" ++ errM ++ ".\n"

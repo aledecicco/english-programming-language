@@ -96,8 +96,8 @@ evaluateMinus :: ReadWrite m => Bare Value -> Bare Value -> EvaluatorEnv m (Bare
 evaluateMinus v1 v2 = return $ binaryOperation (-) v1 v2
 
 evaluateDividedBy :: ReadWrite m => Bare Value -> Bare Value -> EvaluatorEnv m (Bare Value)
-evaluateDividedBy _ (IntV _ 0) = throwHere DivisionByZero
-evaluateDividedBy _ (FloatV _ 0) = throwHere DivisionByZero
+evaluateDividedBy _ (IntV _ 0) = throwHere $ CodeError ["Division by zero"]
+evaluateDividedBy _ (FloatV _ 0) = throwHere $ CodeError ["Division by zero"]
 evaluateDividedBy v1 v2 = return $ floatOperation (/) v1 v2
 
 evaluateIsEqualTo :: ReadWrite m => Bare Value -> Bare Value -> EvaluatorEnv m (Bare Value)
@@ -128,11 +128,11 @@ evaluateElementOfListAt (RefV _ addr) (IntV _ n)= do
     evaluateElementOfListAt' l n
     where
         evaluateElementOfListAt' :: ReadWrite m => Bare Value -> Int -> EvaluatorEnv m (Bare Value)
-        evaluateElementOfListAt' (ListV _ _ []) _ = throwHere EmptyList
+        evaluateElementOfListAt' (ListV _ _ []) n = throwHere $ CodeError ["Tried to access an empty list at index", show n]
         evaluateElementOfListAt' (ListV _ _ xs) n
-            | n < 0 = throwHere $ OutOfBoundsIndex n
+            | n < 0 = throwHere $ CodeError ["Tried to access a list at negative index", show n]
             | n < length xs = return $ xs !! n
-            | otherwise = throwHere $ OutOfBoundsIndex n
+            | otherwise = throwHere $ CodeError ["Tried to access a list at index", show n, "which is out of bounds"]
         evaluateElementOfListAt' _ _ = error "Shouldn't happen: wrong types provided"
 evaluateElementOfListAt _ _ = error "Shouldn't happen: wrong types provided"
 
@@ -189,8 +189,8 @@ evaluateSubtractFrom :: ReadWrite m => Bare Value -> Bare Value -> EvaluatorEnv 
 evaluateSubtractFrom v var = binaryModification (-) var v
 
 evaluateDivideBy :: ReadWrite m => Bare Value -> Bare Value -> EvaluatorEnv m ()
-evaluateDivideBy _ (IntV _ 0) = throwHere DivisionByZero
-evaluateDivideBy _ (FloatV _ 0) = throwHere DivisionByZero
+evaluateDivideBy _ (IntV _ 0) = throwHere $ CodeError ["Division by zero"]
+evaluateDivideBy _ (FloatV _ 0) = throwHere $ CodeError ["Division by zero"]
 evaluateDivideBy var v = floatModification (/) var v
 
 evaluateAppendTo :: ReadWrite m => Bare Value -> Bare Value -> EvaluatorEnv m ()

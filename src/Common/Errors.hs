@@ -21,10 +21,9 @@ data ErrorType =
     | MismatchingTypeAssigned Type Type Name
     | ResultInProcedure
     | ExpectedResult
-    | EmptyList
-    | OutOfBoundsIndex Int
-    | DivisionByZero
     | ForbiddenIteratorUsed
+    | CodeError [String]
+    | ParseError String
     deriving (Eq, Show)
 
 data Error = Error (Maybe Location) ErrorType
