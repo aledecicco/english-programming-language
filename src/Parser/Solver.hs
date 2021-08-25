@@ -6,6 +6,8 @@ import Data.Char ( isUpper, toLower )
 import Data.Maybe ( fromJust, catMaybes )
 import Data.List ( find )
 import Control.Monad ( unless, when, void )
+import Control.Monad.Trans.State ( gets, modify, runState, State )
+import qualified Data.Map.Strict as M
 
 import Utils ( getFunId, allNotNull, hasIterators, typeName )
 import BuiltInDefs
@@ -59,36 +61,59 @@ splitBy (p:ps) p' =
             let (bef, aft) = splitBy ps p'
             in (p:bef, aft)
 
-possibleAliases :: Type -> Bool -> [Name]
-possibleAliases (ListT CharT) False = [["list"], ["list", "of", "chars"], ["string"]]
-possibleAliases (ListT t) False = ["list"] : map (["list", "of"]++) (possibleAliases t True)
-possibleAliases (ListT CharT) True = [["lists"], ["lists", "of", "chars"], ["strings"]]
-possibleAliases (ListT t) True = ["lists"] : map (["lists", "of"]++) (possibleAliases t True)
-possibleAliases (RefT t) p = possibleAliases t p
-possibleAliases t p = [typeName t p]
+possibleAliases :: Type -> [Name]
+possibleAliases (RefT t) = possibleAliases t
+possibleAliases (ListT CharT) = [["list"], ["list", "of", "chars"], ["string"]]
+possibleAliases (ListT t) = ["list"] : map (["list", "of"]++) (possibleAliases' t)
+    where
+        possibleAliases' :: Type -> [Name]
+        possibleAliases' (ListT CharT) = [["lists"], ["list", "of", "chars"], ["strings"]]
+        possibleAliases' (ListT t@(ListT _)) = map (["lists", "of"]++) (possibleAliases' t)
+        possibleAliases' (ListT t) = ["lists"] :  map (["lists", "of"]++) (possibleAliases' t)
+        possibleAliases' t  = [typeName t True]
+possibleAliases t =  [typeName t False]
 
-typeLevel :: Type -> Int
-typeLevel (ListT t) = 1 + typeLevel t
-typeLevel (RefT t) = typeLevel t
-typeLevel _ = 1
+intToPosition :: Int -> String
+intToPosition 1 = "1st"
+intToPosition 2 = "2nd"
+intToPosition 3 = "3rd"
+intToPosition n
+    | n < 10 = show n ++ "th"
+    | otherwise = show (div n 10) ++ intToPosition (mod n 10)
 
-getTypes :: [TitlePart a] -> [Type]
-getTypes [] = []
-getTypes (TitleWords _ _ : ts) = getTypes ts
-getTypes (TitleParam _ _ t : ts) = t : getTypes ts
+getTitleTypes :: [TitlePart a] -> [Type]
+getTitleTypes [] = []
+getTitleTypes (TitleWords _ _ : ts) = getTitleTypes ts
+getTitleTypes (TitleParam _ _ t : ts) = t : getTitleTypes ts
 
-computeAliases :: [TitlePart a] -> SolverEnv [b]
-computeAliases ts = do
-    let types = getTypes ts
-        typeLevels = map typeLevel types
-        maxType = maximum typeLevels
-    return []
+computeAliases :: [TitlePart a] -> [[Name]]
+computeAliases ts =
+    let types = getTitleTypes ts
+        posAs = map possibleAliases types
+        (_, totAs) = runState (countRepetitions $ concat posAs) M.empty
+        (as, _) = runState (mapM (`getAliases` totAs) posAs) M.empty
+    in as
+    where
+        countRepetitions :: [Name] -> State (M.Map Name Int) ()
+        countRepetitions = mapM_ (\n -> modify $ M.insertWith (+) n 1)
+
+        getAliases :: [Name] -> M.Map Name Int -> State (M.Map Name Int) [Name]
+        getAliases ns totAs = do
+            countRepetitions ns
+            mapM (\n -> gets (M.! n) >>= (\rep -> addPosition rep n totAs)) ns -- ToDo: remove aliases reserved manually by a previous parameter
+
+        addPosition :: Int -> Name -> M.Map Name Int -> State (M.Map Name Int) Name
+        addPosition pos n totAs = return $ if totAs M.! n > 1 then intToPosition pos : n else n
 
 addAliases :: [TitlePart a] -> [TitlePart a]
-addAliases [] = []
-addAliases (TitleWords ann ws : ts) = TitleWords ann ws : addAliases ts
-addAliases (TitleParam ann [] t : ts) = TitleParam ann (possibleAliases t False) t : addAliases ts -- ToDo: avoid repeating
-addAliases (TitleParam ann ns t : ts) = TitleParam ann ns t : addAliases ts
+addAliases ts = addAliases' ts $ computeAliases ts
+    where
+        addAliases' :: [TitlePart a] -> [[Name]] -> [TitlePart a]
+        addAliases' ts [] = ts
+        addAliases' (TitleWords ann ws : ts) as = TitleWords ann ws : addAliases' ts as
+        addAliases' (TitleParam ann [] t : ts) (a:as) = TitleParam ann a t : addAliases' ts as
+        addAliases' (TitleParam ann ns t : ts) (_:as) = TitleParam ann ns t : addAliases' ts as
+        addAliases' [] (_:_) = error "Shouldn't happen: can't run out of title parts before running out of types"
 
 --
 
@@ -265,11 +290,7 @@ getValueType (RefV _ _) = error "Shouldn't happen: references can't exist before
 getElementsType :: Type -> Type
 getElementsType (RefT t) = getElementsType t
 getElementsType (ListT t) = t
-getElementsType IntT = error "Shouldn't happen: ints don't contain types"
-getElementsType FloatT = error "Shouldn't happen: floats don't contain types"
-getElementsType BoolT = error "Shouldn't happen: bools don't contain types"
-getElementsType CharT = error "Shouldn't happen: chars don't contain types"
-getElementsType (AnyT _) = error "Shouldn't happen: generic types don't contain types"
+getElementsType _ = error "Shouldn't happen: type doesn't contain types"
 
 --
 
