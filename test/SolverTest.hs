@@ -318,6 +318,33 @@ addAliasesTests = testGroup "Add aliases"
                 TitleParam () [["the", "1st", "list"], ["the", "list", "of", "whole", "numbers"]] (ListT IntT),
                 TitleParam () [["the", "2nd", "list"], ["the", "1st", "list", "of", "strings"], ["the", "1st", "list", "of", "lists"], ["the", "1st", "list", "of", "lists", "of", "characters"]] (ListT $ ListT CharT),
                 TitleParam () [["the", "3rd", "list"], ["the", "2nd", "list", "of", "strings"], ["the", "2nd", "list", "of", "lists"], ["the", "2nd", "list", "of", "lists", "of", "characters"]] (ListT $ ListT CharT)
+            ],
+
+        testCase "List with lists of strings without collision" $
+            addAliases [TitleParam () [] (ListT IntT), TitleParam () [] (ListT $ ListT CharT), TitleParam () [["L"]] (ListT $ ListT CharT)]
+            @?=
+            [
+                TitleParam () [["the", "1st", "list"], ["the", "list", "of", "whole", "numbers"]] (ListT IntT),
+                TitleParam () [["the", "2nd", "list"], ["the", "1st", "list", "of", "strings"], ["the", "1st", "list", "of", "lists"], ["the", "1st", "list", "of", "lists", "of", "characters"]] (ListT $ ListT CharT),
+                TitleParam () [["L"]] (ListT $ ListT CharT)
+            ],
+
+        testCase "List with lists of strings with collision with \"the\"" $
+            addAliases [TitleParam () [] (ListT IntT), TitleParam () [] (ListT $ ListT CharT), TitleParam () [["the", "1st", "list", "of", "strings"]] (ListT $ ListT CharT)]
+            @?=
+            [
+                TitleParam () [["the", "1st", "list"], ["the", "list", "of", "whole", "numbers"]] (ListT IntT),
+                TitleParam () [["the", "2nd", "list"], ["the", "1st", "list", "of", "lists"], ["the", "1st", "list", "of", "lists", "of", "characters"]] (ListT $ ListT CharT),
+                TitleParam () [["the", "1st", "list", "of", "strings"]] (ListT $ ListT CharT)
+            ],
+
+        testCase "List with lists of strings with collision without \"the\"" $
+            addAliases [TitleParam () [] (ListT IntT), TitleParam () [] (ListT $ ListT CharT), TitleParam () [["1st", "list", "of", "strings"]] (ListT $ ListT CharT)]
+            @?=
+            [
+                TitleParam () [["the", "1st", "list"], ["the", "list", "of", "whole", "numbers"]] (ListT IntT),
+                TitleParam () [["the", "2nd", "list"], ["the", "1st", "list", "of", "lists"], ["the", "1st", "list", "of", "lists", "of", "characters"]] (ListT $ ListT CharT),
+                TitleParam () [["1st", "list", "of", "strings"]] (ListT $ ListT CharT)
             ]
     ]
 

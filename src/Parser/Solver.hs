@@ -41,26 +41,39 @@ intToPosition n
     | n < 10 = show n ++ "th"
     | otherwise = show (div n 10) ++ intToPosition (mod n 10)
 
-getTitleTypes :: [TitlePart a] -> [Type]
-getTitleTypes [] = []
-getTitleTypes (TitleWords _ _ : ts) = getTitleTypes ts
-getTitleTypes (TitleParam _ _ t : ts) = t : getTitleTypes ts
+titleTypes :: [TitlePart a] -> [Type]
+titleTypes [] = []
+titleTypes (TitleWords _ _ : ts) = titleTypes ts
+titleTypes (TitleParam _ _ t : ts) = t : titleTypes ts
 
+parameterNames :: [TitlePart a] -> [Name]
+parameterNames [] = []
+parameterNames (TitleWords _ _ : ts) = parameterNames ts
+parameterNames (TitleParam _ ns _ : ts) = ns ++ parameterNames ts
+
+-- ToDo: clean up
 computeAliases :: [TitlePart a] -> [[Name]]
 computeAliases ts =
-    let types = getTitleTypes ts
+    let types = titleTypes ts
+        setNames = parameterNames ts
         posAs = map possibleAliases types
-        (_, totAs) = runState (countRepetitions $ concat posAs) M.empty
+        (_, totAs) = runState (countRepetitions (concat posAs) >> removeNames setNames) M.empty
         (as, _) = runState (mapM (`getParameterAliases` totAs) posAs) M.empty
     in as
     where
         countRepetitions :: [Name] -> State (M.Map Name Int) ()
         countRepetitions = mapM_ (\n -> modify $ M.insertWith (+) n 1)
 
+        removeNames :: [Name] -> State (M.Map Name Int) ()
+        removeNames = mapM_ $ \(w:ws) -> do
+            modify $ M.insert (w:ws) 0
+            unless (w == "the") $ modify (M.insert ("the":w:ws) 0)
+
         getParameterAliases :: [Name] -> M.Map Name Int -> State (M.Map Name Int) [Name]
         getParameterAliases ns totAs = do
             countRepetitions ns
-            mapM (`addOrdinal` totAs) ns -- ToDo: remove aliases reserved manually by a previous parameter
+            ns' <- mapM (`addOrdinal` totAs) ns
+            return $ filter (\n -> M.findWithDefault 1 n totAs /= 0) ns'
 
         addOrdinal :: Name -> M.Map Name Int -> State (M.Map Name Int) Name
         addOrdinal n totAs = do
