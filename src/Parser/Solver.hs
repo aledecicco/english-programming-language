@@ -51,21 +51,20 @@ parameterNames [] = []
 parameterNames (TitleWords _ _ : ts) = parameterNames ts
 parameterNames (TitleParam _ ns _ : ts) = ns ++ parameterNames ts
 
--- ToDo: clean up
 computeAliases :: [TitlePart a] -> [[Name]]
 computeAliases ts =
     let types = titleTypes ts
         setNames = parameterNames ts
         posAs = map possibleAliases types
-        (_, totAs) = runState (countRepetitions (concat posAs) >> removeNames setNames) M.empty
+        (_, totAs) = runState (countRepetitions (concat posAs) >> cancelNames setNames) M.empty
         (as, _) = runState (mapM (`getParameterAliases` totAs) posAs) M.empty
     in as
     where
         countRepetitions :: [Name] -> State (M.Map Name Int) ()
         countRepetitions = mapM_ (\n -> modify $ M.insertWith (+) n 1)
 
-        removeNames :: [Name] -> State (M.Map Name Int) ()
-        removeNames = mapM_ $ \(w:ws) -> do
+        cancelNames :: [Name] -> State (M.Map Name Int) ()
+        cancelNames = mapM_ $ \(w:ws) -> do
             modify $ M.insert (w:ws) 0
             unless (w == "the") $ modify (M.insert ("the":w:ws) 0)
 
@@ -73,7 +72,7 @@ computeAliases ts =
         getParameterAliases ns totAs = do
             countRepetitions ns
             ns' <- mapM (`addOrdinal` totAs) ns
-            return $ filter (\n -> M.findWithDefault 1 n totAs /= 0) ns'
+            return $ filter (\n -> not $ M.member n totAs) ns'
 
         addOrdinal :: Name -> M.Map Name Int -> State (M.Map Name Int) Name
         addOrdinal n totAs = do
