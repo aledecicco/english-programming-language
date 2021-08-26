@@ -21,13 +21,15 @@ import Errors
 
 possibleAliases :: Type -> [Name]
 possibleAliases (RefT t) = possibleAliases t
-possibleAliases (ListT CharT) = [["list"], ["list", "of", "chars"], ["string"]]
-possibleAliases (ListT t) = ["list"] : map (["list", "of"]++) (possibleAliases' t)
+possibleAliases (ListT t) =
+    let as = ["list"] : map (["list", "of"]++) (possibleAliases' t)
+    in if t == CharT then ["string"]:as else as
     where
         possibleAliases' :: Type -> [Name]
-        possibleAliases' (ListT CharT) = [["lists"], ["lists", "of", "chars"], ["strings"]]
         possibleAliases' (ListT t@(ListT _)) = map (["lists", "of"]++) (possibleAliases' t)
-        possibleAliases' (ListT t) = ["lists"] :  map (["lists", "of"]++) (possibleAliases' t)
+        possibleAliases' (ListT t) =
+            let as = ["lists"] :  map (["lists", "of"]++) (possibleAliases' t)
+            in if t == CharT then ["strings"]:as else as
         possibleAliases' t  = [typeName t True]
 possibleAliases t =  [typeName t False]
 

@@ -316,8 +316,8 @@ addAliasesTests = testGroup "Add aliases"
             @?=
             [
                 TitleParam () [["the", "1st", "list"], ["the", "list", "of", "whole", "numbers"]] (ListT IntT),
-                TitleParam () [["the", "2nd", "list"], ["the", "1st", "list", "of", "lists"], ["the", "1st", "list", "of", "lists", "of", "chars"], ["the", "1st", "list", "of", "strings"]] (ListT $ ListT CharT),
-                TitleParam () [["the", "3rd", "list"], ["the", "2nd", "list", "of", "lists"], ["the", "2nd", "list", "of", "lists", "of", "chars"], ["the", "2nd", "list", "of", "strings"]] (ListT $ ListT CharT)
+                TitleParam () [["the", "2nd", "list"], ["the", "1st", "list", "of", "strings"], ["the", "1st", "list", "of", "lists"], ["the", "1st", "list", "of", "lists", "of", "characters"]] (ListT $ ListT CharT),
+                TitleParam () [["the", "3rd", "list"], ["the", "2nd", "list", "of", "strings"], ["the", "2nd", "list", "of", "lists"], ["the", "2nd", "list", "of", "lists", "of", "characters"]] (ListT $ ListT CharT)
             ]
     ]
 
