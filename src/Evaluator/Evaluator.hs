@@ -7,7 +7,7 @@ import EvaluatorEnv
 import BuiltInDefs
 import BuiltInEval
 import SolverEnv ( SolverData )
-import Utils ( firstNotNull, hasIterators, getFunId )
+import Utils ( firstNotNull, hasIterators )
 import Errors
 import AST
 

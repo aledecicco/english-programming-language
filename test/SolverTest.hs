@@ -6,6 +6,7 @@ import Test.Tasty.HUnit ( HasCallStack, testCase, assertFailure, Assertion, (@?=
 import BuiltInDefs ( builtInOperators, builtInProcedures )
 import Errors
 import SolverEnv
+import Matchers
 import Solver
 import AST
 
@@ -307,6 +308,19 @@ solveValueTests = testGroup "Solve value"
                 (Error (Just (0,1)) $ WrongTypeValue IntT BoolT)
     ]
 
+addAliasesTests :: TestTree
+addAliasesTests = testGroup "Add aliases"
+    [
+        testCase "List with lists of strings" $
+            addAliases [TitleParam () [] (ListT IntT), TitleParam () [] (ListT $ ListT CharT), TitleParam () [] (ListT $ ListT CharT)]
+            @?=
+            [
+                TitleParam () [["the", "1st", "list"], ["the", "list", "of", "whole", "numbers"]] (ListT IntT),
+                TitleParam () [["the", "2nd", "list"], ["the", "1st", "list", "of", "lists"], ["the", "1st", "list", "of", "lists", "of", "chars"], ["the", "1st", "list", "of", "strings"]] (ListT $ ListT CharT),
+                TitleParam () [["the", "3rd", "list"], ["the", "2nd", "list", "of", "lists"], ["the", "2nd", "list", "of", "lists", "of", "chars"], ["the", "2nd", "list", "of", "strings"]] (ListT $ ListT CharT)
+            ]
+    ]
+
 --
 
 
@@ -323,7 +337,8 @@ tests = testGroup "Solver"
         asProcedureCallTests,
         getValueTypeTests,
         setVariableTypeTests,
-        solveValueTests
+        solveValueTests,
+        addAliasesTests
     ]
 
 --

@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.4.
+-- This file has been generated from package.yaml by hpack version 0.33.0.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 6a3c80cbf6c748adbef9a8a8a403af999f87b08f70b9f4cc4d23a6c729858c6d
+-- hash: 32ad869a3559ac5cd975e44c74942b00a450c2d47412a97c160275691cae08e4
 
 name:           english-programming-language
 version:        3.3.0
@@ -25,6 +25,7 @@ library
       PrettyPrinter
       Utils
       FuzzyParser
+      Matchers
       Solver
       SolverEnv
       BuiltInEval

@@ -103,10 +103,10 @@ firstWord w@(x:xs) = word w <|> word (toUpper x : xs)
 firstWord "" = error "Can't parse an empty string"
 
 anyWord :: FuzzyParser String
-anyWord = lexeme (some letterChar <* notFollowedBy alphaNumChar) <|> position <?> "word"
+anyWord = lexeme (some letterChar <* notFollowedBy alphaNumChar) <|> ordinal <?> "word"
     where
-        position :: FuzzyParser String
-        position = do
+        ordinal :: FuzzyParser String
+        ordinal = do
             num <- some digitChar
             suffix <-
                 case last num of
@@ -121,7 +121,6 @@ integer = lexeme (L.signed (return ()) L.decimal <* notFollowedBy alphaNumChar) 
 
 float :: FuzzyParser Float
 float = lexeme (L.signed (return ()) L.float <* notFollowedBy alphaNumChar) <?> "float"
-
 
 charLiteral :: FuzzyParser Char
 charLiteral = lexeme (char '\'' >> L.charLiteral <* char '\'') <?> "char"
