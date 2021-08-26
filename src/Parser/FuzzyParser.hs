@@ -203,16 +203,17 @@ functionDefinition = do
     where
         functionHeader :: FuzzyParser (Annotated Title, Maybe Type)
         functionHeader = do
+            lookAhead upperChar
             rt <- returnType
             tSource <- title
             return (tSource, rt)
 
 returnType :: FuzzyParser (Maybe Type)
 returnType =
-    (word "Whether" >> return (Just BoolT))
-    <|> (word "To" >> return Nothing)
+    (firstWord "whether" >> return (Just BoolT))
+    <|> (firstWord "to" >> notFollowedBy (word "a") >> return Nothing)
     <|> do
-        word "A"
+        firstWord "a"
         rt <- baseType False
         word "equal"
         word "to"
@@ -222,10 +223,10 @@ returnType =
 title :: FuzzyParser (Annotated Title)
 title = do
     ann <- getCurrentLocation
-    x <- titleParam True <|> titleWords
+    x <- titleParam <|> titleWords
     xs <- case x of
-        (TitleWords _ _) -> intercalated (titleParam False) titleWords <|> return []
-        _ -> intercalated titleWords (titleParam False)
+        (TitleWords _ _) -> intercalated titleParam titleWords <|> return []
+        _ -> intercalated titleWords titleParam
     return $ Title ann (x:xs)
 
 -- Parses words for an identifying part of a function's title
@@ -236,10 +237,10 @@ titleWords = do
     return $ TitleWords ann ws
 
 -- Parses a parameter of a function's title
-titleParam :: Bool -> FuzzyParser (Annotated TitlePart)
-titleParam isFirst = do
+titleParam :: FuzzyParser (Annotated TitlePart)
+titleParam = do
     ann <- getCurrentLocation
-    if isFirst then firstWord "a" else word "a"
+    word "a"
     t <- referenceType <|> baseType False
     a <- ((:[]) <$> parens name) <|> return []
     return $ TitleParam ann a t

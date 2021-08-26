@@ -533,33 +533,33 @@ titleParamTests = testGroup "Title parameter"
     [
         testCase "Named" $
             expectedBareResult
-                (titleParam True)
-                "A number (m)"
+                titleParam
+                "a number (m)"
                 (TitleParam () [["m"]] FloatT),
 
         testCase "Followed by words" $
             expectedBareResult
-                (titleParam True)
-                "A number (m) function definition"
+                titleParam
+                "a number (m) function definition"
                 (TitleParam () [["m"]] FloatT),
 
         testCase "Two parameters" $
             expectedBareResult
-                (titleParam True)
-                "A number (m) a number (n)"
+                titleParam
+                "a number (m) a number (n)"
                 (TitleParam () [["m"]] FloatT),
 
         testCase "Missing name" $
             expectedBareResult
-                (titleParam True)
-                "A number"
+                titleParam
+                "a number"
                 (TitleParam () [] FloatT),
 
         testCase "Missing article uppercase" $
-            expectedFailure (titleParam True) "number (m)",
+            expectedFailure titleParam "number (m)",
 
         testCase "Missing article lowercase" $
-            expectedFailure (titleParam False) "number (m)"
+            expectedFailure titleParam "number (m)"
     ]
 
 listWithHeaderTests :: TestTree
