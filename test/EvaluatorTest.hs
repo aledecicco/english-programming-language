@@ -81,7 +81,7 @@ sentenceTests = testGroup "sentence"
                             While ()
                                 (OperatorCall () "%_is_less_than_%" [VarV () ["x"], IntV () 3])
                                 [ProcedureCall () "add_%_to_%" [IntV () 1, VarV () ["x"]]],
-                            Result () (VarV () ["x"])
+                            Return () (VarV () ["x"])
                         ]
                 )
                 stateWithFunctions
@@ -94,7 +94,7 @@ sentenceTests = testGroup "sentence"
                         mockLocations [
                             VarDef () [["x"]] (Just IntT) (IntV () 2),
                             ProcedureCall () "add_%_to_%" [IntV () 3, VarV () ["x"]],
-                            Result () (VarV () ["x"])
+                            Return () (VarV () ["x"])
                         ]
                 )
                 stateWithFunctions
@@ -107,7 +107,7 @@ sentenceTests = testGroup "sentence"
                         mockLocations [
                             VarDef () [["x"]] (Just IntT) (IntV () 2),
                             ProcedureCall () "divide_%_by_%" [VarV () ["x"], IntV () 2],
-                            Result () (VarV () ["x"])
+                            Return () (VarV () ["x"])
                         ]
                 )
                 stateWithFunctions
@@ -120,7 +120,7 @@ sentenceTests = testGroup "sentence"
                         mockLocations [
                             VarDef () [["x"]] (Just $ ListT FloatT) (ListV () FloatT [FloatV () 5.0, FloatV () 4.0]),
                             ProcedureCall () "append_%_to_%" [ListV () IntT [IntV () 3, IntV () 2, IntV () 1], VarV () ["x"]],
-                            Result () (VarV () ["x"])
+                            Return () (VarV () ["x"])
                         ]
                     case r of
                         Just v -> Just <$> loadReferences v
@@ -136,7 +136,7 @@ sentenceTests = testGroup "sentence"
                         mockLocations [
                             VarDef () [["x"]] (Just IntT) (IntV () 2),
                             Try () [ProcedureCall () "divide_%_by_%" [VarV () ["x"], FloatV () 0.0]],
-                            Result () (VarV () ["x"])
+                            Return () (VarV () ["x"])
                         ]
                 )
                 stateWithFunctions
@@ -150,7 +150,7 @@ sentenceTests = testGroup "sentence"
                             VarDef () [["x"]] (Just IntT) (IntV () 2),
                             TryCatch ()
                                 [ProcedureCall () "divide_%_by_%" [VarV () ["x"], FloatV () 0.0]]
-                                [Result () (VarV () ["x"])]
+                                [Return () (VarV () ["x"])]
                         ]
                 )
                 stateWithFunctions
@@ -174,7 +174,7 @@ sentenceTests = testGroup "sentence"
                         [
                             TryCatch (0,0)
                                 [VarDef (1,4) [["x"]] Nothing (OperatorCall (1,13) "%_divided_by_%" [FloatV (1,13) 2.0, FloatV (1,28) 0.0])]
-                                [Result (3,4) (VarV (3,18) ["x"])]
+                                [Return (3,4) (VarV (3,18) ["x"])]
                         ]
                 )
                 stateWithFunctions
@@ -188,7 +188,7 @@ sentenceTests = testGroup "sentence"
                             If (0,0)
                                 (BoolV (0,3) True)
                                 [VarDef (1,0) [["x"]] (Just IntT) (IntV (1,6) 3)],
-                            Result (2,0) (VarV (2,14) ["x"])
+                            Return (2,0) (VarV (2,14) ["x"])
                         ]
                 )
                 stateWithFunctions
@@ -202,7 +202,7 @@ sentenceTests = testGroup "sentence"
                             If (0,0)
                                 (BoolV (0,3) False)
                                 [VarDef (1,0) [["x"]] (Just IntT) (IntV (1,6) 3)],
-                            Result (2,0) (VarV (2,14) ["x"])
+                            Return (2,0) (VarV (2,14) ["x"])
                         ]
                 )
                 stateWithFunctions
@@ -215,7 +215,7 @@ sentenceTests = testGroup "sentence"
                         [
                             VarDef (0,0) [["x"]] (Just IntT) (IntV (0,6) 2),
                             ProcedureCall (1,0) "divide_%_by_%" [VarV (1,7) ["x"], FloatV (1,11) 0.0],
-                            Result (2,0) (VarV (0,14) ["x"])
+                            Return (2,0) (VarV (0,14) ["x"])
                         ]
                 )
                 stateWithFunctions

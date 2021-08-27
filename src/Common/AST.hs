@@ -39,7 +39,7 @@ data Sentence a =
     | VarDef a [Name] (Maybe Type) (Value a)
     | If a (Value a) [Sentence a] | IfElse a (Value a) [Sentence a] [Sentence a]
     | ForEach a Name Type (Value a) [Sentence a] | Until a (Value a) [Sentence a] | While a (Value a) [Sentence a]
-    | Result a (Value a)
+    | Return a (Value a)
     | ProcedureCall a FunId [Value a]
     | Try a [Sentence a] | TryCatch a [Sentence a] [Sentence a] | Throw a [String]
     deriving (Eq, Show, Functor, Foldable)

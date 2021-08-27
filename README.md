@@ -1,7 +1,7 @@
 # EPL
 A programming language that resembles English. Write some sentences and watch the interpreter try to understand what you meant.
 
-![Version](https://img.shields.io/badge/version-v3.5.0-blue)
+![Version](https://img.shields.io/badge/version-v3.5.1-blue)
 ![License](https://img.shields.io/badge/license-MIT-brightgreen)
 
 # Syntax
@@ -102,9 +102,9 @@ If there are more than one element, the type is written in plural without `a`.
 
 Note that if the list has more than one element, there has to be a comma after each element except the last one (including the one right before `and`). This is called [serial comma](https://en.wikipedia.org/wiki/Serial_comma).
 
-### Result
+### Return
 ```
-The result is %value%
+Return %value%
 ```
 Tells the function to return a specific value.
 
@@ -114,7 +114,7 @@ Any procedure can be used as a sentence, filling in with values the gaps where f
 ### Control flow
 These sentences all have something in common: they contain other sentences. All of them have a simple form and a block form, both sharing the same header.
 
-Sentences in their simple form can only have one sentence inside them, and it can only be a variable declaration, a result statement or a procedure call. The header must end in a comma, after which comes the contained sentence.
+Sentences in their simple form can only have one sentence inside them, and it can only be a variable declaration, a return statement or a procedure call. The header must end in a comma, after which comes the contained sentence.
 
 Sentences in their block form contain a list of sentences without any restrictions. The header must end in a semicolon and indentation rules used for function definitions also apply here.
 
@@ -196,7 +196,7 @@ Let x, y, and z be numbers equal to 2.
 
 Make the current function return `6`:
 ```
-The result is 2 times 3.
+Return 2 times 3.
 ```
 
 Call the procedure `print` with `6` as its argument:

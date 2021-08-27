@@ -4,7 +4,7 @@ A whole number equal to the fibonacci sequence at a whole number (position):
         Swap x with y.
         Add x to y.
         Add 1 to i.
-    The result is x.
+    Return x.
 
 To run:
     Let n be 20.

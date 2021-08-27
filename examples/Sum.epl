@@ -1,7 +1,7 @@
 A number equal to the sum of a list of numbers:
     Let r be 0.
     Add each number in the list to r.
-    The result is r.
+    Return r.
 
 To run:
     Let L be a list of numbers containing 1, 2, and 3.5.

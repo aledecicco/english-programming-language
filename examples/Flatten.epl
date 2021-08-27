@@ -1,6 +1,6 @@
 A list of numbers equal to a list of lists of numbers (L) flattened:
     Let R be a list of numbers containing each number in each list of numbers in L.
-    The result is R.
+    Return R.
 
 To run:
     Let A be a list of numbers containing 1, 2, and 3.

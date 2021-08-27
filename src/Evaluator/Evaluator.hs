@@ -184,7 +184,7 @@ evaluateSentence s = tick >> evaluateSentence' s
                         (Just v'') -> return $ Just v''
                         Nothing -> evaluateSentence s
                 else return Nothing
-        evaluateSentence' (Result _ v) = do
+        evaluateSentence' (Return _ v) = do
             v' <- withLocation v evaluateValue
             return $ Just v'
         evaluateSentence' (ProcedureCall _ fid vs) = do

@@ -380,9 +380,8 @@ forEachBlock = do
 result :: FuzzyParser (Annotated Sentence)
 result = do
     ann <- getCurrentLocation
-    try $ firstWord "the" >> word "result"
-    word "is"
-    Result ann <$> value
+    firstWord "return"
+    Return ann <$> value
 
 tryHeader :: FuzzyParser ()
 tryHeader = void $ firstWord "try" >> word "to"

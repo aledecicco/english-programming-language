@@ -300,11 +300,11 @@ solveSentence rt (While ann v ls) = do
     v' <- withLocation v $ solveValueWithType BoolT False
     ls' <- solveSentences ls rt
     return $ While ann v' ls'
-solveSentence rt (Result ann v) =
+solveSentence rt (Return ann v) =
     case rt of
         Just t -> do
             v' <- withLocation v $ solveValueWithType t False
-            return $ Result ann v'
+            return $ Return ann v'
         Nothing -> throwHere ResultInProcedure
 solveSentence rt (Try ann ss) = Try ann <$> mapM (`withLocation` solveSentence rt) ss
 solveSentence rt (TryCatch ann ts cs) = do

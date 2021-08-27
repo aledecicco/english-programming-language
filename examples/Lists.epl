@@ -5,7 +5,7 @@ To shuffle a reference to a string:
 
 A string equal to the first half of a string (L):
     Let K be a string containing the element of L at 0, and the element of L at 1.
-    The result is K.
+    Return K.
 
 To run:
     Let L be "1234".

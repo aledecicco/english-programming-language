@@ -416,13 +416,13 @@ functionDefinitionTests = testGroup "Function definition"
         testCase "Operator" $
             expectedResult
                 functionDefinition
-                "A number equal to the double of a number (m):\n  Let r be m times 2.\n  The result is r."
+                "A number equal to the double of a number (m):\n  Let r be m times 2.\n  Return r."
                 (FunDef (1,1)
                     (Title (1,19) [TitleWords (1,19) ["the", "double", "of"], TitleParam (1,33) [["m"]] FloatT])
                     (Just FloatT)
                     [
                         VarDef (2,3) [["r"]] Nothing (ValueM (2,12) [WordP (2,12) "m", WordP (2,14) "times", IntP (2,20) 2]),
-                        Result (3,3) (ValueM (3,17) [WordP (3,17) "r"])
+                        Return (3,3) (ValueM (3,10) [WordP (3,10) "r"])
                     ]
                 ),
 
@@ -441,24 +441,24 @@ functionDefinitionTests = testGroup "Function definition"
         testCase "Predicate" $
             expectedResult
                 functionDefinition
-                "Whether a number (m) is whole:\n  The result is false."
+                "Whether a number (m) is whole:\n  Return false."
                 (FunDef (1,1)
                     (Title (1,9) [TitleParam (1,9) [["m"]] FloatT, TitleWords (1,22) ["is", "whole"]])
                     (Just BoolT)
                     [
-                        Result (2,3) (ValueM (2,17) [WordP (2,17) "false"])
+                        Return (2,3) (ValueM (2,10) [WordP (2,10) "false"])
                     ]
                 ),
 
         testCase "Consecutive arguments in title" $
             expectedFailure
                 functionDefinition
-                "A number equal to the double of a number (m) a number (n):\n  The result is m times n.",
+                "A number equal to the double of a number (m) a number (n):\n  Return m times n.",
 
         testCase "Operator without return type" $
             expectedFailure
                 functionDefinition
-                "The double of a number (m):\n  Let r be m times 2.\n  The result is r."
+                "The double of a number (m):\n  Let r be m times 2.\n  Return r."
     ]
 
 titleTests :: TestTree
