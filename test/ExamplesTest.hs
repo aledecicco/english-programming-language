@@ -68,7 +68,9 @@ exampleTests = testGroup "example"
 
         exampleTestCase "Flatten" [] "[[1, 2, 3], [4, 5, 6], [7, 8, 9]] flattened is [1, 2, 3, 4, 5, 6, 7, 8, 9]",
 
-        exampleTestCase "Iterators" [] "[1, 1, 2, 1, 2, 3, 1, 2, 3, 4, 1, 2, 3, 4, 5]"
+        exampleTestCase "Iterators" [] "[1, 1, 2, 1, 2, 3, 1, 2, 3, 4, 1, 2, 3, 4, 5]",
+
+        exampleTestCase "Head" [] "The list is empty\nThe head of the list is 1"
     ]
 
 --

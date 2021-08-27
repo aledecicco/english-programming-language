@@ -92,7 +92,7 @@ ppErrorType (MismatchingTypeAssigned eT aT n) = unwords ["Could not assign a", p
 ppErrorType ResultInProcedure = "Found unexpected result statement in procedure"
 ppErrorType ExpectedResult = "Expected a result statement before end of operator"
 ppErrorType ForbiddenIteratorUsed = "Can't use iterators here"
-ppErrorType (CodeError ss) = unwords ss
+ppErrorType (CodeError s) = unwords s
 ppErrorType (ParseError s) = s
 
 ppError :: Error -> String

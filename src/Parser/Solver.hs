@@ -306,6 +306,12 @@ solveSentence rt (Result ann v) =
             v' <- withLocation v $ solveValueWithType t False
             return $ Result ann v'
         Nothing -> throwHere ResultInProcedure
+solveSentence rt (Try ann ss) = Try ann <$> mapM (`withLocation` solveSentence rt) ss
+solveSentence rt (TryCatch ann ts cs) = do
+    ts' <- mapM (`withLocation` solveSentence rt) ts
+    cs' <- mapM (`withLocation` solveSentence rt) cs
+    return $ TryCatch ann ts' cs'
+solveSentence rt (Throw ann msg) = return $ Throw ann msg
 solveSentence _ (SentenceM ann ps) = do
     r <- matchAsSentence ps
     case r of
@@ -342,7 +348,7 @@ solveProgram p = runSolverEnv (solveProgram' p) initialState initialLocation
             setFunctions $ builtInOperators ++ builtInProcedures
             registerFunctions p'
             mainIsDef <- functionIsDefined "run"
-            unless mainIsDef $ throwError (Error Nothing (UndefinedFunction "run"))
+            unless mainIsDef $ throwNowhere (UndefinedFunction "run")
             mapM (restoringVariables . solveBlock) p'
 
 --

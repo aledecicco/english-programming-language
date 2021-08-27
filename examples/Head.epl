@@ -1,0 +1,14 @@
+To print the head of a list of numbers:
+    Try to:
+        Let the head be the element of the list of numbers at 0.
+        Print "The head of the list is ".
+        Print the head .
+    In case of error:
+        Print "The list is empty".
+
+To run:
+    Let L be a list of numbers.
+    Let M be a list of numbers containing 1, 2, 3, and 4.
+    Print the head of L.
+    Print "\n".
+    Print the head of M.

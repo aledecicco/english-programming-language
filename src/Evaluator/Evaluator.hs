@@ -191,6 +191,9 @@ evaluateSentence s = tick >> evaluateSentence' s
             vss <- mapM getIteratorValues vs
             mapM_ (evaluateProcedure fid) $ sequence vss
             return Nothing
+        evaluateSentence' (Try _ ss) = evaluateSentences ss `catchCodeError` \_ -> return Nothing
+        evaluateSentence' (TryCatch _ ts cs) = evaluateSentences ts `catchCodeError` \_ -> evaluateSentences cs
+        evaluateSentence' (Throw _ msg) = throwHere $ CodeError msg
         evaluateSentence' (SentenceM _ _) = error "Shouldn't happen: sentences must be solved before evaluating them"
 
 evaluateOperator :: ReadWrite m => FunId -> [Bare Value] -> EvaluatorEnv m (Bare Value)

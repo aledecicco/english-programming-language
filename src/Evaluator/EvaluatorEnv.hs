@@ -1,9 +1,10 @@
-module EvaluatorEnv ( module EvaluatorEnv, module Location ) where
+module EvaluatorEnv ( module EvaluatorEnv, module Location, catchError ) where
 
 import Control.Monad ( when )
+import Control.Monad.Except ( throwError, catchError )
 import Control.Monad.Trans.Class ( lift )
 import Control.Monad.Trans.State.Strict ( gets, modify, runStateT, StateT )
-import Control.Monad.Trans.Except ( throwE, runExceptT, ExceptT )
+import Control.Monad.Trans.Except ( runExceptT, ExceptT )
 import qualified Data.Map.Strict as M
 import qualified Data.IntMap.Strict as IM
 import qualified Data.IntSet as IS
@@ -46,13 +47,17 @@ initialState = (M.empty, [], IM.empty, 0, initMaxMem)
 
 -- Errors
 
-throw :: Monad m => ErrorType -> EvaluatorEnv m a
-throw eT = lift . lift . throwE $ Error Nothing eT
+catchCodeError :: Monad m => EvaluatorEnv m a -> (Error -> EvaluatorEnv m a) -> EvaluatorEnv m a
+catchCodeError a f =
+    a `catchError` \err ->
+        case err of
+            (Error _ (CodeError msg)) -> f err;
+            _ -> throwError err
 
 throwHere :: Monad m => ErrorType -> EvaluatorEnv m a
 throwHere eT = do
     l <- getCurrentLocation
-    lift . lift . throwE $ Error (Just l) eT
+    throwError $ Error (Just l) eT
 
 --
 

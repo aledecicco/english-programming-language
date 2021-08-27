@@ -1,4 +1,4 @@
-module SolverEnv ( module SolverEnv, module Location, throwError, catchError ) where
+module SolverEnv ( module SolverEnv, module Location, catchError ) where
 
 import Data.Bifunctor ( first, second )
 import Control.Monad.Except ( throwError, catchError )
@@ -28,6 +28,9 @@ initialState = ([], [])
 
 
 -- Errors
+
+throwNowhere :: ErrorType -> SolverEnv a
+throwNowhere eT = throwError $ Error Nothing eT
 
 throwHere :: ErrorType -> SolverEnv a
 throwHere eT = do

@@ -357,7 +357,6 @@ Modifies the value of the given variable, appending the list to it.
 
 # Possible improvements:
 - Find a better syntax for specifying function return types
-- Some sort of try-catch expression (try to, and in case of error?)
 - Implement importing other files as libraries (without the `Run` procedure)
 - Prevent the `Run` procedure from being called explicitly
 - Add more built-in functions

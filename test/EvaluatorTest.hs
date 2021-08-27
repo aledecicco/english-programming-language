@@ -129,6 +129,57 @@ sentenceTests = testGroup "sentence"
                 stateWithFunctions
                 (ListV () FloatT [FloatV () 5.0, FloatV () 4.0, IntV () 3, IntV () 2, IntV () 1]),
 
+        testCase "Caught division by zero" $
+            expectedResult
+                (
+                    evaluateSentences $
+                        mockLocations [
+                            VarDef () [["x"]] (Just IntT) (IntV () 2),
+                            Try () [ProcedureCall () "divide_%_by_%" [VarV () ["x"], FloatV () 0.0]],
+                            Result () (VarV () ["x"])
+                        ]
+                )
+                stateWithFunctions
+                (IntV () 2),
+
+        testCase "Variable definition before caught throw" $
+            expectedResult
+                (
+                    evaluateSentences $
+                        mockLocations [
+                            VarDef () [["x"]] (Just IntT) (IntV () 2),
+                            TryCatch ()
+                                [ProcedureCall () "divide_%_by_%" [VarV () ["x"], FloatV () 0.0]]
+                                [Result () (VarV () ["x"])]
+                        ]
+                )
+                stateWithFunctions
+                (IntV () 2),
+
+        testCase "Caught throw" $
+            expectedSuccess
+                (evaluateSentences $ mockLocations [Try () [Throw () ["test", "error"]]])
+                stateWithFunctions,
+
+        testCase "Uncaught throw" $
+            expectedError
+                (evaluateSentences [Throw (0,0) ["test", "error"]])
+                stateWithFunctions
+                (Error (Just (0,0)) $ CodeError ["test", "error"]),
+
+        testCase "Undefined variable after let with throw" $
+            expectedError
+                (
+                    evaluateSentences
+                        [
+                            TryCatch (0,0)
+                                [VarDef (1,4) [["x"]] Nothing (OperatorCall (1,13) "%_divided_by_%" [FloatV (1,13) 2.0, FloatV (1,28) 0.0])]
+                                [Result (3,4) (VarV (3,18) ["x"])]
+                        ]
+                )
+                stateWithFunctions
+                (Error (Just (3,18)) $ UndefinedVariable ["x"]),
+
         testCase "Variable not in scope after true if" $
             expectedError
                 (

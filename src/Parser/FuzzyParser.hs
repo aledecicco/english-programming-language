@@ -262,12 +262,15 @@ sentence = lookAhead upperChar >> do
         <|> (simpleWhile <* dot)
         <|> whileBlock
         <|> (result <* dot)
+        <|> throw
+        <|> (simpleTry <* dot)
+        <|> tryBlock
         <|> (sentenceMatchable <* dot)
         <?> "sentence"
 
 -- Parses a sentence that can be used inside a simple statement
 simpleSentence :: FuzzyParser (Annotated Sentence)
-simpleSentence = variablesDefinition <|> result <|> sentenceMatchable <?> "simple sentence"
+simpleSentence = variablesDefinition <|> result <|> throw <|> sentenceMatchable <?> "simple sentence"
 
 -- Parses the definition of one or more variables with the same value
 variablesDefinition :: FuzzyParser (Annotated Sentence)
@@ -380,6 +383,42 @@ result = do
     try $ firstWord "the" >> word "result"
     word "is"
     Result ann <$> value
+
+tryHeader :: FuzzyParser ()
+tryHeader = void $ firstWord "try" >> word "to"
+
+simpleTry :: FuzzyParser (Annotated Sentence)
+simpleTry = do
+    ann <- getCurrentLocation
+    s <- try $ tryHeader >> simpleSentence
+    (TryCatch ann [s] <$> simpleCatch) <|> return (Try ann [s])
+    where
+        simpleCatch :: FuzzyParser [Annotated Sentence]
+        simpleCatch = do
+            comma
+            word "and"
+            word "in"
+            word "case"
+            word "of"
+            word "error"
+            s <- simpleSentence
+            return [s]
+
+tryBlock :: FuzzyParser (Annotated Sentence)
+tryBlock = do
+    ann <- getCurrentLocation
+    (_, ss) <- blockSentence tryHeader
+    (TryCatch ann ss <$> catchBlock) <|> return (Try ann ss)
+    where
+        catchBlock :: FuzzyParser [Annotated Sentence]
+        catchBlock = snd <$> listWithHeader (word "In" >> word "case" >> word "of" >> word "error") sentence
+
+throw :: FuzzyParser (Annotated Sentence)
+throw = do
+    ann <- getCurrentLocation
+    try $ firstWord "there" >> word "is" >> word "an" >> word "error"
+    word "because"
+    Throw ann <$> some anyWord
 
 sentenceMatchable :: FuzzyParser (Annotated Sentence)
 sentenceMatchable = do
