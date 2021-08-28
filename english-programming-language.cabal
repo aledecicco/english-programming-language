@@ -1,13 +1,13 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.4.
+-- This file has been generated from package.yaml by hpack version 0.33.0.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 098b77bd1706a866addfeb42cdc5f6c726c5c54ed280639d7c490b338dfe5b87
+-- hash: 465eb5b58f2acbef89ace644066d8a1d8a4c20288abad55bc5ce2a97f13bfb4c
 
 name:           english-programming-language
-version:        3.5.1
+version:        3.6.0
 author:         Alejandro De Cicco
 maintainer:     alejandrodecicco99@gmail.com
 license:        MIT

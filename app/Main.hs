@@ -3,7 +3,7 @@ module Main where
 import FuzzyParser ( parseProgram )
 import Solver ( solveProgram )
 import Evaluator ( evaluateProgram )
-import PrettyPrinter ( ppError )
+import PrettyPrinter ( ppError, ppWarning )
 
 
 main :: IO ()
@@ -13,8 +13,11 @@ main = do
         Left e -> putStrLn $ ppError e
         Right p ->
             case solveProgram p of
-                Left e' -> putStrLn $ ppError e'
-                Right ((p', _), d) -> do
+                (Left e', ws) -> do
+                    mapM_ (putStrLn . ppWarning) ws
+                    putStrLn $ ppError e'
+                (Right ((p', _), d), ws) -> do
+                    mapM_ (putStrLn . ppWarning) ws
                     r <- evaluateProgram p' d
                     case r of
                         Left e'' -> putStrLn $ "\n" ++ ppError e''

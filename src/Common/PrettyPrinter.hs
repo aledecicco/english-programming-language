@@ -4,7 +4,7 @@ import Data.List (intercalate)
 import Control.Monad ( void )
 
 import AST
-import Errors ( Error(..), ErrorType(..) )
+import Errors ( Error(..), ErrorType(..), Warning (..), WarningType (..) )
 import Utils ( typeName )
 
 --
@@ -99,6 +99,19 @@ ppError :: Error -> String
 ppError (Error l eT) =
     let errM = ppErrorType eT
         hM = case l of
-            (Just (ln, cn)) -> unwords ["An error occured in line", show ln, "column", show cn]
-            Nothing -> "An error occured"
+            (Just (ln, cn)) -> unwords ["Error in line", show ln, "column", show cn]
+            Nothing -> "Error"
     in hM ++ ":\n" ++ errM ++ ".\n"
+
+ppWarningType :: WarningType -> String
+ppWarningType (AmbiguousValue i ps) = unwords ["Value", doubleQuote $ ppMatchable ps, "can be understood in", show i, "different ways"]
+ppWarningType (AmbiguousSentence i ps) = unwords ["Sentence", doubleQuote $ ppMatchable ps, "can be understood in", show i, "different ways"]
+
+ppWarning :: Warning -> String
+ppWarning (Warning l wT) =
+    let wrnM = ppWarningType wT
+        hM = case l of
+            (Just (ln, cn)) -> unwords ["Warning in line", show ln, "column", show cn]
+            Nothing -> "Warning"
+    in hM ++ ":\n" ++ wrnM ++ ".\n"
+

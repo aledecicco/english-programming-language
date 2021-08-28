@@ -3,8 +3,8 @@ module SolverEnv ( module SolverEnv, module Location, catchError ) where
 import Data.Bifunctor ( first, second )
 import Control.Monad.Except ( throwError, catchError )
 import Control.Monad.Trans.Class ( lift )
-import Control.Monad.Trans.State ( gets, modify, runStateT, StateT )
-import Control.Monad.Trans.Except ( runExcept, Except )
+import Control.Monad.Trans.State ( gets, modify, runStateT, runState, State, StateT )
+import Control.Monad.Trans.Except ( runExceptT, ExceptT )
 
 import Errors
 import Location
@@ -16,10 +16,10 @@ import AST
 -- Type definition
 
 type SolverData = ([(FunId, FunSignature)], [(Name, Type)])
-type SolverEnv a = LocationT (StateT SolverData (Except Error)) a
+type SolverEnv a = LocationT (StateT SolverData (ExceptT Error (State [Warning]))) a
 
-runSolverEnv :: SolverEnv a -> SolverData -> Location -> Either Error ((a, Location), SolverData)
-runSolverEnv f d s = runExcept $ runStateT (runLocationT f s) d
+runSolverEnv :: SolverEnv a -> [Warning] -> Location -> SolverData -> (Either Error ((a, Location), SolverData), [Warning])
+runSolverEnv f w l d = runState (runExceptT $ runStateT (runLocationT f l) d) w
 
 initialState :: SolverData
 initialState = ([], [])
@@ -36,6 +36,11 @@ throwHere :: ErrorType -> SolverEnv a
 throwHere eT = do
     l <- getCurrentLocation
     throwError $ Error (Just l) eT
+
+warnHere :: WarningType -> SolverEnv ()
+warnHere wT = do
+    l <- getCurrentLocation
+    lift .lift . lift $ modify (Warning (Just l) wT :)
 
 --
 

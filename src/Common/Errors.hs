@@ -29,4 +29,12 @@ data ErrorType =
 data Error = Error (Maybe Location) ErrorType
     deriving (Eq, Show)
 
+data WarningType =
+    AmbiguousValue Int [Annotated MatchablePart]
+    | AmbiguousSentence Int [Annotated MatchablePart]
+    deriving (Eq, Show)
+
+data Warning = Warning (Maybe Location) WarningType
+    deriving (Eq, Show)
+
 --

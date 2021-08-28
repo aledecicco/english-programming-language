@@ -9,7 +9,7 @@ import AST
 
 --
 
-type LocationT m r = StateT Location m r
+type LocationT = StateT Location
 
 getLocation :: Foldable a => a b -> b
 getLocation = head . foldr (:) []

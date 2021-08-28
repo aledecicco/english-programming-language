@@ -23,24 +23,24 @@ stateWithFunctions =
 
 -- Asserts that a parser action yields a specific result with the given environment
 expectedResult :: (HasCallStack, Eq a, Show a) => SolverEnv a -> SolverData -> a -> Assertion
-expectedResult a s r =
-    case runSolverEnv a s initialLocation of
-        Left e -> assertFailure $ "Parser action failed, the error was:\n" ++ show e
-        Right ((r', _), _) -> r' @?= r
+expectedResult a d r =
+    case runSolverEnv a [] initialLocation d of
+        (Left e, _) -> assertFailure $ "Parser action failed, the error was:\n" ++ show e
+        (Right ((r', _), _), _) -> r' @?= r
 
 -- Asserts that a parser action succeeds with the given environment
 expectedSuccess :: (HasCallStack, Show a) => SolverEnv a -> SolverData -> Assertion
-expectedSuccess a s =
-    case runSolverEnv a s initialLocation of
-        Left e -> assertFailure $ "Parser action failed, the error was:\n" ++ show e
-        Right _ -> return ()
+expectedSuccess a d =
+    case runSolverEnv a [] initialLocation d of
+        (Left e, _) -> assertFailure $ "Parser action failed, the error was:\n" ++ show e
+        (Right _, _) -> return ()
 
 -- Asserts that a parser action yields a specific error with the given environment
 expectedError :: (HasCallStack, Show a) => SolverEnv a -> SolverData -> Error -> Assertion
-expectedError a s e =
-    case runSolverEnv a s initialLocation of
-        Left e' -> e' @?= e
-        Right ((r, _), _) -> assertFailure $ "Parser action didn't fail, the result was " ++ show r
+expectedError a d e =
+    case runSolverEnv a [] initialLocation d of
+        (Left e', _) -> e' @?= e
+        (Right ((res, _), _), _) -> assertFailure $ "Parser action didn't fail, the result was " ++ show res
 
 --
 

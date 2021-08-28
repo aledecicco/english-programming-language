@@ -243,8 +243,10 @@ solveValue valFun (ValueM _ ps) = do
             r <- catMaybes <$> mapM tryValue vs
             case r of
                 [v] -> return v
-                (v:_) -> {- ToDo: ambiguity warning >> -} return v
                 [] -> throwHere $ UnmatchableValueTypes ps
+                vs -> do
+                    warnHere $ AmbiguousValue (length vs) ps
+                    return $ head vs
 solveValue valFun l@((ListV ann eT es)) = do
     valFun l
     es' <- mapM (`withLocation` solveValueWithType eT True) es
@@ -322,8 +324,10 @@ solveSentence _ (SentenceM ann ps) = do
             r <- catMaybes <$> mapM trySentence vs
             case r of
                 [s] -> return s
-                (s:_) -> {- ToDo: ambiguity warning >> -} return s
                 [] -> throwHere $ UnmatchableSentenceTypes ps
+                ss -> do
+                    warnHere $ AmbiguousSentence (length ss) ps
+                    return $ head ss
 solveSentence _ (ProcedureCall {}) = error "Shouldn't happen: procedure calls can only be created by solving a matchable"
 
 solveSentences :: [Annotated Sentence] -> Maybe Type -> SolverEnv [Annotated Sentence]
@@ -339,8 +343,8 @@ solveBlock (FunDef ann t rt ss) = do
 
 -- Main
 
-solveProgram :: Program -> Either Error ((Program, Location), SolverData)
-solveProgram p = runSolverEnv (solveProgram' p) initialState initialLocation
+solveProgram :: Program -> (Either Error ((Program, Location), SolverData), [Warning])
+solveProgram p = runSolverEnv (solveProgram' p) [] initialLocation initialState
     where
         solveProgram' :: Program -> SolverEnv Program
         solveProgram' p = do
