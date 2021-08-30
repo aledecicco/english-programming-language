@@ -1,20 +1,45 @@
 module Main where
 
-import System.IO.Error ( isDoesNotExistError )
-import Control.Exception ( tryJust )
+import System.Console.ANSI
+import System.IO.Error ( tryIOError )
 import Control.Monad ( unless, guard )
 
 import FuzzyParser ( parseProgram )
 import Solver ( solveProgram )
 import Evaluator ( evaluateProgram )
-import PrettyPrinter ( errorMessage, warningMessage, ppError, ppWarning, successMessage )
+import PrettyPrinter ( ppError, ppWarning )
+
+
+
+-- Messages
+
+message :: Color -> String -> IO ()
+message c msg = do
+    setSGR [SetColor Foreground Vivid c]
+    putStrLn msg
+    putStrLn ""
+    setSGR [Reset]
+
+errorMessage :: String -> IO ()
+errorMessage = message Red
+
+warningMessage :: String -> IO ()
+warningMessage = message Yellow
+
+successMessage :: String -> IO ()
+successMessage = message Green
+
+--
+
+
+-- Main
 
 main :: IO ()
 main = do
     putStrLn ""
-    r <- tryJust (guard . isDoesNotExistError) $ readFile "examples/Head.epl"
+    r <- tryIOError $ readFile "examples/Head.epl"
     case r of
-      Left e -> errorMessage "Error: the input file does not exist."
+      Left e -> errorMessage "Error: the input file could not be opened."
       Right fc -> runInterpreter fc
     where
         runInterpreter :: String -> IO ()
@@ -34,3 +59,5 @@ main = do
                             case r of
                                 Left e'' -> errorMessage $ ppError fLs e''
                                 Right _ -> putChar '\n'
+
+--

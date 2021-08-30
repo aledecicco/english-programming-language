@@ -1,9 +1,10 @@
 module PrettyPrinter where
 
+import Data.Bifunctor ( first, second )
 import Data.Char ( isSpace )
 import Data.List ( intercalate )
-import Control.Monad ( void )
-import System.Console.ANSI
+import Control.Monad ( void, when )
+import Control.Monad.Trans.State ( get, modify, runState, State )
 
 import AST
 import Errors ( Error(..), ErrorType(..), Warning (..), WarningType (..) )
@@ -82,20 +83,27 @@ ppMatchablePart (ParensP ps) = surround "(" ")" $ ppMatchable ps
 ppMatchable :: [MatchablePart a] -> String
 ppMatchable ps = unwords $ map ppMatchablePart ps
 
--- ToDo: clean up
 ppSourcePosition :: [String] -> Location -> String
 ppSourcePosition ls (ln, cn) =
     let
+        ln' = show ln
+        sep = replicate (length ln') ' ' ++ " | "
+        maxW = width - length sep
+
         l = ls !! (ln - 1)
+        lenL = length l
+
         spaces = length $ takeWhile isSpace l
-        l' = drop spaces l
-        cn' = cn - spaces
-        sep = replicate (length (show ln)) ' ' ++ " |"
-        space = 79 - length sep
-        start = max 0 $ (cn' - 11) - (max 0 $ space - (length l' - (cn' - 11)))
-        end = min space (length l' - start)
-        l'' = take end (drop start l')
-    in unlines [sep, show ln ++ " | " ++ l'', sep ++ replicate ((cn - start) - spaces) ' ' ++ "^"]
+        start = max spaces (min (cn - pad) (lenL - maxW))
+        l' = take maxW $ drop start l
+
+        bef = if start == spaces then "" else "..."
+        aft = if start + maxW >= lenL then "" else "..."
+        pntr = replicate (length bef + cn - 1 - start) ' ' ++ "^"
+    in unlines [sep, ln' ++ " | " ++ bef ++ l' ++ aft, sep ++ pntr]
+    where
+        width = 74
+        pad = 10
 
 --
 
@@ -142,23 +150,3 @@ ppWarning ls (Warning l wT) =
 
 --
 
-
--- Messages
-
-message :: Color -> String -> IO ()
-message c msg = do
-    setSGR [SetColor Foreground Vivid c]
-    putStrLn msg
-    putStrLn ""
-    setSGR [Reset]
-
-errorMessage :: String -> IO ()
-errorMessage = message Red
-
-warningMessage :: String -> IO ()
-warningMessage = message Yellow
-
-successMessage :: String -> IO ()
-successMessage = message Green
-
---
