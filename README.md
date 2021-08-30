@@ -1,7 +1,7 @@
 # EPL
 A programming language that resembles English. Write some sentences and watch the interpreter try to understand what you meant.
 
-![Version](https://img.shields.io/badge/version-v3.6.1-blue)
+![Version](https://img.shields.io/badge/version-v3.7.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-brightgreen)
 
 # Syntax
@@ -362,7 +362,6 @@ Modifies the value of the given variable, appending the list to it.
 - Add more built-in functions
 - Clean up code with unused variables
 - Refactor using more meaningful variable names
-- Print source line in errors
 - Separate the README into more files
 - Generate an executable
 - Clean test cases and examples

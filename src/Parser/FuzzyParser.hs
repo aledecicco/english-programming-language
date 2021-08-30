@@ -126,7 +126,7 @@ charLiteral :: FuzzyParser Char
 charLiteral = lexeme (char '\'' >> L.charLiteral <* char '\'') <?> "char"
 
 stringLiteral :: FuzzyParser String
-stringLiteral = lexeme (char '"' >> manyTill L.charLiteral (char '"')) <?> "string"
+stringLiteral = lexeme (char '"' >> manyTill (notFollowedBy (char '\n' <|> char '\r') >> L.charLiteral) (char '"')) <?> "string"
 
 comma :: FuzzyParser ()
 comma = symbol "," <?> "comma"

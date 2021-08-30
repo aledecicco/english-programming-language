@@ -1,5 +1,5 @@
 name:                english-programming-language
-version:             3.6.1
+version:             3.7.0
 license:             MIT
 author:              "Alejandro De Cicco"
 maintainer:          "alejandrodecicco99@gmail.com"
@@ -16,6 +16,7 @@ dependencies:
 - tasty-rerun
 - mtl
 - containers
+- ansi-terminal
 
 library:
   source-dirs:

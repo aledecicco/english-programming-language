@@ -1,7 +1,9 @@
 module PrettyPrinter where
 
-import Data.List (intercalate)
+import Data.Char ( isSpace )
+import Data.List ( intercalate )
 import Control.Monad ( void )
+import System.Console.ANSI
 
 import AST
 import Errors ( Error(..), ErrorType(..), Warning (..), WarningType (..) )
@@ -80,6 +82,26 @@ ppMatchablePart (ParensP ps) = surround "(" ")" $ ppMatchable ps
 ppMatchable :: [MatchablePart a] -> String
 ppMatchable ps = unwords $ map ppMatchablePart ps
 
+-- ToDo: clean up
+ppSourcePosition :: [String] -> Location -> String
+ppSourcePosition ls (ln, cn) =
+    let
+        l = ls !! (ln - 1)
+        spaces = length $ takeWhile isSpace l
+        l' = drop spaces l
+        cn' = cn - spaces
+        sep = replicate (length (show ln)) ' ' ++ " |"
+        space = 79 - length sep
+        start = max 0 $ (cn' - 11) - (max 0 $ space - (length l' - (cn' - 11)))
+        end = min space (length l' - start)
+        l'' = take end (drop start l')
+    in unlines [sep, show ln ++ " | " ++ l'', sep ++ replicate ((cn - start) - spaces) ' ' ++ "^"]
+
+--
+
+
+-- Errors and warnings
+
 ppErrorType :: ErrorType -> String
 ppErrorType (WrongTypeValue eT aT) = unwords ["Expected a", ppType eT, "but got a", ppType aT, "instead"]
 ppErrorType (WrongTypeParameter eT aT n fid) = unwords [ppOrdinal n, "parameter of", snippet $ ppFunctionId fid, "expected a", ppType eT, "but got a", ppType aT, "instead"]
@@ -98,23 +120,45 @@ ppErrorType ForbiddenIteratorUsed = "Can't use iterators here"
 ppErrorType (CodeError s) = unwords s
 ppErrorType (ParseError s) = s
 
-ppError :: Error -> String
-ppError (Error l eT) =
+ppError :: [String] -> Error -> String
+ppError ls (Error l eT) =
     let errM = ppErrorType eT
-        hM = case l of
-            (Just (ln, cn)) -> unwords ["Error in line", show ln, "column", show cn]
-            Nothing -> "Error"
-    in "\n" ++ hM ++ ":\n" ++ errM ++ ".\n"
+        errH = case l of
+            (Just (ln, cn)) -> unwords ["Error in line", show ln, "column", show cn] ++ ":\n" ++ ppSourcePosition ls (ln, cn)
+            Nothing -> "Error:\n"
+    in errH ++ errM ++ "."
 
 ppWarningType :: WarningType -> String
-ppWarningType (AmbiguousValue i ps) = unwords ["Value", doubleQuote $ ppMatchable ps, "can be understood in", show i, "different ways"]
-ppWarningType (AmbiguousSentence i ps) = unwords ["Sentence", doubleQuote $ ppMatchable ps, "can be understood in", show i, "different ways"]
+ppWarningType (AmbiguousValue i ps) = unwords ["Value", snippet $ ppMatchable ps, "can be understood in", show i, "different ways"]
+ppWarningType (AmbiguousSentence i ps) = unwords ["Sentence", snippet $ ppMatchable ps, "can be understood in", show i, "different ways"]
 
-ppWarning :: Warning -> String
-ppWarning (Warning l wT) =
+ppWarning :: [String] -> Warning -> String
+ppWarning ls (Warning l wT) =
     let wrnM = ppWarningType wT
-        hM = case l of
-            (Just (ln, cn)) -> unwords ["Warning in line", show ln, "column", show cn]
-            Nothing -> "Warning"
-    in "\n" ++ hM ++ ":\n" ++ wrnM ++ ".\n"
+        wrnH = case l of
+            (Just (ln, cn)) -> unwords ["Warning in line", show ln, "column", show cn] ++ ":\n" ++ ppSourcePosition ls (ln, cn)
+            Nothing -> "Warning:\n"
+    in wrnH ++ wrnM ++ "."
 
+--
+
+
+-- Messages
+
+message :: Color -> String -> IO ()
+message c msg = do
+    setSGR [SetColor Foreground Vivid c]
+    putStrLn msg
+    putStrLn ""
+    setSGR [Reset]
+
+errorMessage :: String -> IO ()
+errorMessage = message Red
+
+warningMessage :: String -> IO ()
+warningMessage = message Yellow
+
+successMessage :: String -> IO ()
+successMessage = message Green
+
+--
