@@ -20,5 +20,5 @@ main = do
                     mapM_ (putStrLn . ppWarning) ws
                     r <- evaluateProgram p' d
                     case r of
-                        Left e'' -> putStrLn $ "\n" ++ ppError e''
+                        Left e'' -> putStrLn $ ppError e''
                         Right _ -> putChar '\n'

@@ -21,6 +21,9 @@ singleQuote = surround "'" "'"
 doubleQuote :: String -> String
 doubleQuote = surround "\"" "\""
 
+snippet :: String -> String
+snippet = surround "<" ">"
+
 asList :: [String] -> String
 asList xs = surround "[" "]" $ intercalate ", " xs
 
@@ -79,16 +82,16 @@ ppMatchable ps = unwords $ map ppMatchablePart ps
 
 ppErrorType :: ErrorType -> String
 ppErrorType (WrongTypeValue eT aT) = unwords ["Expected a", ppType eT, "but got a", ppType aT, "instead"]
-ppErrorType (WrongTypeParameter eT aT n fid) = unwords [ppOrdinal n, "parameter of", doubleQuote $ ppFunctionId fid, "expected a", ppType eT, "but got a", ppType aT, "instead"]
-ppErrorType (UnmatchableValue ps) = unwords ["Could not understand", doubleQuote $ ppMatchable ps, "as a value"]
-ppErrorType (UnmatchableValueTypes ps) = unwords ["Could not understand", doubleQuote $ ppMatchable ps, "as a value because of type errors"]
-ppErrorType (UnmatchableSentence ps) = unwords ["Could not understand", doubleQuote $ ppMatchable ps, "as a sentence"]
-ppErrorType (UnmatchableSentenceTypes ps) = unwords ["Could not understand", doubleQuote $ ppMatchable ps, "as a sentence because of type errors"]
-ppErrorType (FunctionAlreadyDefined fid) = unwords ["Funcion", doubleQuote $ ppFunctionId fid, "is already defined"]
-ppErrorType (UndefinedFunction fid) = unwords ["Function", doubleQuote $ ppFunctionId fid, "is not defined"]
-ppErrorType (VariableAlreadyDefined n) = unwords ["Expected variable", doubleQuote $ ppName n, "to be new but it was already defined"]
-ppErrorType (UndefinedVariable n) = unwords ["Variable", doubleQuote $ ppName n, "is not defined"]
-ppErrorType (MismatchingTypeAssigned eT aT n) = unwords ["Could not assign a", ppType aT, "to variable", doubleQuote $ ppName n, "which is a", ppType eT]
+ppErrorType (WrongTypeParameter eT aT n fid) = unwords [ppOrdinal n, "parameter of", snippet $ ppFunctionId fid, "expected a", ppType eT, "but got a", ppType aT, "instead"]
+ppErrorType (UnmatchableValue ps) = unwords ["Could not understand", snippet $ ppMatchable ps, "as a value"]
+ppErrorType (UnmatchableValueTypes ps) = unwords ["Could not understand", snippet $ ppMatchable ps, "as a value because of type errors"]
+ppErrorType (UnmatchableSentence ps) = unwords ["Could not understand", snippet $ ppMatchable ps, "as a procedure call"]
+ppErrorType (UnmatchableSentenceTypes ps) = unwords ["Could not understand", snippet $ ppMatchable ps, "as a procedure call because of type errors"]
+ppErrorType (FunctionAlreadyDefined fid) = unwords ["Funcion", snippet $ ppFunctionId fid, "is already defined"]
+ppErrorType (UndefinedFunction fid) = unwords ["Function", snippet $ ppFunctionId fid, "is not defined"]
+ppErrorType (VariableAlreadyDefined n) = unwords ["Expected variable", snippet $ ppName n, "to be new but it was already defined"]
+ppErrorType (UndefinedVariable n) = unwords ["Variable", snippet $ ppName n, "is not defined"]
+ppErrorType (MismatchingTypeAssigned eT aT n) = unwords ["Could not assign a", ppType aT, "to variable", snippet $ ppName n, "which is a", ppType eT]
 ppErrorType ResultInProcedure = "Found unexpected result statement in procedure"
 ppErrorType ExpectedResult = "Expected a result statement before end of operator"
 ppErrorType ForbiddenIteratorUsed = "Can't use iterators here"
@@ -101,7 +104,7 @@ ppError (Error l eT) =
         hM = case l of
             (Just (ln, cn)) -> unwords ["Error in line", show ln, "column", show cn]
             Nothing -> "Error"
-    in hM ++ ":\n" ++ errM ++ ".\n"
+    in "\n" ++ hM ++ ":\n" ++ errM ++ ".\n"
 
 ppWarningType :: WarningType -> String
 ppWarningType (AmbiguousValue i ps) = unwords ["Value", doubleQuote $ ppMatchable ps, "can be understood in", show i, "different ways"]
@@ -113,5 +116,5 @@ ppWarning (Warning l wT) =
         hM = case l of
             (Just (ln, cn)) -> unwords ["Warning in line", show ln, "column", show cn]
             Nothing -> "Warning"
-    in hM ++ ":\n" ++ wrnM ++ ".\n"
+    in "\n" ++ hM ++ ":\n" ++ wrnM ++ ".\n"
 

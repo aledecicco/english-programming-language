@@ -67,14 +67,16 @@ getListValues _ = error "Shouldn't happen: value is not a list"
 getIteratorValues :: ReadWrite m => Annotated Value -> EvaluatorEnv m [Bare Value]
 getIteratorValues (IterV _ _ lv)
     | hasIterators lv = do
-        vs <- getIteratorValues lv
-        vss <- mapM getListValues  vs
+        vs <- (`withLocation` getIteratorValues) lv
+        vss <- mapM getListValues vs
         return $ concat vss
     | otherwise = do
         lv' <- withLocation lv evaluateUpToReference
         getListValues lv'
 getIteratorValues (OperatorCall _ fid vs) = do
-    vss <- mapM getIteratorValues vs
+    ann <- getCurrentLocation
+    vss <- mapM (`withLocation` getIteratorValues) vs
+    setCurrentLocation ann
     mapM (evaluateOperator fid) $ sequence vss
 getIteratorValues v = do
     v' <- evaluateUpToReference v
@@ -100,7 +102,9 @@ evaluateUpToReference (VarV _ vn) = do
     unless isDef $ throwHere (UndefinedVariable vn)
     RefV () <$> getVariableAddress vn
 evaluateUpToReference (OperatorCall _ fid vs) = do
+    ann <- getCurrentLocation
     vs' <- mapM (`withLocation` evaluateUpToReference) vs
+    setCurrentLocation ann
     evaluateOperator fid vs'
 evaluateUpToReference (ListV _ eT es) = do
     es' <- mapM (`withLocation` evaluateValue) es
@@ -188,7 +192,9 @@ evaluateSentence s = tick >> evaluateSentence' s
             v' <- withLocation v evaluateValue
             return $ Just v'
         evaluateSentence' (ProcedureCall _ fid vs) = do
-            vss <- mapM getIteratorValues vs
+            ann <- getCurrentLocation
+            vss <- mapM (`withLocation` getIteratorValues) vs
+            setCurrentLocation ann
             mapM_ (evaluateProcedure fid) $ sequence vss
             return Nothing
         evaluateSentence' (Try _ ss) = evaluateSentences ss `catchCodeError` \_ -> return Nothing
