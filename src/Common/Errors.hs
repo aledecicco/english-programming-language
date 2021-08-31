@@ -9,7 +9,7 @@ Errors, warnings, and their types.
 
 module Errors where
 
-import AST
+import           AST
 
 
 data ErrorType =

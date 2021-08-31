@@ -1,21 +1,36 @@
+{-|
+Module      : PrettyPrinter
+Copyright   : (c) Alejandro De Cicco, 2021
+License     : MIT
+Maintainer  : alejandrodecicco99@gmail.com
+
+Printing values and errors in a user-friendly way.
+-}
+
 module PrettyPrinter where
 
-import Data.Bifunctor ( first, second )
-import Data.Char ( isSpace )
-import Data.List ( intercalate )
-import Control.Monad ( void, when )
-import Control.Monad.Trans.State ( get, modify, runState, State )
+import Data.Char (isSpace)
+import Data.List (intercalate)
 
 import AST
-import Errors ( Error(..), ErrorType(..), Warning (..), WarningType (..) )
-import Utils ( typeName )
+import Errors
+import Utils (typeName)
 
 --
 
 
--- Auxiliary
+-- -----------------
+-- * Auxiliary
 
-surround :: String -> String -> String -> String
+-- | Surrounds a string with the two given strings.
+--
+-- >>> surround "(" ")" "a value"
+-- "(a value)"
+surround ::
+    String -- ^ String to place before.
+    -> String -- ^ String to place after.
+    -> String -- ^ String to surround.
+    -> String
 surround b a s = b ++ s ++ a
 
 singleQuote :: String -> String
@@ -24,23 +39,36 @@ singleQuote = surround "'" "'"
 doubleQuote :: String -> String
 doubleQuote = surround "\"" "\""
 
+-- | Surrounds a string with angle brackets.
+--
+-- >>> snippet "a value"
+-- "<a value>"
 snippet :: String -> String
 snippet = surround "<" ">"
 
+-- |
+-- >>> asList ["1", "2", "3"]
+-- "[1, 2, 3]"
 asList :: [String] -> String
 asList xs = surround "[" "]" $ intercalate ", " xs
 
---
 
+-- -----------------
+-- * Pretty printers
 
--- Pretty printers
-
+-- |
+-- >>> ppFunctionId "%_plus_%"
+-- "... plus ..."
 ppFunctionId :: FunId -> String
 ppFunctionId ('_':cs) = " " ++ ppFunctionId cs
 ppFunctionId ('%':cs) = "..." ++ ppFunctionId cs
 ppFunctionId (c:cs) = c : ppFunctionId cs
 ppFunctionId "" = ""
 
+-- | Transforms an 'Int' into an ordinal with the first position being 0.
+--
+-- >>> ppOrdinal 17
+-- "18th"
 ppOrdinal :: Int -> String
 ppOrdinal p = ppOrdinal' $ show (p+1)
     where
@@ -62,7 +90,6 @@ ppValue (IntV _ n) = show n
 ppValue (FloatV _ f) = show f
 ppValue (BoolV _ True) = "true"
 ppValue (BoolV _ False) = "false"
--- Should chars and strings be quoted?
 ppValue (CharV _ c) = [c]
 ppValue (ListV _ CharT cs) = concatMap ppValue cs
 ppValue (ListV _ _ vs) = asList $ map ppValue vs
@@ -83,32 +110,39 @@ ppMatchablePart (ParensP ps) = surround "(" ")" $ ppMatchable ps
 ppMatchable :: [MatchablePart a] -> String
 ppMatchable ps = unwords $ map ppMatchablePart ps
 
+-- | Prints the surroundings of a location in the source code like this:
+--
+-- @
+--    |
+-- 17 | Divide 5 by 0.
+--    | ^
+-- @
 ppSourcePosition :: [String] -> Location -> String
-ppSourcePosition ls (ln, cn) =
+ppSourcePosition lines (lineNum, colNum) =
     let
-        ln' = show ln
-        sep = replicate (length ln') ' ' ++ " | "
-        maxW = width - length sep
+        strLineNum = show lineNum
+        prefix = replicate (length strLineNum) ' ' ++ " | "
+        numPrefix = strLineNum ++ " | "
+        maxW = width - length prefix
 
-        l = ls !! (ln - 1)
-        lenL = length l
+        line = lines !! (lineNum - 1)
+        len = length line
 
-        spaces = length $ takeWhile isSpace l
-        start = max spaces (min (cn - pad) (lenL - maxW))
-        l' = take maxW $ drop start l
+        spaces = length $ takeWhile isSpace line
+        start = max spaces (min (colNum - pad) (len - maxW))
+        lineSpan = take maxW $ drop start line
 
         bef = if start == spaces then "" else "..."
-        aft = if start + maxW >= lenL then "" else "..."
-        pntr = replicate (length bef + cn - 1 - start) ' ' ++ "^"
-    in unlines [sep, ln' ++ " | " ++ bef ++ l' ++ aft, sep ++ pntr]
+        aft = if start + maxW >= len then "" else "..."
+        pointer = replicate (length bef + colNum - 1 - start) ' ' ++ "^"
+    in unlines [prefix, numPrefix ++ surround bef aft lineSpan, prefix ++ pointer]
     where
         width = 74
         pad = 10
 
---
 
-
--- Errors and warnings
+-- -----------------
+-- * Errors and warnings
 
 ppErrorType :: ErrorType -> String
 ppErrorType (WrongTypeValue eT aT) = unwords ["Expected a", ppType eT, "but got a", ppType aT, "instead"]
@@ -147,6 +181,3 @@ ppWarning ls (Warning l wT) =
             (Just (ln, cn)) -> unwords ["Warning in line", show ln, "column", show cn] ++ ":\n" ++ ppSourcePosition ls (ln, cn)
             Nothing -> "Warning:\n"
     in wrnH ++ wrnM ++ "."
-
---
-

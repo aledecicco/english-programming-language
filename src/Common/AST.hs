@@ -1,4 +1,5 @@
-{-# LANGUAGE DeriveFunctor, DeriveFoldable #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveFunctor  #-}
 {-|
 Module      : AST
 Copyright   : (c) Alejandro De Cicco, 2021
@@ -18,7 +19,7 @@ type Name = [String]
 
 type FunId = String
 
--- | Parts that together can be interpreted as different expressions
+-- | Parts that together can be interpreted as different expressions.
 data MatchablePart a = IntP a Int | FloatP a Float | CharP a Char | StringP a String | WordP a String | ParensP [MatchablePart a]
     deriving (Eq, Show, Functor, Foldable)
 

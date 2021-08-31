@@ -1,20 +1,26 @@
+{-|
+Module      : Location
+Copyright   : (c) Alejandro De Cicco, 2021
+License     : MIT
+Maintainer  : alejandrodecicco99@gmail.com
+
+A monad transformer for keeping track of a 'Location'.
+-}
+
 module Location where
 
-import Control.Monad.Trans.State.Strict ( put, get, gets, modify, runStateT, StateT )
+import AST (Annotated, Location)
+import Control.Monad.Trans.State.Strict
 
-import AST
-
---
-
-
---
 
 type LocationT = StateT Location
 
-getLocation :: Foldable a => a b -> b
+-- | Returns the location of an annotated element.
+getLocation :: Foldable a => a Location -> Location
 getLocation = head . foldr (:) []
 
-getFirstLocation :: Foldable a => [a b] -> b
+-- | Returns the location of the first element in a list of annotated elements.
+getFirstLocation :: Foldable a => [a Location] -> Location
 getFirstLocation = getLocation . head
 
 initialLocation :: Location
@@ -26,10 +32,10 @@ getCurrentLocation = get
 setCurrentLocation :: Monad m => Location -> LocationT m ()
 setCurrentLocation = put
 
+-- | Performs an action with the given annotated element as argument.
+-- Sets the element's location as the current one.
 withLocation :: (Monad m, Foldable a) => Annotated a -> (Annotated a -> LocationT m b) -> LocationT m b
-withLocation a f = setCurrentLocation (getLocation a) >> f a
+withLocation arg f = setCurrentLocation (getLocation arg) >> f arg
 
 runLocationT :: LocationT m a -> Location -> m (a, Location)
 runLocationT = runStateT
-
---

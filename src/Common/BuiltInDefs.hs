@@ -10,7 +10,7 @@ Signatures of functions defined in the language's prelude.
 module BuiltInDefs where
 
 import AST
-import Utils ( getFunId )
+import Utils (getFunId)
 
 
 -- -----------------
@@ -33,7 +33,8 @@ relationalType = Operator (\[_, _] -> BoolT)
 -- * Definitions
 
 builtInOperators :: [(FunId, FunSignature)]
-builtInOperators = map functionFromTuple
+builtInOperators =
+    map functionFromTuple
     [
         (
             [TitleParam () [] FloatT, TitleWords () ["plus"], TitleParam () [] FloatT],
