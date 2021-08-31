@@ -1,26 +1,36 @@
+{-|
+Module      : BuiltInDefs
+Copyright   : (c) Alejandro De Cicco, 2021
+License     : MIT
+Maintainer  : alejandrodecicco99@gmail.com
+
+Signatures of functions defined in the language's prelude.
+-}
+
 module BuiltInDefs where
 
 import AST
-import Utils (getFunId)
-
---
+import Utils ( getFunId )
 
 
--- Auxiliary
+-- -----------------
+-- * Auxiliary
 
+-- | Takes a title and a function type, and returns the function's id and its signature.
 functionFromTuple :: ([Bare TitlePart], FunType) -> (FunId, FunSignature)
-functionFromTuple (ft, rt) = (getFunId ft, FunSignature (Title () ft) rt)
+functionFromTuple (title, returnType) = (getFunId title, FunSignature (Title () title) returnType)
 
+-- | The type of a function that takes two numeric arguments and returns a float if either of them is a float, and an int otherwise.
 binaryType :: FunType
 binaryType = Operator (\[tM, tN] -> if tM == FloatT || tN == FloatT then FloatT else IntT)
 
+-- | The type of a function that compares its two arguments and returns a bool.
 relationalType :: FunType
 relationalType = Operator (\[_, _] -> BoolT)
 
---
 
-
---
+-- -----------------
+-- * Definitions
 
 builtInOperators :: [(FunId, FunSignature)]
 builtInOperators = map functionFromTuple
@@ -119,6 +129,10 @@ builtInProcedures = map functionFromTuple
             Procedure
         )
     ]
+
+
+-- -----------------
+-- * Checks on functions
 
 isBuiltInFunction :: FunId -> Bool
 isBuiltInFunction fid = isBuiltInOperator fid || isBuiltInProcedure fid

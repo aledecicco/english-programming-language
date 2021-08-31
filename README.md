@@ -1,7 +1,7 @@
 # EPL
 A programming language that resembles English. Write some sentences and watch the interpreter try to understand what you meant.
 
-![Version](https://img.shields.io/badge/version-v3.7.1-blue)
+![Version](https://img.shields.io/badge/version-v3.8.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-brightgreen)
 
 # Syntax
@@ -366,3 +366,4 @@ Modifies the value of the given variable, appending the list to it.
 - Generate an executable
 - Clean test cases and examples
 - Add "breaks" and "break all" for loops, and "returns" for procedures (stop the loop, stop all loops, and exit?)
+- When a matchable value is solved, the order of the generated possible values isn't the same as the order in which matchers are applied.
