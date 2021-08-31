@@ -22,10 +22,6 @@ type FunId = String
 data MatchablePart a = IntP a Int | FloatP a Float | CharP a Char | StringP a String | WordP a String | ParensP [MatchablePart a]
     deriving (Eq, Show, Functor, Foldable)
 
-
--- -----------------
--- * Program structure
-
 type LineNumber = Int
 type ColumnNumber = Int
 
@@ -33,6 +29,7 @@ type ColumnNumber = Int
 type Location = (LineNumber, ColumnNumber)
 
 -- | Transforms a parametrized type into a type that contains locations.
+-- For example, @Annotated Value@ represents a value with annotations for it and all its children.
 type Annotated a = a Location
 
 -- | Transforms a parametrized type into a type that contains nothing.
@@ -46,33 +43,30 @@ data Type =
     | CharT
     | ListT Type
     | RefT Type
-    -- | A type variable identified by a string.
-    | AnyT String
+    | AnyT String -- ^ A type variable identified by a string.
     deriving (Eq, Show)
 
+
+-- -----------------
+-- * Program structure
+
 data Value a =
-    -- | A list of matchable parts that are yet to be converted into a concrete value.
-    ValueM a [MatchablePart a]
+    ValueM a [MatchablePart a] -- ^ A list of matchable parts that are yet to be converted into a concrete value.
     | IntV a Int
     | FloatV a Float
     | BoolV a Bool
     | CharV a Char
-    -- | A list containing values of a given type.
-    | ListV a Type [Value a]
+    | ListV a Type [Value a] -- ^ A list containing values of a given type.
     | VarV a Name
-    -- | A reference to a memory address.
-    | RefV a Int
-    -- | Makes the structure it is contained in to be applied to all the elements in the list value it contains.
-    | IterV a Type (Value a)
+    | RefV a Int -- ^ A reference to a memory address.
+    | IterV a Type (Value a) -- ^ Makes the structure it is contained in to be applied to all the elements in the list value it contains.
     | OperatorCall a FunId [Value a]
     deriving (Eq, Show, Functor, Foldable)
 
 -- | Expressions in the language.
 data Sentence a =
-    -- | A list of matchable parts that are yet to be converted into a concrete sentence.
-    SentenceM a [MatchablePart a]
-    -- | The definition of a new variable.
-    | VarDef a [Name] (Maybe Type) (Value a)
+    SentenceM a [MatchablePart a] -- ^ A list of matchable parts that are yet to be converted into a concrete sentence.
+    | VarDef a [Name] (Maybe Type) (Value a) -- ^ The definition of a new variable.
     | If a (Value a) [Sentence a]
     | IfElse a (Value a) [Sentence a] [Sentence a]
     | ForEach a Name Type (Value a) [Sentence a]
@@ -86,10 +80,8 @@ data Sentence a =
     deriving (Eq, Show, Functor, Foldable)
 
 data TitlePart a =
-    -- | Words that act as the identifier of a function.
-    TitleWords a [String]
-    -- | A parameter that a function can receive.
-    | TitleParam a [Name] Type
+    TitleWords a [String] -- ^ Words that act as the identifier of a function.
+    | TitleParam a [Name] Type -- ^ A parameter that a function can receive.
     deriving (Eq, Show, Functor, Foldable)
 
 -- | The signature of a function minus the return type.
@@ -102,16 +94,13 @@ data FunSignature = FunSignature (Bare Title) FunType
 data FunCallable = FunCallable (Bare Title) [Annotated Sentence]
 
 data FunType =
-    -- | Each operator has a function that transforms the types of its arguments into the type of its result.
-    Operator ([Type] -> Type)
-    -- | Procedures can't return anything.
+    Operator ([Type] -> Type) -- ^ Each operator has a function that transforms the types of its arguments into the type of its result.
     | Procedure
 
 -- | All possible blocks in a program.
 data Block a =
-    -- | An user defined function that can only have a basic return type.
-    -- If the type is Nothing, it represents a procedure.
-    FunDef a (Title a) (Maybe Type) [Sentence a]
+    FunDef a (Title a) (Maybe Type) [Sentence a] -- ^ An user defined function that can only have a basic return type.
+                                                 -- If the type is Nothing, it represents a procedure.
     deriving (Eq, Show, Functor, Foldable)
 
 type Program = [Annotated Block]
