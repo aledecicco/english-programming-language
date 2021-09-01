@@ -1,15 +1,24 @@
-module Evaluator ( module Evaluator, ReadWrite(..) ) where
+{-|
+Module      : BuiltInEval
+Copyright   : (c) Alejandro De Cicco, 2021
+License     : MIT
+Maintainer  : alejandrodecicco99@gmail.com
 
-import Data.List ( find )
-import Control.Monad ( void, unless, (>=>) )
+The language's evaluator.
+-}
 
-import EvaluatorEnv
+module Evaluator where
+
+import Control.Monad (void, unless, (>=>))
+import Data.List (find)
+
+import AST
 import BuiltInDefs
 import BuiltInEval
-import SolverEnv ( SolverData )
-import Utils ( firstNotNull, hasIterators )
 import Errors
-import AST
+import EvaluatorEnv
+import SolverEnv (SolverData)
+import Utils (firstNotNull, hasIterators)
 
 --
 
@@ -25,6 +34,7 @@ translateFunctions prog = map (translateFunction prog)
                 (Just (FunDef _ _ _ ss)) -> (fid, FunCallable t ss)
                 -- If a function is not found in the written program, then it must be a built-in function
                 Nothing -> (fid, FunCallable t [])
+
         findDefinition :: Program -> Title a -> Maybe (Annotated Block)
         findDefinition p t = find (\(FunDef _ t' _ _) -> void t == void t') p
 

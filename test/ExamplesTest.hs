@@ -8,7 +8,8 @@ import Control.Monad.Trans.State ( State, modify, gets, runState )
 
 import FuzzyParser ( parseProgram )
 import Solver ( solveProgram )
-import Evaluator ( evaluateProgram, ReadWrite(..) )
+import Evaluator (evaluateProgram)
+import EvaluatorEnv (ReadWrite(..))
 
 --
 
@@ -26,7 +27,6 @@ instance ReadWrite IOStore where
         modify $ \(i, o) -> (tail i, o)
         return s
     write s = modify $ \(i, o) -> (i, o ++ s)
-    writeLn s = modify $ \(i, o) -> (i, o ++ s ++ "\n")
 
 testExample :: FilePath -> [String] -> String -> IO ()
 testExample fn i o = do

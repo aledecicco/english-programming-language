@@ -54,7 +54,7 @@ asList xs = surround "[" "]" $ intercalate ", " xs
 
 
 -- -----------------
--- * Pretty printers
+-- * Pretty-printers
 
 -- |
 -- >>> ppFunctionId "%_plus_%"

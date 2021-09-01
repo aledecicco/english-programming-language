@@ -25,22 +25,23 @@ type RefData = IM.IntMap (Bare Value) -- A mapping between addresses and their v
 type EvaluatorData = (FunData, VarData, RefData, Int, Int)
 type EvaluatorEnv m a = LocationT (StateT EvaluatorData (ExceptT Error m)) a
 
-class Monad m => ReadWrite m where
-    read :: m String
-    write :: String -> m ()
-    writeLn :: String -> m ()
-
-instance ReadWrite IO where
-    read = getLine
-    write = putStr
-    writeLn = putStrLn
-
 runEvaluatorEnv :: EvaluatorEnv m a -> EvaluatorData -> Location -> m (Either Error ((a, Location), EvaluatorData))
 runEvaluatorEnv f d s = runExceptT $ runStateT (runLocationT f s) d
 
 initialState :: EvaluatorData
 initialState = (M.empty, [], IM.empty, 0, initMaxMem)
     where initMaxMem = 4
+
+class Monad m => ReadWrite m where
+    read :: m String
+    write :: String -> m ()
+
+instance ReadWrite IO where
+    read = getLine
+    write = putStr
+
+liftReadWrite :: ReadWrite m => m a -> EvaluatorEnv m a
+liftReadWrite = lift . lift . lift
 
 --
 

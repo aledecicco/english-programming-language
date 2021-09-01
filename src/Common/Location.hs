@@ -32,8 +32,8 @@ getCurrentLocation = get
 setCurrentLocation :: Monad m => Location -> LocationT m ()
 setCurrentLocation = put
 
--- | Performs an action with the given annotated element as argument.
--- Sets the element's location as the current one.
+-- | Performs a computation with the given annotated element as argument.
+-- Sets the current location to the element's.
 withLocation :: (Monad m, Foldable a) => Annotated a -> (Annotated a -> LocationT m b) -> LocationT m b
 withLocation arg f = setCurrentLocation (getLocation arg) >> f arg
 
