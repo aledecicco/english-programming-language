@@ -119,6 +119,14 @@ addValue v = do
     changePointer (+1)
     return p
 
+copyValue :: Monad m => Bare Value -> EvaluatorEnv m (Bare Value)
+copyValue (ListV _ eT es) = ListV () eT <$> mapM copyValue es
+copyValue (RefV _ addr) = do
+    v <- getValueAtAddress addr
+    v' <- copyValue v
+    RefV () <$> addValue v'
+copyValue v = return v
+
 --
 
 

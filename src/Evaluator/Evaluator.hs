@@ -1,5 +1,5 @@
 {-|
-Module      : BuiltInEval
+Module      : Evaluator
 Copyright   : (c) Alejandro De Cicco, 2021
 License     : MIT
 Maintainer  : alejandrodecicco99@gmail.com
@@ -20,23 +20,22 @@ import EvaluatorEnv
 import SolverEnv (SolverData)
 import Utils (firstNotNull, hasIterators)
 
---
 
+-- -----------------
+-- * Auxiliary
 
--- Auxiliary
-
-translateFunctions :: Program -> [(FunId, FunSignature)] -> [(FunId, FunCallable)]
-translateFunctions prog = map (translateFunction prog)
+-- | Takes the
+translateFunctions :: [(FunId, FunSignature)] -> Program -> [(FunId, FunCallable)]
+translateFunctions funs prog = map (`translateFunction` prog) funs
     where
-        translateFunction :: Program -> (FunId, FunSignature) -> (FunId, FunCallable)
-        translateFunction p (fid, FunSignature t _) =
-            case findDefinition p t of
-                (Just (FunDef _ _ _ ss)) -> (fid, FunCallable t ss)
-                -- If a function is not found in the written program, then it must be a built-in function
-                Nothing -> (fid, FunCallable t [])
+        translateFunction :: (FunId, FunSignature) -> Program -> (FunId, FunCallable)
+        translateFunction (fid, FunSignature title _) prog =
+            case findDefinition title prog of
+                (Just (FunDef _ _ _ ss)) -> (fid, FunCallable title ss)
+                Nothing -> (fid, FunCallable title []) -- If a function is not found in the written program, then it must be a built-in function
 
-        findDefinition :: Program -> Title a -> Maybe (Annotated Block)
-        findDefinition p t = find (\(FunDef _ t' _ _) -> void t == void t') p
+        findDefinition :: Title a -> Program -> Maybe (Annotated Block)
+        findDefinition title prog = find (\(FunDef _ title' _ _) -> void title == void title') prog
 
 -- Returns a list of new variables to be declared and a list of references to be set according to the signature of a function
 variablesFromTitle :: ReadWrite m => [Bare TitlePart] -> [Bare Value] -> EvaluatorEnv m ([([Name], Bare Value)], [([Name], Int)])
@@ -59,14 +58,6 @@ evaluateParameters (TitleParam {} : ts) (v:vs) = do
     v' <- evaluateReferences v
     (v':) <$> evaluateParameters ts vs
 evaluateParameters [] (_:_) = error "Shouldn't happen: can't run out of title parts before running out of values in a function call"
-
-copyValue :: ReadWrite m => Bare Value -> EvaluatorEnv m (Bare Value)
-copyValue (ListV _ eT es) = ListV () eT <$> mapM copyValue es
-copyValue (RefV _ addr) = do
-    v <- getValueAtAddress addr
-    v' <- copyValue v
-    RefV () <$> addValue v'
-copyValue v = return v
 
 getListValues :: ReadWrite m => Bare Value -> EvaluatorEnv m [Bare Value]
 getListValues (ListV _ _ es) = return es
@@ -239,12 +230,13 @@ evaluateFunction fid vs = do
 
 -- Main
 
+-- ToDo: should it take function callables instead of solver data?
 evaluateProgram :: ReadWrite m => Program -> SolverData -> m (Either Error (((), Location), EvaluatorData))
 evaluateProgram prog s = runEvaluatorEnv (evaluateProgram' prog s) initialState initialLocation
     where
         evaluateProgram' :: ReadWrite m => Program -> SolverData -> EvaluatorEnv m ()
-        evaluateProgram' prog (fs, _) = do
-            setFunctions $ translateFunctions prog fs
+        evaluateProgram' prog (funs, _) = do
+            setFunctions $ translateFunctions funs prog
             evaluateProcedure "run" []
 
 --

@@ -65,7 +65,7 @@ ppFunctionId ('%':cs) = "..." ++ ppFunctionId cs
 ppFunctionId (c:cs) = c : ppFunctionId cs
 ppFunctionId "" = ""
 
--- | Transforms an 'Int' into an ordinal with the first position being 0.
+-- | Transforms an int into an ordinal with the first position being 0.
 --
 -- >>> ppOrdinal 17
 -- "18th"

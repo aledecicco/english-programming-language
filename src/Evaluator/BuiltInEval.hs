@@ -175,17 +175,14 @@ evaluateIsGreaterThanOrEqualTo v1 v2 = return $ relationalOperation (>=) v1 v2
 
 -- | Returns the nth value in a list value.
 evaluateElementOfListAt :: Monad m => Bare Value -> Bare Value -> EvaluatorEnv m (Bare Value)
-evaluateElementOfListAt (RefV _ addr) (IntV _ n) = do
-    listV <- getValueAtAddress addr
-    go listV n
-    where
-        go :: Monad m => Bare Value -> Int -> EvaluatorEnv m (Bare Value)
-        go (ListV _ _ []) n = throwHere $ CodeError ["Tried to access an empty list at index", show n]
-        go (ListV _ _ vs) n
-            | n < 0 = throwHere $ CodeError ["Tried to access a list at negative index", show n]
-            | n < length vs = return $ vs !! n
-            | otherwise = throwHere $ CodeError ["Tried to access a list at index", show n, "which is out of bounds"]
-        go _ _ = error "Shouldn't happen: wrong types provided"
+evaluateElementOfListAt (RefV _ addr) (IntV _ index) = do
+    r <- getValueAtAddress addr
+    case r of
+        ListV _ _ vs ->
+            if (0 <= index) && (index < length vs)
+                then return $ vs !! index
+                else throwHere $ CodeError ["Tried to access a list at index", show index, "which is out of bounds"]
+        _ -> error "Shouldn't happen: wrong types provided"
 evaluateElementOfListAt _ _ = error "Shouldn't happen: wrong types provided"
 
 -- | Returns the length of a list value.
@@ -195,7 +192,7 @@ evaluateLengthOf _ = error "Shouldn't happen: wrong types provided"
 
 -- | Returns the appendment of two list values.
 evaluateAppendedTo :: Monad m => Bare Value -> Bare Value -> EvaluatorEnv m (Bare Value)
-evaluateAppendedTo v1 v2 = return $ listOperation (++) v1 v2
+evaluateAppendedTo v1 v2 = copyValue $ listOperation (++) v1 v2
 
 -- | Returns a list value containing the ints in an inclusive range.
 evaluateTheListFromTo :: Monad m => Bare Value -> Bare Value -> EvaluatorEnv m (Bare Value)

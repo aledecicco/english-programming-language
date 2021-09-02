@@ -343,6 +343,7 @@ solveBlock (FunDef ann t rt ss) = do
 
 -- Main
 
+--ToDo: should it return function callables?
 solveProgram :: Program -> (Either Error ((Program, Location), SolverData), [Warning])
 solveProgram p = runSolverEnv (solveProgram' p) [] initialLocation initialState
     where
