@@ -131,12 +131,12 @@ builtInProcedures = map functionFromTuple
         )
     ]
 
+builtInFunctions :: [(FunId, FunSignature)]
+builtInFunctions = builtInOperators ++ builtInProcedures
+
 
 -- -----------------
 -- * Checks on functions
-
-isBuiltInFunction :: FunId -> Bool
-isBuiltInFunction fid = isBuiltInOperator fid || isBuiltInProcedure fid
 
 isBuiltInOperator :: FunId -> Bool
 isBuiltInOperator fid =

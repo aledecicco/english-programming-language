@@ -71,11 +71,11 @@ main = do
     -- Solve missing pieces.
     let (solverRes, ws) = solveProgram unsolvedProg
     mapM_ (warningMessage . ppWarning fileLines) $ reverse ws
-    ((solvedProg, _), solverData) <- tryOrExit solverRes fileLines
+    ((solvedProg, _), _) <- tryOrExit solverRes fileLines
     successMessage "Parsed successfully."
 
     -- Evaluate the result.
-    evalRes <- evaluateProgram solvedProg solverData
+    evalRes <- evaluateProgram solvedProg
     tryOrExit evalRes fileLines
     putChar '\n'
     exitSuccess

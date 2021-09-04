@@ -10,124 +10,128 @@ The language's evaluator.
 module Evaluator where
 
 import Control.Monad (void, unless, (>=>))
-import Data.List (find)
 
 import AST
 import BuiltInDefs
 import BuiltInEval
 import Errors
 import EvaluatorEnv
-import SolverEnv (SolverData)
-import Utils (firstNotNull, hasIterators)
+import Utils (firstNotNull, getFunId, hasIterators)
 
 
 -- -----------------
 -- * Auxiliary
 
--- | Takes the
-translateFunctions :: [(FunId, FunSignature)] -> Program -> [(FunId, FunCallable)]
-translateFunctions funs prog = map (`translateFunction` prog) funs
+-- | Registers the functions in a program so that they can be called from anywhere.
+registerFunctions :: Monad m => Program -> EvaluatorEnv m ()
+registerFunctions = mapM_ registerFunction
     where
-        translateFunction :: (FunId, FunSignature) -> Program -> (FunId, FunCallable)
-        translateFunction (fid, FunSignature title _) prog =
-            case findDefinition title prog of
-                (Just (FunDef _ _ _ ss)) -> (fid, FunCallable title ss)
-                Nothing -> (fid, FunCallable title []) -- If a function is not found in the written program, then it must be a built-in function
+        registerFunction :: Monad m => Annotated Block -> EvaluatorEnv m ()
+        registerFunction (FunDef _ title@(Title _ parts) _ sentences) =
+            let fid = getFunId parts
+                callable = FunCallable (void title) sentences
+            in setFunctionCallable fid callable
 
-        findDefinition :: Title a -> Program -> Maybe (Annotated Block)
-        findDefinition title prog = find (\(FunDef _ title' _ _) -> void title == void title') prog
-
--- Returns a list of new variables to be declared and a list of references to be set according to the signature of a function
-variablesFromTitle :: ReadWrite m => [Bare TitlePart] -> [Bare Value] -> EvaluatorEnv m ([([Name], Bare Value)], [([Name], Int)])
+-- | Returns a list of new variables to be declared and a list of references to be set when calling a function according to its signature.
+variablesFromTitle :: ReadWrite m =>
+    [Bare TitlePart] -- ^ The title of the function being called.
+    -> [Bare Value] -- ^ The values being passed as arguments.
+    -> EvaluatorEnv m ([([Name], Bare Value)], [([Name], Int)]) -- ^ The names in the title that should point to new values and the ones that should point to existing addresses.
 variablesFromTitle _ [] = return ([], [])
-variablesFromTitle (TitleWords _ _ : ts) vs = variablesFromTitle ts vs
-variablesFromTitle (TitleParam _ pns (RefT _) : ts) ((RefV _ addr):vs) = do
-    (vars, refs) <- variablesFromTitle ts vs
-    return (vars, (pns, addr):refs)
-variablesFromTitle (TitleParam _ pns _ : ts) (v:vs) = do
-    (vars, refs) <- variablesFromTitle ts vs
-    return ((pns, v):vars, refs)
+variablesFromTitle (TitleWords _ _ : rest) vals = variablesFromTitle rest vals
+variablesFromTitle (TitleParam _ names (RefT _) : rest) ((RefV _ addr):vals) = do
+    (vars, refs) <- variablesFromTitle rest vals
+    return (vars, (names, addr):refs)
+variablesFromTitle (TitleParam _ names _ : rest) (val:vals) = do
+    (vars, refs) <- variablesFromTitle rest vals
+    return ((names, val):vars, refs)
 variablesFromTitle [] (_:_) = error "Shouldn't happen: can't run out of title parts before running out of values in a function call"
 
--- Finishes evaluating the arguments of a function call if necessary
-evaluateParameters :: ReadWrite m => [Bare TitlePart] -> [Bare Value] -> EvaluatorEnv m [Bare Value]
-evaluateParameters _ [] = return []
-evaluateParameters (TitleWords _ _ : ts) vs = evaluateParameters ts vs
-evaluateParameters (TitleParam _ _ (RefT _) : ts) (v:vs) = (v:) <$> evaluateParameters ts vs
-evaluateParameters (TitleParam {} : ts) (v:vs) = do
-    v' <- evaluateReferences v
-    (v':) <$> evaluateParameters ts vs
-evaluateParameters [] (_:_) = error "Shouldn't happen: can't run out of title parts before running out of values in a function call"
+-- | Finishes evaluating the references in the arguments of a function call if neccessary.
+evaluateArguments :: ReadWrite m => [Bare TitlePart] -> [Bare Value] -> EvaluatorEnv m [Bare Value]
+evaluateArguments _ [] = return []
+evaluateArguments (TitleWords _ _ : rest) vals = evaluateArguments rest vals
+evaluateArguments (TitleParam _ _ (RefT _) : rest) (val:vals) = (val:) <$> evaluateArguments rest vals
+evaluateArguments (TitleParam {} : rest) (val:vals) = do
+    val' <- evaluateReferences val
+    (val':) <$> evaluateArguments rest vals
+evaluateArguments [] (_:_) = error "Shouldn't happen: can't run out of title parts before running out of values in a function call"
 
+-- | Takes a list value and returns a list of the values it contains.
 getListValues :: ReadWrite m => Bare Value -> EvaluatorEnv m [Bare Value]
-getListValues (ListV _ _ es) = return es
+getListValues (ListV _ _ vs) = return vs
 getListValues (RefV _ addr) = getValueAtAddress addr >>= getListValues
 getListValues _ = error "Shouldn't happen: value is not a list"
 
--- Returns the list of values generated by an iterator
+-- | Returns the list of values generated by a value with iterators.
 getIteratorValues :: ReadWrite m => Annotated Value -> EvaluatorEnv m [Bare Value]
-getIteratorValues (IterV _ _ lv)
-    | hasIterators lv = do
-        vs <- (`withLocation` getIteratorValues) lv
-        vss <- mapM getListValues vs
-        return $ concat vss
+getIteratorValues (IterV _ _ listVal)
+    | hasIterators listVal = do
+        generators <- (`withLocation` getIteratorValues) listVal
+        vals <- mapM getListValues generators
+        return $ concat vals
     | otherwise = do
-        lv' <- withLocation lv evaluateUpToReference
-        getListValues lv'
-getIteratorValues (OperatorCall _ fid vs) = do
+        listVal' <- withLocation listVal evaluateUpToReference
+        getListValues listVal'
+getIteratorValues (OperatorCall _ fid args) = do
     ann <- getCurrentLocation
-    vss <- mapM (`withLocation` getIteratorValues) vs
+    vals <- mapM (`withLocation` getIteratorValues) args
     setCurrentLocation ann
-    mapM (evaluateOperator fid) $ sequence vss
-getIteratorValues v = do
-    v' <- evaluateUpToReference v
-    return [v']
-
---
+    mapM (evaluateOperator fid) $ sequence vals
+getIteratorValues val = do
+    val' <- evaluateUpToReference val
+    return [val']
 
 
--- Evaluators
+-- -----------------
+-- * Evaluators
 
+-- | Recursively solves references until it reaches a normal value.
+-- If the argument is a list, a copy of it is returned.
 evaluateReferences :: ReadWrite m => Bare Value -> EvaluatorEnv m (Bare Value)
-evaluateReferences (VarV _ vn) = do
-    isDef <- variableIsDefined vn
-    unless isDef $ throwHere (UndefinedVariable vn)
-    getVariableValue vn >>= evaluateReferences
+evaluateReferences (VarV _ name) = do
+    isDef <- variableIsDefined name
+    unless isDef $ throwHere (UndefinedVariable name)
+    getVariableValue name >>= evaluateReferences
 evaluateReferences (RefV _ addr) = getValueAtAddress addr >>= evaluateReferences
-evaluateReferences l@(ListV {}) = copyValue l
-evaluateReferences v = return v
+evaluateReferences listVal@(ListV {}) = copyValue listVal
+evaluateReferences val = return val
 
+-- | Evaluates a value until a reference is reached.
+-- If the argument is a list, it must be one created by extension so it is initialized.
 evaluateUpToReference :: ReadWrite m => Annotated Value -> EvaluatorEnv m (Bare Value)
-evaluateUpToReference (VarV _ vn) = do
-    isDef <- variableIsDefined vn
-    unless isDef $ throwHere (UndefinedVariable vn)
-    RefV () <$> getVariableAddress vn
-evaluateUpToReference (OperatorCall _ fid vs) = do
+evaluateUpToReference (VarV _ name) = do
+    isDef <- variableIsDefined name
+    unless isDef $ throwHere (UndefinedVariable name)
+    RefV () <$> getVariableAddress name
+evaluateUpToReference (OperatorCall _ fid args) = do
     ann <- getCurrentLocation
-    vs' <- mapM (`withLocation` evaluateUpToReference) vs
+    args' <- mapM (`withLocation` evaluateUpToReference) args
     setCurrentLocation ann
-    evaluateOperator fid vs'
-evaluateUpToReference (ListV _ eT es) = do
-    es' <- mapM (`withLocation` evaluateValue) es
-    addrs <- mapM addValue es'
-    return $ ListV () eT (map (RefV ()) addrs)
-evaluateUpToReference v = return $ void v
+    evaluateOperator fid args'
+evaluateUpToReference (ListV _ elemsType vals) = do
+    vals' <- mapM (`withLocation` evaluateValue) vals
+    addrs <- mapM addValue vals'
+    return $ ListV () elemsType (map (RefV ()) addrs)
+evaluateUpToReference val = return $ void val
 
+-- | Evaluates a value until a basic value is reached.
 evaluateValue :: ReadWrite m => Annotated Value -> EvaluatorEnv m (Bare Value)
 evaluateValue (IterV {}) = error "Shouldn't happen: values with iterators must be solved before evaluating them"
 evaluateValue (ValueM _ _) = error "Shouldn't happen: values must be solved before evaluating them"
-evaluateValue v = evaluateUpToReference v >>= evaluateReferences
+evaluateValue val = evaluateUpToReference val >>= evaluateReferences
 
+-- | Evaluates a list of sentences in a new block, discarding it afterwards.
 evaluateSentences :: ReadWrite m => [Annotated Sentence] -> EvaluatorEnv m (Maybe (Bare Value))
 evaluateSentences [] = return Nothing
-evaluateSentences ss = inContainedScope $ firstNotNull evaluateSentenceWithLocation ss
+evaluateSentences sentences = inContainedScope $ firstNotNull evaluateSentenceWithLocation sentences
     where
         evaluateSentenceWithLocation :: ReadWrite m => Annotated Sentence -> EvaluatorEnv m (Maybe (Bare Value))
-        evaluateSentenceWithLocation s = do
-            let ann = getLocation s
-            r <- withLocation s evaluateSentence
+        evaluateSentenceWithLocation sentence = do
+            let ann = getLocation sentence
+            result <- withLocation sentence evaluateSentence
             setCurrentLocation ann
-            return r
+            return result
 
 evaluateSentence :: ReadWrite m => Annotated Sentence -> EvaluatorEnv m (Maybe (Bare Value))
 evaluateSentence s = tick >> evaluateSentence' s
@@ -216,7 +220,7 @@ evaluateProcedure fid vs = void $ evaluateFunction fid vs
 evaluateFunction :: ReadWrite m =>  FunId -> [Bare Value] -> EvaluatorEnv m (Maybe (Bare Value))
 evaluateFunction fid vs = do
     (FunCallable (Title _ t) ss) <- getFunctionCallable fid
-    vs' <- evaluateParameters t vs
+    vs' <- evaluateArguments t vs
     if isBuiltInOperator fid
         then Just <$> evaluateBuiltInOperator fid vs'
         else if isBuiltInProcedure fid
@@ -230,13 +234,12 @@ evaluateFunction fid vs = do
 
 -- Main
 
--- ToDo: should it take function callables instead of solver data?
-evaluateProgram :: ReadWrite m => Program -> SolverData -> m (Either Error (((), Location), EvaluatorData))
-evaluateProgram prog s = runEvaluatorEnv (evaluateProgram' prog s) initialState initialLocation
+evaluateProgram :: ReadWrite m => Program -> m (Either Error (((), Location), EvaluatorData))
+evaluateProgram prog = runEvaluatorEnv (evaluateProgram' prog) initialLocation initialState
     where
-        evaluateProgram' :: ReadWrite m => Program -> SolverData -> EvaluatorEnv m ()
-        evaluateProgram' prog (funs, _) = do
-            setFunctions $ translateFunctions funs prog
+        evaluateProgram' :: ReadWrite m => Program -> EvaluatorEnv m ()
+        evaluateProgram' prog = do
+            registerFunctions prog
             evaluateProcedure "run" []
 
 --

@@ -6,6 +6,7 @@ import Control.Monad.Trans.Class ( lift )
 import Control.Monad.Trans.State ( gets, modify, runStateT, runState, State, StateT )
 import Control.Monad.Trans.Except ( runExceptT, ExceptT )
 
+import BuiltInDefs (builtInFunctions)
 import Errors
 import Location
 import AST
@@ -22,7 +23,7 @@ runSolverEnv :: SolverEnv a -> [Warning] -> Location -> SolverData -> (Either Er
 runSolverEnv f w l d = runState (runExceptT $ runStateT (runLocationT f l) d) w
 
 initialState :: SolverData
-initialState = ([], [])
+initialState = (builtInFunctions, [])
 
 --
 
@@ -119,8 +120,5 @@ getProcedureSignatures :: SolverEnv [FunSignature]
 getProcedureSignatures = do
     fs <- lift $ gets fst
     return $ [f | (_, f@(FunSignature _ Procedure)) <- fs]
-
-setFunctions :: [(FunId, FunSignature)] -> SolverEnv ()
-setFunctions = changeFunctions . const
 
 --

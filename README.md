@@ -367,3 +367,4 @@ Modifies the value of the given variable, appending the list to it.
 - Clean test cases and examples
 - Add "breaks" and "break all" for loops, and "returns" for procedures (stop the loop, stop all loops, and exit?)
 - When a matchable value is solved, the order of the generated possible values isn't the same as the order in which matchers are applied.
+- Iterators might have the same problem with the garbage collector as the for-each loop had.

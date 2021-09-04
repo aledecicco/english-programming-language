@@ -8,7 +8,6 @@ import qualified Data.Map.Strict as M
 
 import Utils ( allNotNull, hasIterators, typeName, getFunId )
 import Matchers
-import BuiltInDefs
 import SolverEnv
 import AST
 import Errors
@@ -135,13 +134,6 @@ getElementsType _ = error "Shouldn't happen: type doesn't contain types"
 
 
 -- Validations
-
-setVariableTypeWithCheck :: Name -> Type -> SolverEnv ()
-setVariableTypeWithCheck vn t = do
-    r <- getVariableType vn
-    case r of
-        Just t' -> unless (t `satisfiesType` t') $ throwHere (MismatchingTypeAssigned t' t vn)
-        Nothing -> setVariableType vn t
 
 setNewVariableType :: Name -> Type -> SolverEnv ()
 setNewVariableType vn t' = do
@@ -343,14 +335,12 @@ solveBlock (FunDef ann t rt ss) = do
 
 -- Main
 
---ToDo: should it return function callables?
 solveProgram :: Program -> (Either Error ((Program, Location), SolverData), [Warning])
 solveProgram p = runSolverEnv (solveProgram' p) [] initialLocation initialState
     where
         solveProgram' :: Program -> SolverEnv Program
         solveProgram' p = do
             p' <- registerAliases p
-            setFunctions $ builtInOperators ++ builtInProcedures
             registerFunctions p'
             mainIsDef <- functionIsDefined "run"
             unless mainIsDef $ throwNowhere (UndefinedFunction "run")

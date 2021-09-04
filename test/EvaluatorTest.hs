@@ -4,7 +4,6 @@ import Test.Tasty ( testGroup, TestTree )
 import Test.Tasty.HUnit ( HasCallStack, testCase, assertFailure, Assertion, (@?=) )
 import qualified Data.Map.Strict as M
 
-import BuiltInDefs ( builtInProcedures, builtInOperators )
 import Errors
 import EvaluatorEnv
 import Evaluator
@@ -15,33 +14,27 @@ import AST
 
 -- Auxiliary
 
-stateWithFunctions :: EvaluatorData
-stateWithFunctions =
-    let (_, _, rs, p, me) = initialState
-        fs = translateFunctions [] (builtInOperators ++ builtInProcedures)
-    in (M.fromList fs, [M.empty], rs, p, me)
-
 -- Asserts that an evaluator action yields a specific result with the given environment
-expectedResult :: HasCallStack => EvaluatorEnv IO (Maybe (Bare Value)) -> EvaluatorData -> Bare Value -> Assertion
-expectedResult eval st res = do
-    r <- runEvaluatorEnv eval st initialLocation
+expectedResult :: HasCallStack => EvaluatorEnv IO (Maybe (Bare Value)) -> Bare Value -> Assertion
+expectedResult eval res = do
+    r <- runEvaluatorEnv eval initialLocation initialState
     case r of
         Left e -> assertFailure $ "Evaluator action failed, the error was:\n" ++ show e
         Right ((Nothing , _), _) -> assertFailure "Evaluator action didn't yield a result"
         Right ((Just res', _), _) -> res' @?= res
 
 -- Asserts that an evaluator action succeeds with the given environment
-expectedSuccess :: HasCallStack => EvaluatorEnv IO (Maybe (Bare Value)) -> EvaluatorData -> Assertion
-expectedSuccess eval st = do
-    r <- runEvaluatorEnv eval st initialLocation
+expectedSuccess :: HasCallStack => EvaluatorEnv IO (Maybe (Bare Value)) -> Assertion
+expectedSuccess eval = do
+    r <- runEvaluatorEnv eval initialLocation initialState
     case r of
         Left e -> assertFailure $ "Evaluator action failed, the error was:\n" ++ show e
         Right _ -> return ()
 
 -- Asserts that an evaluator yields a specific error with the given environment
-expectedError :: HasCallStack => EvaluatorEnv IO (Maybe (Bare Value)) -> EvaluatorData -> Error -> Assertion
-expectedError eval st e = do
-    r <- runEvaluatorEnv eval st initialLocation
+expectedError :: HasCallStack => EvaluatorEnv IO (Maybe (Bare Value)) -> Error -> Assertion
+expectedError eval e = do
+    r <- runEvaluatorEnv eval initialLocation initialState
     case r of
         Left e' -> e' @?= e
         Right ((Nothing, _), _) -> assertFailure "Evaluator action didn't fail, and yielded no result"
@@ -58,13 +51,11 @@ valueTests = testGroup "Value"
         testCase "Operator call" $
             expectedResult
                 (Just <$> evaluateValue (OperatorCall (0,0) "%_plus_%" [IntV (0,0) 2, IntV (0,6) 3]))
-               stateWithFunctions
                 (IntV () 5),
 
         testCase "Variable" $
             expectedResult
                 (setVariableValue ["x"] (IntV () 5) >> Just <$> evaluateValue (VarV (0,0) ["x"]))
-                stateWithFunctions
                 (IntV () 5)
 
     ]
@@ -84,7 +75,6 @@ sentenceTests = testGroup "sentence"
                             Return () (VarV () ["x"])
                         ]
                 )
-                stateWithFunctions
                 (IntV () 3),
 
         testCase "Add to" $
@@ -97,7 +87,6 @@ sentenceTests = testGroup "sentence"
                             Return () (VarV () ["x"])
                         ]
                 )
-                stateWithFunctions
                 (IntV () 5),
 
         testCase "Divide by" $
@@ -110,7 +99,6 @@ sentenceTests = testGroup "sentence"
                             Return () (VarV () ["x"])
                         ]
                 )
-                stateWithFunctions
                 (FloatV () 1.0),
 
         testCase "Append to" $
@@ -126,7 +114,6 @@ sentenceTests = testGroup "sentence"
                         Just v -> Just <$> loadReferences v
                         Nothing -> return Nothing
                 )
-                stateWithFunctions
                 (ListV () FloatT [FloatV () 5.0, FloatV () 4.0, IntV () 3, IntV () 2, IntV () 1]),
 
         testCase "Caught division by zero" $
@@ -139,7 +126,6 @@ sentenceTests = testGroup "sentence"
                             Return () (VarV () ["x"])
                         ]
                 )
-                stateWithFunctions
                 (IntV () 2),
 
         testCase "Variable definition before caught throw" $
@@ -153,18 +139,15 @@ sentenceTests = testGroup "sentence"
                                 [Return () (VarV () ["x"])]
                         ]
                 )
-                stateWithFunctions
                 (IntV () 2),
 
         testCase "Caught throw" $
             expectedSuccess
-                (evaluateSentences $ mockLocations [Try () [Throw () ["test", "error"]]])
-                stateWithFunctions,
+                (evaluateSentences $ mockLocations [Try () [Throw () ["test", "error"]]]),
 
         testCase "Uncaught throw" $
             expectedError
                 (evaluateSentences [Throw (0,0) ["test", "error"]])
-                stateWithFunctions
                 (Error (Just (0,0)) $ CodeError ["test", "error"]),
 
         testCase "Undefined variable after let with throw" $
@@ -177,7 +160,6 @@ sentenceTests = testGroup "sentence"
                                 [Return (3,4) (VarV (3,18) ["x"])]
                         ]
                 )
-                stateWithFunctions
                 (Error (Just (3,18)) $ UndefinedVariable ["x"]),
 
         testCase "Variable not in scope after true if" $
@@ -191,7 +173,6 @@ sentenceTests = testGroup "sentence"
                             Return (2,0) (VarV (2,14) ["x"])
                         ]
                 )
-                stateWithFunctions
                 (Error (Just (2,14)) $ UndefinedVariable ["x"]),
 
         testCase "Variable not in scope after false if" $
@@ -205,7 +186,6 @@ sentenceTests = testGroup "sentence"
                             Return (2,0) (VarV (2,14) ["x"])
                         ]
                 )
-                stateWithFunctions
                 (Error (Just (2,14)) $ UndefinedVariable ["x"]),
 
         testCase "Division by zero" $
@@ -218,7 +198,6 @@ sentenceTests = testGroup "sentence"
                             Return (2,0) (VarV (0,14) ["x"])
                         ]
                 )
-                stateWithFunctions
                 (Error (Just (1,0)) (CodeError ["Division by zero"]))
     ]
     where

@@ -9,6 +9,7 @@ import qualified Data.Map.Strict as M
 import qualified Data.IntMap.Strict as IM
 import qualified Data.IntSet as IS
 
+import BuiltInDefs (builtInFunctions)
 import Errors
 import Location
 import AST
@@ -25,11 +26,13 @@ type RefData = IM.IntMap (Bare Value) -- A mapping between addresses and their v
 type EvaluatorData = (FunData, VarData, RefData, Int, Int)
 type EvaluatorEnv m a = LocationT (StateT EvaluatorData (ExceptT Error m)) a
 
-runEvaluatorEnv :: EvaluatorEnv m a -> EvaluatorData -> Location -> m (Either Error ((a, Location), EvaluatorData))
-runEvaluatorEnv f d s = runExceptT $ runStateT (runLocationT f s) d
+runEvaluatorEnv :: EvaluatorEnv m a -> Location -> EvaluatorData -> m (Either Error ((a, Location), EvaluatorData))
+runEvaluatorEnv f l d = runExceptT $ runStateT (runLocationT f l) d
 
 initialState :: EvaluatorData
-initialState = (M.empty, [], IM.empty, 0, initMaxMem)
+initialState =
+    let functions = M.fromList $ map (\(funId, FunSignature title _) -> (funId, FunCallable title [])) builtInFunctions
+    in (functions, [M.empty], IM.empty, 0, initMaxMem)
     where initMaxMem = 4
 
 class Monad m => ReadWrite m where
@@ -90,9 +93,6 @@ getFunctionCallable fid = lift $ gets (\(fs, _, _, _, _) -> fs M.! fid)
 
 setFunctionCallable :: Monad m => FunId -> FunCallable -> EvaluatorEnv m ()
 setFunctionCallable fid f = changeFunctions $ M.insert fid f
-
-setFunctions :: Monad m => [(FunId, FunCallable)] -> EvaluatorEnv m ()
-setFunctions fs = changeFunctions $ const (M.fromList fs)
 
 --
 
