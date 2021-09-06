@@ -86,7 +86,7 @@ getIteratorValues val = do
 -- -----------------
 -- * Evaluators
 
--- | Recursively solves references until it reaches a normal value.
+-- | Recursively solves references in a partially evaluated value until it reaches a basic value.
 -- If the argument is a list, a copy of it is returned.
 evaluateReferences :: ReadWrite m => Bare Value -> EvaluatorEnv m (Bare Value)
 evaluateReferences (VarV _ name) = do
@@ -97,7 +97,7 @@ evaluateReferences (RefV _ addr) = getValueAtAddress addr >>= evaluateReferences
 evaluateReferences listVal@(ListV {}) = copyValue listVal
 evaluateReferences val = return val
 
--- | Evaluates a value until a reference is reached.
+-- | Partially evaluates a value until a reference is reached.
 -- If the argument is a list, it must be one created by extension so it is initialized.
 evaluateUpToReference :: ReadWrite m => Annotated Value -> EvaluatorEnv m (Bare Value)
 evaluateUpToReference (VarV _ name) = do
@@ -121,119 +121,130 @@ evaluateValue (IterV {}) = error "Shouldn't happen: values with iterators must b
 evaluateValue (ValueM _ _) = error "Shouldn't happen: values must be solved before evaluating them"
 evaluateValue val = evaluateUpToReference val >>= evaluateReferences
 
--- | Evaluates a list of sentences in a new block, discarding it afterwards.
+-- | Evaluates a list of sentences in a new block scope, discarding it afterwards.
 evaluateSentences :: ReadWrite m => [Annotated Sentence] -> EvaluatorEnv m (Maybe (Bare Value))
 evaluateSentences [] = return Nothing
-evaluateSentences sentences = inContainedScope $ firstNotNull evaluateSentenceWithLocation sentences
+evaluateSentences ss = inBlockScope $ firstNotNull evaluateSentenceWithLocation ss
     where
         evaluateSentenceWithLocation :: ReadWrite m => Annotated Sentence -> EvaluatorEnv m (Maybe (Bare Value))
-        evaluateSentenceWithLocation sentence = do
-            let ann = getLocation sentence
-            result <- withLocation sentence evaluateSentence
+        evaluateSentenceWithLocation s = do
+            let ann = getLocation s
+            result <- withLocation s evaluateSentence
             setCurrentLocation ann
             return result
 
+-- | Evaluates a sentence, with the possible side effect of triggering the garbage collector.
 evaluateSentence :: ReadWrite m => Annotated Sentence -> EvaluatorEnv m (Maybe (Bare Value))
 evaluateSentence s = tick >> evaluateSentence' s
     where
         evaluateSentence' :: ReadWrite m => Annotated Sentence -> EvaluatorEnv m (Maybe (Bare Value))
-        evaluateSentence' (VarDef _ ~(vn:vns) _ v) = do
-            v' <- case v of
-                (ListV _ et vs) -> do
-                    vs' <- concat <$> mapM (getIteratorValues >=> mapM evaluateReferences) vs
-                    addrs <- mapM addValue vs'
-                    return $ ListV () et (map (RefV ()) addrs)
-                _ -> withLocation v evaluateValue
-            setVariableValue vn v'
-            mapM_ (\vn' -> copyValue v' >>= setVariableValue vn') vns
+        evaluateSentence' (VarDef _ ~(name:names) _ val) = do
+            val' <- case val of
+                -- If the variable is being declared as a string, it can contain iterators.
+                (ListV _ elemsType generators) -> do
+                    vals <- concat <$> mapM (getIteratorValues >=> mapM evaluateReferences) generators
+                    addrs <- mapM addValue vals
+                    return $ ListV () elemsType (map (RefV ()) addrs)
+                _ -> withLocation val evaluateValue
+            setVariableValue name val'
+            -- Declare the rest of the variables as copies of the original value so that they don't reference the same addresses.
+            mapM_ (\name' -> copyValue val' >>= setVariableValue name') names
             return Nothing
-        evaluateSentence' (If _ bv ls) = do
-            ~(BoolV _ v') <- withLocation bv evaluateValue
-            if v'
-                then evaluateSentences ls
+        evaluateSentence' (If _ boolVal ss) = do
+            ~(BoolV _ cond) <- withLocation boolVal evaluateValue
+            if cond
+                then evaluateSentences ss
                 else return Nothing
-        evaluateSentence' (IfElse _ bv lsT lsF) = do
-            ~(BoolV _ v') <- withLocation bv evaluateValue
-            if v'
-                then evaluateSentences lsT
-                else evaluateSentences lsF
-        evaluateSentence' (ForEach _ iN _ lv ls) = do
-            let auxName = "_" : iN
-            lv' <- withLocation lv evaluateUpToReference
-            es <- case lv' of
-                (ListV _ _ es) -> do
-                    addr <- addValue lv'
+        evaluateSentence' (IfElse _ boolVal ssTrue ssFalse) = do
+            ~(BoolV _ cond) <- withLocation boolVal evaluateValue
+            if cond
+                then evaluateSentences ssTrue
+                else evaluateSentences ssFalse
+        evaluateSentence' (ForEach _ iterName _ listval ss) = do
+            -- Set an auxiliary variable containing the values being iterated so that the garbage collector doesn't free them.
+            let auxName = "_" : iterName
+            listVal' <- withLocation listval evaluateUpToReference
+            elems <- case listVal' of
+                (ListV _ _ elems) -> do
+                    addr <- addValue listVal'
                     setVariableAddress auxName addr
-                    return es
+                    return elems
                 (RefV _ addr) -> do
-                    ~(ListV _ _ es) <- getValueAtAddress addr
+                    ~(ListV _ _ elems) <- getValueAtAddress addr
                     setVariableAddress auxName addr
-                    return es
+                    return elems
                 _ -> error "Shouldn't happen: wrong type in loop"
-            let iterateLoop = (\(RefV _ ref) -> setVariableAddress iN ref >> evaluateSentences ls)
-            r <- firstNotNull iterateLoop es
-            removeVariable iN
+            let loopIteration = (\(RefV _ addr) -> setVariableAddress iterName addr >> evaluateSentences ss)
+            result <- firstNotNull loopIteration elems
+            -- After the loop, the auxiliary variable is removed so that it can be freed by the garbage collector.
             removeVariable auxName
-            return r
-        evaluateSentence' s@(Until _ bv ls) = do
-            ~(BoolV _ v') <- withLocation bv evaluateValue
-            if v'
+            removeVariable iterName
+            return result
+        evaluateSentence' sUntil@(Until _ boolVal ss) = do
+            ~(BoolV _ cond) <- withLocation boolVal evaluateValue
+            if cond
                 then return Nothing
                 else do
-                    r <- evaluateSentences ls
-                    case r of
-                        (Just v'') -> return $ Just v''
-                        Nothing -> evaluateSentence s
-        evaluateSentence' s@(While _ bv ls) = do
-            ~(BoolV _ v') <- withLocation bv evaluateValue
-            if v'
+                    result <- evaluateSentences ss
+                    case result of
+                        (Just val) -> return $ Just val
+                        Nothing -> evaluateSentence sUntil
+        evaluateSentence' sWhile@(While _ boolVal ss) = do
+            ~(BoolV _ cond) <- withLocation boolVal evaluateValue
+            if cond
                 then do
-                    r <- evaluateSentences ls
-                    case r of
-                        (Just v'') -> return $ Just v''
+                    result <- evaluateSentences ss
+                    case result of
+                        (Just val) -> return $ Just val
                         Nothing -> evaluateSentence s
                 else return Nothing
-        evaluateSentence' (Return _ v) = do
-            v' <- withLocation v evaluateValue
-            return $ Just v'
-        evaluateSentence' (ProcedureCall _ fid vs) = do
+        evaluateSentence' (Return _ val) = do
+            val' <- withLocation val evaluateValue
+            return $ Just val'
+        evaluateSentence' (ProcedureCall _ fid args) = do
             ann <- getCurrentLocation
-            vss <- mapM (`withLocation` getIteratorValues) vs
+            -- The arguments of procedure calls can be iterators. Each list contains the values to iterate for a function parameter.
+            valsLists <- mapM (`withLocation` getIteratorValues) args
             setCurrentLocation ann
-            mapM_ (evaluateProcedure fid) $ sequence vss
+            mapM_ (evaluateProcedure fid) $ sequence valsLists
             return Nothing
         evaluateSentence' (Try _ ss) = evaluateSentences ss `catchCodeError` \_ -> return Nothing
-        evaluateSentence' (TryCatch _ ts cs) = evaluateSentences ts `catchCodeError` \_ -> evaluateSentences cs
+        evaluateSentence' (TryCatch _ ssTry ssCatch) = evaluateSentences ssTry `catchCodeError` \_ -> evaluateSentences ssCatch
         evaluateSentence' (Throw _ msg) = throwHere $ CodeError msg
         evaluateSentence' (SentenceM _ _) = error "Shouldn't happen: sentences must be solved before evaluating them"
 
+-- | Returns the value resulting from evaluating an operator with the given arguments.
 evaluateOperator :: ReadWrite m => FunId -> [Bare Value] -> EvaluatorEnv m (Bare Value)
-evaluateOperator fid vs = do
-    r <- evaluateFunction fid vs
-    case r of
-        Just r' -> return r'
+evaluateOperator fid args = do
+    result <- evaluateFunction fid args
+    case result of
+        Just val -> return val
         Nothing -> throwHere ExpectedResult
 
+-- | Evaluates a procedure with the given arguments.
 evaluateProcedure :: ReadWrite m => FunId -> [Bare Value] -> EvaluatorEnv m ()
-evaluateProcedure fid vs = void $ evaluateFunction fid vs
+evaluateProcedure fid args = void $ evaluateFunction fid args
 
+-- | Evaluates any function with the given arguments, which must be partially evaluated.
 evaluateFunction :: ReadWrite m =>  FunId -> [Bare Value] -> EvaluatorEnv m (Maybe (Bare Value))
-evaluateFunction fid vs = do
-    (FunCallable (Title _ t) ss) <- getFunctionCallable fid
-    vs' <- evaluateArguments t vs
+evaluateFunction fid args = do
+    (FunCallable (Title _ title) ss) <- getFunctionCallable fid
+    -- Finish evaluating the arguments that are passed as copies.
+    args' <- evaluateArguments title args
     if isBuiltInOperator fid
-        then Just <$> evaluateBuiltInOperator fid vs'
+        then Just <$> evaluateBuiltInOperator fid args'
         else if isBuiltInProcedure fid
-            then evaluateBuiltInProcedure fid vs' >> return Nothing
+            then evaluateBuiltInProcedure fid args' >> return Nothing
+            -- If the function is user defined, create a new scope.
             else do
-                (vars, refs) <- variablesFromTitle t vs'
+                (vars, refs) <- variablesFromTitle title args'
                 inNewScope (evaluateSentences ss) vars refs
 
---
 
+-- -----------------
+-- * Main
 
--- Main
-
+-- | Returns the result of evaluating a whole program, starting with the procedure called "Run".
 evaluateProgram :: ReadWrite m => Program -> m (Either Error (((), Location), EvaluatorData))
 evaluateProgram prog = runEvaluatorEnv (evaluateProgram' prog) initialLocation initialState
     where
@@ -241,5 +252,3 @@ evaluateProgram prog = runEvaluatorEnv (evaluateProgram' prog) initialLocation i
         evaluateProgram' prog = do
             registerFunctions prog
             evaluateProcedure "run" []
-
---
