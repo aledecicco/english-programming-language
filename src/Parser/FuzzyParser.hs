@@ -1,12 +1,21 @@
 {-# LANGUAGE TupleSections #-}
+{-|
+Module      : FuzzyParser
+Copyright   : (c) Alejandro De Cicco, 2021
+License     : MIT
+Maintainer  : alejandrodecicco99@gmail.com
+
+The language's first phase of parsing.
+Builds an AST that may have unparsed Values ('ValueM') or Sentences ('SentenceM'), which are then transformed into concrete Values or Sentences by the "Solver".
+-}
 
 module FuzzyParser where
 
-import Data.Void ( Void )
-import Data.Char ( toUpper )
-import Data.List ( intercalate )
-import Data.List.NonEmpty ( NonEmpty((:|)) )
-import Control.Monad ( void )
+import Control.Monad (void)
+import Data.Char (toUpper)
+import Data.List (intercalate)
+import Data.List.NonEmpty (NonEmpty((:|)))
+import Data.Void (Void)
 
 import Text.Megaparsec
 import Text.Megaparsec.Char
@@ -15,38 +24,38 @@ import qualified Text.Megaparsec.Char.Lexer as L
 import AST
 import Errors
 
---
 
-
--- Parser definitions
+-- -----------------
+-- * Parser definition
 
 type FuzzyParser = Parsec Void String
 
--- Parses whitespace including new lines
-scn :: FuzzyParser ()
-scn = L.space space1 empty empty
+-- | Consumes whitespace including newlines.
+consumeWhitespace :: FuzzyParser ()
+consumeWhitespace = L.space space1 empty empty
 
--- Consumes whitespace not including new lines
-sc :: FuzzyParser ()
-sc = L.space (void $ some (char ' ' <|> char '\t')) empty empty
+-- | Consumes whitespace not including newlines.
+consumeLineWhitespace :: FuzzyParser ()
+consumeLineWhitespace = L.space (void $ some (char ' ' <|> char '\t')) empty empty
 
--- Wrapper for parsing lexemes consumig trailing whitespace
+-- | Wrapper for parsing lexemes consuming trailing whitespace.
 lexeme :: FuzzyParser a -> FuzzyParser a
-lexeme = L.lexeme sc
+lexeme = L.lexeme consumeLineWhitespace
 
--- Parses a string consuming trailing whitespace
+-- | Parses a string consuming trailing whitespace.
 symbol :: String -> FuzzyParser ()
-symbol = void . L.symbol sc
+symbol = void . L.symbol consumeLineWhitespace
 
+-- | The list of words that can't be used in variable names.
+-- These words being reserved makes it easier to parse 'IterV', 'VarDef' and 'ForEach'.
 reservedWords :: [String]
 reservedWords = ["be", "in"]
 
---
 
+-- -----------------
+-- * Auxiliary
 
--- Auxiliary
-
--- Parses a name (list of words that are not reserved)
+-- | Parses a name (list of words that are not reserved)
 name :: FuzzyParser Name
 name = (some . try) identifier <?> "name"
 
@@ -174,7 +183,7 @@ intercalated pA pB = do
 
 -- Parses a header followed by a block of indented elements
 listWithHeader :: FuzzyParser a -> FuzzyParser b -> FuzzyParser (a, [b])
-listWithHeader pH pE = L.indentBlock scn listWithHeader'
+listWithHeader pH pE = L.indentBlock consumeWhitespace listWithHeader'
     where
         listWithHeader' = do
             h <- pH
@@ -251,22 +260,22 @@ titleParam = do
 -- Sentences
 
 sentence :: FuzzyParser (Annotated Sentence)
-sentence = lookAhead upperChar >> do
-        variablesDefinition <* dot
-        <|> (simpleIf <* dot)
-        <|> ifBlock
-        <|> (simpleForEach <* dot)
-        <|> forEachBlock
-        <|> (simpleUntil <* dot)
-        <|> untilBlock
-        <|> (simpleWhile <* dot)
-        <|> whileBlock
-        <|> (result <* dot)
-        <|> throw
-        <|> (simpleTry <* dot)
-        <|> tryBlock
-        <|> (sentenceMatchable <* dot)
-        <?> "sentence"
+sentence = lookAhead upperChar >>
+    ((variablesDefinition <* dot)
+    <|> (simpleIf <* dot)
+    <|> ifBlock
+    <|> (simpleForEach <* dot)
+    <|> forEachBlock
+    <|> (simpleUntil <* dot)
+    <|> untilBlock
+    <|> (simpleWhile <* dot)
+    <|> whileBlock
+    <|> (result <* dot)
+    <|> throw
+    <|> (simpleTry <* dot)
+    <|> tryBlock
+    <|> (sentenceMatchable <* dot)
+    <?> "sentence")
 
 -- Parses a sentence that can be used inside a simple statement
 simpleSentence :: FuzzyParser (Annotated Sentence)

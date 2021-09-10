@@ -4,16 +4,16 @@ Copyright   : (c) Alejandro De Cicco, 2021
 License     : MIT
 Maintainer  : alejandrodecicco99@gmail.com
 
-The monad on which the 'Evaluator' runs, with some useful operations.
+The monad on which the "Evaluator" runs, with some useful operations.
 -}
 
-module EvaluatorEnv ( module EvaluatorEnv, module Location, catchError ) where
+module EvaluatorEnv (module EvaluatorEnv, module Location) where
 
-import Control.Monad ( when )
-import Control.Monad.Except ( throwError, catchError )
-import Control.Monad.Trans.Class ( lift )
-import Control.Monad.Trans.State.Strict ( gets, modify, runStateT, StateT )
-import Control.Monad.Trans.Except ( runExceptT, ExceptT )
+import Control.Monad (when)
+import Control.Monad.Except (throwError, catchError)
+import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.State.Strict (gets, modify, runStateT, StateT)
+import Control.Monad.Trans.Except (runExceptT, ExceptT)
 
 import qualified Data.IntSet as IS
 import qualified Data.IntMap.Strict as IM
