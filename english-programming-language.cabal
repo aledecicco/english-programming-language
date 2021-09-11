@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: b83b3fb96dd51085af6bf270e71be20c584152512baa090126a644888bcd5fdd
+-- hash: d19f714c91ac490a11a3c2952666c0882a1e716df367e38e4ad4f0cbdb6cd45b
 
 name:           english-programming-language
 version:        3.8.0
@@ -41,7 +41,7 @@ library
       ansi-terminal
     , base >=4.7 && <5
     , containers
-    , megaparsec
+    , megaparsec >=9.0 && <10
     , mtl
     , tasty
     , tasty-hunit
@@ -61,7 +61,7 @@ executable english-programming-language-exe
     , base >=4.7 && <5
     , containers
     , english-programming-language
-    , megaparsec
+    , megaparsec >=9.0 && <10
     , mtl
     , tasty
     , tasty-hunit
@@ -86,7 +86,7 @@ test-suite english-programming-language-test
     , base >=4.7 && <5
     , containers
     , english-programming-language
-    , megaparsec
+    , megaparsec >=9.0 && <10
     , mtl
     , tasty
     , tasty-hunit

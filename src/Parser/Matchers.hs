@@ -1,19 +1,30 @@
 {-# LANGUAGE TupleSections #-}
+{-|
+Module      : Matchers
+Copyright   : (c) Alejandro De Cicco, 2021
+License     : MIT
+Maintainer  : alejandrodecicco99@gmail.com
+
+Functions used by the "Solver" to turn MatchableParts into Values and Sentences.
+-}
 
 module Matchers where
 
-import Control.Monad ( void )
-import Data.Char ( isUpper, toLower )
-import Utils ( allNotNull, getFunId )
-import SolverEnv
+import Control.Monad (void, filterM)
+import Data.Char (isUpper, toLower)
+
 import AST
+import SolverEnv
+import Utils (allNotNull, getFunId)
 
+
+-- -----------------
+-- * Auxiliary
+
+-- | Returns all the ways to split a list in two with at least one element in the first part.
 --
-
-
--- Auxiliary
-
--- Returns all the ways to split a list in two, with at least one element in the first part
+-- >>> splits [1, 2, 3]
+-- [([1],[2,3]),([1,2],[3]),([1,2,3],[])]
 splits :: [a] -> [([a], [a])]
 splits [] = []
 splits (x:xs) = splits' [x] xs
@@ -22,55 +33,54 @@ splits (x:xs) = splits' [x] xs
         splits' l [] = [(l,[])]
         splits' l (r:rs) = (l, r:rs) : splits' (l++[r]) rs
 
--- Returns whether a list of words is a prefix of the given matchable, and the unmatched sufix
+-- | Returns whether a list of words is a prefix of the given matchable, and the unmatched sufix.
 isPrefix :: [String] -> [MatchablePart a] -> (Bool, [MatchablePart a])
-isPrefix [] ms = (True, ms)
+isPrefix [] parts = (True, parts)
 isPrefix _ [] = (False, [])
-isPrefix (t:ts) ms@(WordP _ w : ps)
-    | t == w = isPrefix ts ps
-    | otherwise = (False, ms)
-isPrefix _ ms = (False, ms)
+isPrefix (w:ws) parts@(WordP _ w' : ws')
+    | w == w' = isPrefix ws ws'
+    | otherwise = (False, parts)
+isPrefix _ parts = (False, parts)
 
--- Returns all the ways a list of matchables can be used to fill the gaps (parameters) of a title
+-- | Returns all the ways a list of matchables can be used to fill the gaps (parameters) of a title.
 sepByTitle :: [MatchablePart a] -> [TitlePart b] -> [[[MatchablePart a]]]
 sepByTitle [] [] = [[]]
 sepByTitle _ [] = []
-sepByTitle ps (TitleWords _ ws : ts) =
-    let (isP, rest) = ws `isPrefix` ps
-    in if isP then sepByTitle rest ts else []
-sepByTitle ps (TitleParam {} : ts) = do
-    (span, rest) <- splits ps
-    restMatches <- sepByTitle rest ts
+sepByTitle parts (TitleWords _ ws : titleParts) =
+    let (isP, rest) = ws `isPrefix` parts
+    in if isP then sepByTitle rest titleParts else []
+sepByTitle parts (TitleParam {} : titleParts) = do
+    (span, rest) <- splits parts
+    restMatches <- sepByTitle rest titleParts
     return $ span:restMatches
 
--- Returns the matchables in a list before and after a given matchable
-splitBy :: [MatchablePart a] -> MatchablePart b -> ([MatchablePart a], [MatchablePart a])
-splitBy [] _ = ([], [])
-splitBy (p:ps) p' =
-    if void p == void p'
-        then ([], ps)
+-- | Returns the matchables in a list before and after a given matchable.
+splitBy :: MatchablePart b -> [MatchablePart a] -> ([MatchablePart a], [MatchablePart a])
+splitBy _ [] = ([], [])
+splitBy part' (part:parts) =
+    if void part == void part'
+        then ([], parts)
         else
-            let (bef, aft) = splitBy ps p'
-            in (p:bef, aft)
-
---
+            let (before, after) = splitBy part' parts
+            in (part:before, after)
 
 
--- Auxiliary matchers
+-- -----------------
+-- * Auxiliary matchers
 
 matchAsName :: [MatchablePart a] -> SolverEnv (Maybe Name)
 matchAsName [WordP _ w] = return $ Just [w]
-matchAsName (WordP _ w : ps) = do
-    r <- matchAsName ps
-    case r of
+matchAsName (WordP _ w : rest) = do
+    res <- matchAsName rest
+    case res of
         Just ws -> return $ Just (w : ws)
         Nothing -> return Nothing
 matchAsName _ = return Nothing
 
 matchAsType :: [MatchablePart a] -> SolverEnv (Maybe Type)
-matchAsType ps = do
-    r <- matchAsName ps
-    case r of
+matchAsType parts = do
+    res <- matchAsName parts
+    case res of
         Just ws -> return $ matchAsType' ws False
         Nothing -> return Nothing
     where
@@ -90,36 +100,35 @@ matchAsType ps = do
         matchAsType' _ _ = Nothing
 
 matchAsFunctionCall :: [Annotated MatchablePart] -> [FunSignature] -> SolverEnv [(FunId, [Annotated Value])]
-matchAsFunctionCall ps fs = concat <$> mapM (matchAsFunctionCall' ps) fs
+matchAsFunctionCall parts funs = concat <$> mapM (matchAsFunctionCall' parts) funs
     where
         matchAsFunctionCall' :: [Annotated MatchablePart] -> FunSignature -> SolverEnv [(FunId, [Annotated Value])]
-        matchAsFunctionCall' ps (FunSignature (Title _ ft) _) = do
-            let posParams = sepByTitle ps ft
-                fid = getFunId ft
-            paramMatches <- allNotNull matchAllParams posParams
+        matchAsFunctionCall' parts (FunSignature (Title _ funTitle) _) = do
+            let possParams = sepByTitle parts funTitle
+                fid = getFunId funTitle
+            paramMatches <- allNotNull matchAllParams possParams
             let paramCombs = map sequence paramMatches
             return $ concatMap (map (fid,)) paramCombs
 
         matchAllParams :: [[Annotated MatchablePart]] -> SolverEnv (Maybe [[Annotated Value]])
-        matchAllParams pss = do
-            r <- mapM matchAsValue pss
-            if any null r
+        matchAllParams partsLists = do
+            -- A list of possibilities for each list of matchables.
+            resultsLists <- mapM matchAsValue partsLists
+            if any null resultsLists
                 then return Nothing
-                else return $ Just r
-
---
+                else return $ Just resultsLists
 
 
--- Value matchers
+-- -----------------
+-- * Value matchers
 
 matchAsPrimitive :: [Annotated MatchablePart] -> SolverEnv [Annotated Value]
 matchAsPrimitive [IntP ann n] = return [IntV ann n]
 matchAsPrimitive [FloatP ann n] = return [FloatV ann n]
 matchAsPrimitive [CharP ann c] = return [CharV ann c]
-matchAsPrimitive [StringP ann@(ln, cn) s] =
-    let cns = [cn+1 ..]
-        lvs = zip s cns
-        locateC = \(c, cn') -> CharV (ln, cn') c
+matchAsPrimitive [StringP ann@(ln, cn) str] =
+    let lvs = zip str [1..]
+        locateC = \(char, pos) -> CharV (ln, cn + pos) char
     in return [ListV ann CharT $ map locateC lvs]
 matchAsPrimitive [WordP ann w]
     | w == "true" = return [BoolV ann True]
@@ -127,69 +136,60 @@ matchAsPrimitive [WordP ann w]
 matchAsPrimitive _ = return []
 
 matchAsVariable :: [Annotated MatchablePart] -> SolverEnv [Annotated Value]
-matchAsVariable ps = do
-    r <- matchAsName ps
-    let posN = case r of
-            Just n@("the":w:ws) -> if w == "the" then [n] else [n, w:ws]
-            Just n -> [n]
+matchAsVariable parts = do
+    res <- matchAsName parts
+    let possNames = case res of
+            Just name@("the":w:ws) -> if w == "the" then [name] else [name, w:ws]
+            Just name -> [name]
             Nothing -> []
-        ann = getFirstLocation ps
-    ns <- allNotNull matchAsVariable' posN
-    return $ map (VarV ann) ns
-    where
-        matchAsVariable' :: Name -> SolverEnv (Maybe Name)
-        matchAsVariable' n = do
-            isDef <- variableIsDefined n
-            if isDef
-                then return $ Just n
-                else return Nothing
+        ann = getFirstLocation parts
+    names <- filterM variableIsDefined possNames
+    return $ map (VarV ann) names
 
 matchAsOperatorCall :: [Annotated MatchablePart] -> SolverEnv [Annotated Value]
-matchAsOperatorCall ps = do
-    let ann = getFirstLocation ps
+matchAsOperatorCall parts = do
+    let ann = getFirstLocation parts
     operators <- getOperatorSignatures
-    r <- matchAsFunctionCall ps operators
+    r <- matchAsFunctionCall parts operators
     return $ map (uncurry $ OperatorCall ann) r
 
 matchAsIterator :: [Annotated MatchablePart] -> SolverEnv [Annotated Value]
-matchAsIterator (WordP ann "each":ps) = do
-    let (bef, aft) = splitBy ps (WordP () "in")
-    r <- matchAsType bef
-    case r of
-        Just t -> do
-            r <- matchAsValue aft
-            return $ map (IterV ann t) r
+matchAsIterator (WordP ann "each":parts) = do
+    let (before, after) = splitBy (WordP () "in") parts
+    befRes <- matchAsType before
+    case befRes of
+        Just iterType -> do
+            possAft <- matchAsValue after
+            return $ map (IterV ann iterType) possAft
         Nothing -> return []
 matchAsIterator _ = return []
 
 matchAsValue :: [Annotated MatchablePart] -> SolverEnv [Annotated Value]
-matchAsValue [ParensP ps] = matchAsValue ps
-matchAsValue ps = do
-    r <- mapM (\matcher -> matcher ps) [matchAsPrimitive, matchAsVariable, matchAsOperatorCall, matchAsIterator]
-    return $ concat r
-
---
+matchAsValue [ParensP parts] = matchAsValue parts
+matchAsValue parts = do
+    results <- mapM (\matcher -> matcher parts) [matchAsPrimitive, matchAsVariable, matchAsOperatorCall, matchAsIterator]
+    return $ concat results
 
 
--- Sentence matchers
+-- -----------------
+-- * Sentence matchers
 
 matchAsProcedureCall :: [Annotated MatchablePart] -> SolverEnv [Annotated Sentence]
-matchAsProcedureCall ps = do
+matchAsProcedureCall parts = do
+    let ann = getFirstLocation parts
     procedures <- getProcedureSignatures
-    r <- matchAsFunctionCall ps procedures
-    r' <- case ps of
-        (WordP fAnn (x:xs) : ps) ->
-            if isUpper x
+    res <- matchAsFunctionCall parts procedures
+    toLowerRes <- case parts of
+        (WordP fAnn (c:cs) : rest) ->
+            if isUpper c
+                -- Try matching lower-casing the first letter.
                 then do
-                    let lowerCaseTitle = WordP fAnn (toLower x : xs) : ps
+                    let lowerCaseTitle = WordP fAnn (toLower c : cs) : rest
                     matchAsFunctionCall lowerCaseTitle procedures
                 else return []
         _ -> return []
-    let ann = getFirstLocation ps
-    return $ map (uncurry  $ ProcedureCall ann) (r ++ r')
+    return $ map (uncurry  $ ProcedureCall ann) (res ++ toLowerRes)
 
 matchAsSentence :: [Annotated MatchablePart] -> SolverEnv [Annotated Sentence]
-matchAsSentence [ParensP ps] = matchAsSentence ps
-matchAsSentence ps = matchAsProcedureCall ps
-
---
+matchAsSentence [ParensP parts] = matchAsSentence parts
+matchAsSentence parts = matchAsProcedureCall parts

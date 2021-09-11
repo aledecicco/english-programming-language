@@ -1,37 +1,49 @@
+{-|
+Module      : Solver
+Copyright   : (c) Alejandro De Cicco, 2021
+License     : MIT
+Maintainer  : alejandrodecicco99@gmail.com
+
+The language's second phase of parsing.
+Transforms the parts left unparsed by the "FuzzyParser" into concrete Values or Sentences.
+-}
+
 module Solver where
 
-import Data.Maybe ( fromJust, catMaybes )
-import Data.List ( find )
-import Control.Monad ( unless, when, void )
-import Control.Monad.Trans.State ( gets, modify, runState, State )
+import Control.Monad (unless, when, void)
+import Control.Monad.Trans.State (gets, modify, runState, State)
+import Data.Maybe (fromJust, catMaybes)
 import qualified Data.Map.Strict as M
 
-import Utils ( allNotNull, hasIterators, typeName, getFunId )
-import Matchers
-import SolverEnv
 import AST
 import Errors
+import Matchers
+import SolverEnv
+import Utils (hasIterators, typeName, getFunId)
 
+
+-- -----------------
+-- * Aliases generation
+
+-- | Returns all the possible ways to name a parameter of a given type.
 --
-
-
-
--- Aliases
-
+-- >>> possibleAliases (ListT (ListT (ListT CharT)))
+-- [["list"],["list","of","lists","of","strings"],["list","of","lists","of","lists"],["list","of","lists","of","lists","of","characters"]]
 possibleAliases :: Type -> [Name]
-possibleAliases (RefT t) = possibleAliases t
-possibleAliases (ListT t) =
-    let as = ["list"] : map (["list", "of"]++) (possibleAliases' t)
-    in if t == CharT then ["string"]:as else as
+possibleAliases (RefT refType) = possibleAliases refType
+possibleAliases (ListT elemsType) =
+    let as = ["list"] : map (["list", "of"]++) (possibleAliases' elemsType)
+    in if elemsType == CharT then ["string"]:as else as
     where
         possibleAliases' :: Type -> [Name]
-        possibleAliases' (ListT t@(ListT _)) = map (["lists", "of"]++) (possibleAliases' t)
-        possibleAliases' (ListT t) =
-            let as = ["lists"] :  map (["lists", "of"]++) (possibleAliases' t)
-            in if t == CharT then ["strings"]:as else as
+        possibleAliases' (ListT elemsType@(ListT _)) = map (["lists", "of"]++) (possibleAliases' elemsType)
+        possibleAliases' (ListT elemsType) =
+            let aliases = ["lists"] :  map (["lists", "of"]++) (possibleAliases' elemsType)
+            in if elemsType == CharT then ["strings"]:aliases else aliases
         possibleAliases' t  = [typeName t True]
-possibleAliases t =  [typeName t False]
+possibleAliases paramType =  [typeName paramType False]
 
+-- | Turns a number into an ordinal.
 intToPosition :: Int -> String
 intToPosition 1 = "1st"
 intToPosition 2 = "2nd"
@@ -40,64 +52,77 @@ intToPosition n
     | n < 10 = show n ++ "th"
     | otherwise = show (div n 10) ++ intToPosition (mod n 10)
 
+-- | Returns a list with the type of each parameter in a title.
 titleTypes :: [TitlePart a] -> [Type]
 titleTypes [] = []
-titleTypes (TitleWords _ _ : ts) = titleTypes ts
-titleTypes (TitleParam _ _ t : ts) = t : titleTypes ts
+titleTypes (TitleWords _ _ : parts) = titleTypes parts
+titleTypes (TitleParam _ _ paramType : parts) = paramType : titleTypes parts
 
+-- | Returns a list with the names of each parameter in a title.
 parameterNames :: [TitlePart a] -> [Name]
 parameterNames [] = []
-parameterNames (TitleWords _ _ : ts) = parameterNames ts
-parameterNames (TitleParam _ ns _ : ts) = ns ++ parameterNames ts
+parameterNames (TitleWords _ _ : parts) = parameterNames parts
+parameterNames (TitleParam _ names _ : parts) = names ++ parameterNames parts
 
+-- | Returns a list of aliases for each parameter in a title.
 computeAliases :: [TitlePart a] -> [[Name]]
-computeAliases ts =
-    let types = titleTypes ts
-        setNames = parameterNames ts
-        posAs = map possibleAliases types
-        (_, totAs) = runState (countRepetitions (concat posAs) >> cancelNames setNames) M.empty
-        (as, _) = runState (mapM (`getParameterAliases` totAs) posAs) M.empty
+computeAliases parts =
+    let types = titleTypes parts
+        paramNames = parameterNames parts
+        possAs = map possibleAliases types
+        (_, totAs) = runState (countRepetitions (concat possAs) >> cancelNames paramNames) M.empty
+        (as, _) = runState (mapM (`getParameterAliases` totAs) possAs) M.empty
     in as
     where
+        -- A computation that counts how many times each name in a list appears in it.
         countRepetitions :: [Name] -> State (M.Map Name Int) ()
         countRepetitions = mapM_ (\n -> modify $ M.insertWith (+) n 1)
 
+        -- A computation that sets to 0 the counts of the names in a list.
+        -- ToDo: this is not needed if variables cant be named the same as a possible alias.
         cancelNames :: [Name] -> State (M.Map Name Int) ()
         cancelNames = mapM_ $ \(w:ws) -> do
             modify $ M.insert (w:ws) 0
             unless (w == "the") $ modify (M.insert ("the":w:ws) 0)
 
+        -- A computation that takes the aliases of a parameter and adds the appropriate ordinals to them, removing from the list the ones that are already in use.
+        -- ToDo: this is not needed if variables cant be named the same as a possible alias.
         getParameterAliases :: [Name] -> M.Map Name Int -> State (M.Map Name Int) [Name]
-        getParameterAliases ns totAs = do
-            countRepetitions ns
-            ns' <- mapM (`addOrdinal` totAs) ns
-            return $ filter (\n -> not $ M.member n totAs) ns'
+        getParameterAliases names totAs = do
+            countRepetitions names
+            ordNames <- mapM (`addOrdinal` totAs) names
+            return $ filter (\name -> not $ M.member name totAs) ordNames
 
+        -- A computation that adds an ordinal to an alias depending on the number of its current aparition and the number of times it appears in total.
         addOrdinal :: Name -> M.Map Name Int -> State (M.Map Name Int) Name
-        addOrdinal n totAs = do
-            let totReps = totAs M.! n
+        addOrdinal name totAs = do
+            let totReps = totAs M.! name
             if totReps > 1
                 then do
-                    rep <- gets (M.! n)
-                    return $ "the" : intToPosition rep : n
-                else return $ "the" : n
+                    currRep <- gets (M.! name)
+                    return $ "the" : intToPosition currRep : name
+                else return $ "the" : name
 
+-- | Adds the possible aliases to each parameter in a title.
 addAliases :: [TitlePart a] -> [TitlePart a]
-addAliases ts = addAliases' ts $ computeAliases ts
+addAliases parts = addAliases' parts $ computeAliases parts
     where
         addAliases' :: [TitlePart a] -> [[Name]] -> [TitlePart a]
-        addAliases' ts [] = ts
-        addAliases' (TitleWords ann ws : ts) as = TitleWords ann ws : addAliases' ts as
-        addAliases' (TitleParam ann [] t : ts) (a:as) = TitleParam ann a t : addAliases' ts as
-        addAliases' (TitleParam ann ns t : ts) (_:as) = TitleParam ann ns t : addAliases' ts as
+        addAliases' parts [] = parts
+        addAliases' (TitleWords ann ws : parts) as = TitleWords ann ws : addAliases' parts as
+        addAliases' (TitleParam ann [] pType : parts) (as:rest) = TitleParam ann as pType : addAliases' parts rest
+        addAliases' (TitleParam ann ns pType : parts) (_:rest) = TitleParam ann ns pType : addAliases' parts rest
         addAliases' [] (_:_) = error "Shouldn't happen: can't run out of title parts before running out of types"
 
---
 
+-- -----------------
+-- * Types information
 
--- Types information
-
-satisfiesType :: Type -> Type -> Bool
+-- | Whether the given type satisfies the expected type.
+satisfiesType ::
+    Type -- ^ The type of a value.
+    -> Type -- ^ The type that should be satisfied.
+    -> Bool
 satisfiesType _ (AnyT _) = True
 satisfiesType IntT FloatT = True
 satisfiesType (ListT t1) (ListT t2) = t1 `satisfiesType` t2
@@ -112,200 +137,229 @@ getValueType (BoolV _ _) = return BoolT
 getValueType (CharV _ _) = return CharT
 getValueType (ListV _ t _) = return $ ListT t
 getValueType (VarV _ n) = RefT . fromJust <$> getVariableType n
-getValueType (OperatorCall _ fid vs) = do
-    ~(FunSignature _ (Operator tFun)) <- fromJust <$> getFunctionSignature fid
-    vTs <- getParameterTypesWithCheck (fid, vs)
-    return $ tFun vTs
-getValueType (IterV _ t lv) = do
-    lt <- withLocation lv getValueType
-    let et = ListT t
-    if lt `satisfiesType` et
-        then return $ RefT (getElementsType lt)
-        else throwHere $ WrongTypeValue et lt
+getValueType (OperatorCall _ fid args) = do
+    ~(FunSignature _ (Operator typeFun)) <- fromJust <$> getFunctionSignature fid
+    argTypes <- getArgumentTypesWithCheck (fid, args)
+    return $ typeFun argTypes
+getValueType (IterV _ iterType listVal) = do
+    listType <- withLocation listVal getValueType
+    let expType = ListT iterType
+    if listType `satisfiesType` expType
+        then return $ RefT (getElementsType listType)
+        else throwHere $ WrongTypeValue expType listType
 getValueType (ValueM _ _) = error "Shouldn't happen: values must be solved before getting their types"
 getValueType (RefV _ _) = error "Shouldn't happen: references can't exist before evaluating"
 
 getElementsType :: Type -> Type
-getElementsType (RefT t) = getElementsType t
-getElementsType (ListT t) = t
+getElementsType (RefT refType) = getElementsType refType
+getElementsType (ListT elemsType) = elemsType
 getElementsType _ = error "Shouldn't happen: type doesn't contain types"
 
---
 
+-- -----------------
+-- * Validations
 
--- Validations
-
+-- | Sets the type of a variable, failing if it was already defined.
 setNewVariableType :: Name -> Type -> SolverEnv ()
-setNewVariableType vn t' = do
-    isDef <- variableIsDefined vn
-    when isDef $ throwHere (VariableAlreadyDefined vn)
-    setVariableType vn t'
+setNewVariableType name varType = do
+    isDef <- variableIsDefined name
+    when isDef $ throwHere (VariableAlreadyDefined name)
+    setVariableType name varType
 
+-- | Fails if the type of a value doesn't satisfy the given type.
 checkValueType :: Annotated Value -> Type -> SolverEnv ()
-checkValueType v t = do
-    t' <- withLocation v getValueType
-    unless (t' `satisfiesType` t) $ throwHere (WrongTypeValue t t')
+checkValueType val expType = do
+    valType <- withLocation val getValueType
+    unless (valType `satisfiesType` expType) $ throwHere (WrongTypeValue expType valType)
 
+-- | Validates the types of the arguments in a procedure call.
 checkProcedureCallType :: Annotated Sentence -> SolverEnv ()
-checkProcedureCallType (ProcedureCall ann fid vs) = void $ getParameterTypesWithCheck (fid, vs)
+checkProcedureCallType (ProcedureCall ann fid args) = void $ getArgumentTypesWithCheck (fid, args)
 checkProcedureCallType _ = error "Shouldn't happen: sentence given is not a procedure call"
 
-getParameterTypesWithCheck :: (FunId, [Annotated Value]) -> SolverEnv [Type]
-getParameterTypesWithCheck (fid, vs) = do
-    ~(FunSignature (Title _ ft) _) <- fromJust <$> getFunctionSignature fid
-    getParameterTypes' [] ft vs 0
+-- | Returns the types of the arguments in a function call.
+-- Validates that their types are correct and transforms them accordingly, taking type bindings into account.
+getArgumentTypesWithCheck :: (FunId, [Annotated Value]) -> SolverEnv [Type]
+getArgumentTypesWithCheck (fid, args) = do
+    ~(FunSignature (Title _ funTitle) _) <- fromJust <$> getFunctionSignature fid
+    getArgumentTypesWithCheck' M.empty funTitle args 0
     where
-        -- Returns the type of all arguments given a list of type bindings
-        getParameterTypes' :: [(String, Type)] -> [Bare TitlePart] -> [Annotated Value] -> Int -> SolverEnv [Type]
-        getParameterTypes' _ _ [] _ = return []
-        getParameterTypes' bts (TitleWords {} : tps) vs pos = getParameterTypes' bts tps vs pos
-        getParameterTypes' bts (TitleParam _ n pt : tps) (v:vs) pos = do
+        -- Returns the type of all arguments given a mapping of type bindings.
+        getArgumentTypesWithCheck' :: M.Map String Type -> [Bare TitlePart] -> [Annotated Value] -> Int -> SolverEnv [Type]
+        getArgumentTypesWithCheck' _ _ [] _ = return []
+        getArgumentTypesWithCheck' bindings (TitleWords {} : titleParts) args paramNum = getArgumentTypesWithCheck' bindings titleParts args paramNum
+        getArgumentTypesWithCheck' bindings (TitleParam _ _ paramType : titleParts) (arg:args) paramNum = do
             ann <- getCurrentLocation
-            at <- withLocation v getValueType
-            unless (at `satisfiesType` pt) $ throwHere (WrongTypeParameter pt at pos fid)
-            let at' = solveTypeReferences pt at
-            r <- case solveTypeBindings pt at' of
-                Just (tF, (tid, bt)) ->
-                    case lookup tid bts of
-                        Just bt' -> do
-                            unless (bt `satisfiesType` bt') $ throwHere (WrongTypeParameter (tF bt') at' pos fid)
-                            getParameterTypes' bts tps vs (pos+1)
-                        Nothing -> getParameterTypes' ((tid, bt):bts) tps vs (pos+1)
-                Nothing -> getParameterTypes' bts tps vs (pos+1)
+            argType <- withLocation arg getValueType
+            unless (argType `satisfiesType` paramType) $ throwHere (WrongTypeArgument paramType argType paramNum fid)
+            -- Shift the argument's type to the reference level expected by the parameter.
+            let argType' = solveTypeReferences paramType argType
+            argTypes <- case getTypeBinding paramType argType' of
+                Just ((typeId, boundType), typeFun) ->
+                    case M.lookup typeId bindings of
+                        -- If the type being bound was already bound by a previous parameter, check that both types match.
+                        Just expBoundType -> do
+                            unless (boundType `satisfiesType` expBoundType) $ throwHere (WrongTypeArgument (typeFun expBoundType) argType' paramNum fid)
+                            getArgumentTypesWithCheck' bindings titleParts args (paramNum+1)
+                        -- If a new type is being bound, add it to the known bindings.
+                        Nothing -> getArgumentTypesWithCheck' (M.insert typeId boundType bindings) titleParts args (paramNum+1)
+                Nothing -> getArgumentTypesWithCheck' bindings titleParts args (paramNum+1)
             setCurrentLocation ann
-            return (at':r)
-        getParameterTypes' _ [] (_:_) _ = error "Shouldn't happen: can't run out of title parts before running out of values in a function call"
+            return (argType':argTypes)
+        getArgumentTypesWithCheck' _ [] (_:_) _ = error "Shouldn't happen: can't run out of title parts before running out of values in a function call"
 
-        -- Returns the type bound by the given parameter and argument, and a function to build the whole type
-        solveTypeBindings :: Type -> Type -> Maybe (Type -> Type, (String, Type))
-        solveTypeBindings (ListT et) (ListT at) = solveTypeBindings et at >>= (\(tF, bt) -> Just (ListT . tF, bt))
-        solveTypeBindings (RefT et) (RefT at) = solveTypeBindings et at >>= (\(tF, bt) -> Just (RefT . tF, bt))
-        solveTypeBindings (AnyT tid) at = Just (id, (tid, at))
-        solveTypeBindings _ _ = Nothing
+        -- Returns the type bound by the given parameter and argument, and a function to build the whole type when given the bound type.
+        getTypeBinding :: Type -> Type -> Maybe ((String, Type), Type -> Type)
+        getTypeBinding (ListT paramElemsType) (ListT argElemsType) = do
+            -- Find bindings in the types of the elements of the lists.
+            (typeBinding, typeFun) <- getTypeBinding paramElemsType argElemsType
+            return (typeBinding, ListT . typeFun)
+        getTypeBinding (RefT paramRefType) (RefT argRefType) = do
+            -- Find bindings in the referenced types.
+            (typeBinding, typeFun) <- getTypeBinding paramRefType argRefType
+            return (typeBinding, RefT . typeFun)
+        getTypeBinding (AnyT typeId) argType = Just ((typeId, argType), id) -- Type binding found.
+        getTypeBinding _ _ = Nothing
 
-        -- Solves a reference if the type it contains is expected by the given parameter
-        solveTypeReferences :: Type -> Type -> Type
-        solveTypeReferences (RefT t1) (RefT t2) = RefT $ solveTypeReferences t1 t2
-        solveTypeReferences t1 (RefT t2) = solveTypeReferences t1 t2
-        solveTypeReferences (ListT t1) (ListT t2) = ListT $ solveTypeReferences t1 t2
-        solveTypeReferences _ t = t
+        -- Takes the type of an argument and the type of a parameter, and returns the argument's type in the appropriate reference level.
+        -- This works properly only if the argument's type satisfies the parameter's type.
+        solveTypeReferences ::
+            Type -- ^ The parameter's type.
+            -> Type -- ^ The argument's type
+            -> Type
+        solveTypeReferences (RefT paramRefType) (RefT argRefType) = RefT $ solveTypeReferences paramRefType argRefType
+        solveTypeReferences paramType (RefT argRefType) = solveTypeReferences paramType argRefType
+        solveTypeReferences (ListT paramElemsType) (ListT argElemsType) = ListT $ solveTypeReferences paramElemsType argElemsType
+        solveTypeReferences _ argType = argType
 
+-- | Fails if the given value contains any 'IterV'.
 checkNoIterators :: Annotated Value -> SolverEnv ()
-checkNoIterators v = when (hasIterators v) $ throwHere ForbiddenIteratorUsed
-
---
+checkNoIterators val = when (hasIterators val) $ throwHere ForbiddenIteratorUsed
 
 
--- Registration
+-- -----------------
+-- * Registration
 
+-- | Modifies a program, adding autogenerated aliases to unnamed function parameters.
 registerAliases :: Program -> SolverEnv Program
-registerAliases = return . map (\(FunDef ann (Title ann' ft) rt ss) -> FunDef ann (Title ann' $ addAliases ft) rt ss)
+registerAliases = return . map (\(FunDef ann (Title ann' titleParts) retType ss) -> FunDef ann (Title ann' $ addAliases titleParts) retType ss)
 
+-- | Adds all the user-defined functions to the state.
 registerFunctions :: Program -> SolverEnv ()
 registerFunctions = mapM_ (`withLocation` registerFunction)
     where
         registerFunction :: Annotated Block -> SolverEnv ()
-        registerFunction (FunDef _ t@(Title _ ft) rt _) = do
-            let fid = getFunId ft
+        registerFunction (FunDef _ funTitle@(Title _ parts) retType _) = do
+            let fid = getFunId parts
             isDef <- functionIsDefined fid
             when isDef $ throwHere (FunctionAlreadyDefined fid)
-            let frt = maybe Procedure (Operator . const) rt
-            setFunctionSignature fid $ FunSignature (void t) frt
+            let funRetType = maybe Procedure (Operator . const) retType
+            setFunctionSignature fid $ FunSignature (void funTitle) funRetType
 
+-- | Adds the parameters of a function to the state.
 registerParameters :: Annotated Title -> SolverEnv ()
-registerParameters (Title _ ts) = mapM_ (`withLocation` registerParameter) ts
+registerParameters (Title _ parts) = mapM_ (`withLocation` registerParameter) parts
     where
         registerParameter :: Annotated TitlePart -> SolverEnv ()
-        registerParameter (TitleParam ann vns t) = mapM_ (`setNewVariableType` t) vns
+        registerParameter (TitleParam ann names paramType) = mapM_ (`setNewVariableType` paramType) names
         registerParameter _ = return ()
 
---
 
+-- -----------------
+-- * Solvers
 
--- Solvers
-
+-- | Chooses a way to understand a possibly ambiguous value.
 solveValue :: (Annotated Value -> SolverEnv ()) -> Annotated Value -> SolverEnv (Annotated Value)
-solveValue valFun (ValueM _ ps) = do
-    r <- matchAsValue ps
-    case r of
-        [] -> throwHere $ UnmatchableValue ps
-        [v] -> valFun v >> return v
-        vs -> do
-            let tryValue = (\v -> (valFun v >> return (Just v)) `catchError` (\_ -> return Nothing))
-            r <- catMaybes <$> mapM tryValue vs
-            case r of
-                [v] -> return v
-                [] -> throwHere $ UnmatchableValueTypes ps
-                vs -> do
-                    warnHere $ AmbiguousValue (length vs) ps
-                    return $ head vs
-solveValue valFun l@((ListV ann eT es)) = do
-    valFun l
-    es' <- mapM (`withLocation` solveValueWithType eT True) es
-    return $ ListV ann eT es'
-solveValue valFun v = valFun v >> return v
+solveValue validate (ValueM _ parts) = do
+    res <- matchAsValue parts
+    case res of
+        [] -> throwHere $ UnmatchableValue parts
+        [val] -> validate val >> return val
+        vals -> do
+            let tryValue val = (validate val >> return (Just val)) `catchError` (\_ -> return Nothing)
+            validVals <- catMaybes <$> mapM tryValue vals
+            case validVals of
+                [val] -> return val
+                [] -> throwHere $ UnmatchableValueTypes parts
+                _ -> do
+                    -- If there are many valid ways to understand a value, return the first one and issue a warning.
+                    warnHere $ AmbiguousValue (length validVals) parts
+                    return $ head validVals
+solveValue validate val@((ListV ann elemsType elems)) = do
+    validate val
+    solvedElems <- mapM (`withLocation` solveValueWithType elemsType True) elems
+    return $ ListV ann elemsType solvedElems
+solveValue validate val = validate val >> return val
 
-solveValueWithType :: Type -> Bool -> Annotated Value -> SolverEnv (Annotated Value)
-solveValueWithType t allowIters v = do
-    v' <- solveValue (`checkValueType` t) v
-    unless allowIters $ withLocation v' checkNoIterators
-    return v'
+-- | Solves a value and validates that it satisfies a type.
+-- If the boolean is false, also validates that the value contains no iterators.
+solveValueWithType ::
+    Type -- ^ The type that the value should satisfy.
+    -> Bool -- ^ Whether iterators should be allowed.
+    -> Annotated Value -- ^ The value to solve and validate.
+    -> SolverEnv (Annotated Value)
+solveValueWithType expType allowIters val = do
+    solvedVal <- solveValue (`checkValueType` expType) val
+    unless allowIters $ withLocation solvedVal checkNoIterators
+    return solvedVal
 
+-- Solves a value and validates that it contains no iterators.
 solveValueWithAnyType :: Annotated Value -> SolverEnv (Annotated Value)
-solveValueWithAnyType v = do
+solveValueWithAnyType val = do
     ann <- getCurrentLocation
-    v' <- solveValue (void . getValueType) v
+    solvedVal <- solveValue (void . getValueType) val
     setCurrentLocation ann
-    checkNoIterators v'
-    return v'
+    checkNoIterators solvedVal
+    return solvedVal
 
+-- | Chooses a way to understand a possibly ambiguous sentence.
 solveSentence :: Maybe Type -> Annotated Sentence -> SolverEnv (Annotated Sentence)
-solveSentence _ (VarDef ann vNs (Just t) v) = do
-    v' <- case v of
-        (ListV {}) -> withLocation v (solveValueWithType t True)
-        _ -> withLocation v (solveValueWithType t False)
-    mapM_ (`setNewVariableType` t) vNs
-    return $ VarDef ann vNs (Just t) v'
-solveSentence _ (VarDef ann vNs Nothing v) = do
-    v' <- withLocation v solveValueWithAnyType
-    t <- getValueType v'
-    mapM_ (`setNewVariableType` t) vNs
-    return $ VarDef ann vNs Nothing v'
-solveSentence rt (If ann v ls) = do
+solveSentence _ (VarDef ann names (Just expType) val) = do
+    solvedVal <- case val of
+        (ListV {}) -> withLocation val (solveValueWithType expType True)
+        _ -> withLocation val (solveValueWithType expType False)
+    mapM_ (`setNewVariableType` expType) names
+    return $ VarDef ann names (Just expType) solvedVal
+solveSentence _ (VarDef ann names Nothing val) = do
+    solvedVal <- withLocation val solveValueWithAnyType
+    valType <- getValueType solvedVal
+    mapM_ (`setNewVariableType` valType) names
+    return $ VarDef ann names Nothing solvedVal
+solveSentence retType (If ann v ls) = do
     v' <- withLocation v $ solveValueWithType BoolT False
-    ls' <- solveSentences ls rt
+    ls' <- solveSentences ls retType
     return $ If ann v' ls'
-solveSentence rt (IfElse ann v lsT lsF) = do
+solveSentence retType (IfElse ann v lsT lsF) = do
     v' <- withLocation v $ solveValueWithType BoolT False
-    lsT' <- solveSentences lsT rt
-    lsF' <- solveSentences lsF rt
+    lsT' <- solveSentences lsT retType
+    lsF' <- solveSentences lsF retType
     return $ IfElse ann v' lsT' lsF'
-solveSentence rt (ForEach ann iN iT v ls) = do
+solveSentence retType (ForEach ann iN iT v ls) = do
     v' <- withLocation v $ solveValueWithType (ListT iT) False
     setNewVariableType iN (RefT iT)
-    ls' <- solveSentences ls rt
+    ls' <- solveSentences ls retType
     removeVariableType iN
     return $ ForEach ann iN iT v' ls'
-solveSentence rt (Until ann v ls) = do
+solveSentence retType (Until ann v ls) = do
     v' <- withLocation v $ solveValueWithType BoolT False
-    ls' <- solveSentences ls rt
+    ls' <- solveSentences ls retType
     return $ Until ann v' ls'
-solveSentence rt (While ann v ls) = do
+solveSentence retType (While ann v ls) = do
     v' <- withLocation v $ solveValueWithType BoolT False
-    ls' <- solveSentences ls rt
+    ls' <- solveSentences ls retType
     return $ While ann v' ls'
-solveSentence rt (Return ann v) =
-    case rt of
+solveSentence retType (Return ann v) =
+    case retType of
         Just t -> do
             v' <- withLocation v $ solveValueWithType t False
             return $ Return ann v'
         Nothing -> throwHere ResultInProcedure
-solveSentence rt (Try ann ss) = Try ann <$> mapM (`withLocation` solveSentence rt) ss
-solveSentence rt (TryCatch ann ts cs) = do
-    ts' <- mapM (`withLocation` solveSentence rt) ts
-    cs' <- mapM (`withLocation` solveSentence rt) cs
+solveSentence retType (Try ann ss) = Try ann <$> mapM (`withLocation` solveSentence retType) ss
+solveSentence retType (TryCatch ann ts cs) = do
+    ts' <- mapM (`withLocation` solveSentence retType) ts
+    cs' <- mapM (`withLocation` solveSentence retType) cs
     return $ TryCatch ann ts' cs'
-solveSentence rt (Throw ann msg) = return $ Throw ann msg
+solveSentence retType (Throw ann msg) = return $ Throw ann msg
 solveSentence _ (SentenceM ann ps) = do
     r <- matchAsSentence ps
     case r of
@@ -323,12 +377,12 @@ solveSentence _ (SentenceM ann ps) = do
 solveSentence _ (ProcedureCall {}) = error "Shouldn't happen: procedure calls can only be created by solving a matchable"
 
 solveSentences :: [Annotated Sentence] -> Maybe Type -> SolverEnv [Annotated Sentence]
-solveSentences ss rt = restoringVariables $ mapM (`withLocation` solveSentence rt) ss
+solveSentences ss retType = restoringVariables $ mapM (`withLocation` solveSentence retType) ss
 
 solveBlock :: Annotated Block -> SolverEnv (Annotated Block)
-solveBlock (FunDef ann t rt ss) = do
+solveBlock (FunDef ann t retType ss) = do
     withLocation t registerParameters
-    FunDef ann t rt <$> solveSentences ss rt
+    FunDef ann t retType <$> solveSentences ss retType
 
 --
 

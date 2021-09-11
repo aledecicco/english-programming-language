@@ -120,25 +120,25 @@ typeNameTests = testGroup "Type name"
     [
         testCase "Whole number" $
             expectedResult
-                (baseType False)
+                (typeName False)
                 "whole number"
                 IntT,
 
         testCase "Whole numbers" $
             expectedResult
-                (baseType True)
+                (typeName True)
                 "whole numbers"
                 IntT,
 
         testCase "List" $
             expectedResult
-                (baseType False)
+                (typeName False)
                 "list of whole numbers"
                 (ListT IntT),
 
         testCase "List of lists" $
             expectedResult
-                (baseType False)
+                (typeName False)
                 "list of lists of whole numbers"
                 (ListT (ListT IntT)),
 
@@ -150,27 +150,27 @@ typeNameTests = testGroup "Type name"
 
         testCase "List without element" $
             expectedFailure
-                (baseType False)
+                (typeName False)
                 "list",
 
         testCase "List of lists without element" $
             expectedFailure
-                (baseType False)
+                (typeName False)
                 "list of lists",
 
         testCase "Whole numbers without plural" $
             expectedFailure
-                (baseType True)
+                (typeName True)
                 "whole number",
 
         testCase "Whole number with plural" $
             expectedFailure
-                (baseType False)
+                (typeName False)
                 "whole numbers",
 
         testCase "List without plural element" $
             expectedFailure
-                (baseType False)
+                (typeName False)
                 "list of whole number"
     ]
 

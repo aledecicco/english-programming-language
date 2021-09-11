@@ -193,17 +193,17 @@ getValueTypeTests = testGroup "Get value type"
         testCase "Wrong bound types" $
             expectedError
                 (getValueType $ OperatorCall (0,0) "%_appended_to_%" [ListV (0,0) BoolT [BoolV (0,1) True, BoolV (0,7) False], ListV (0,21) IntT [IntV (0,22) 3, IntV (0,24) 4]])
-                (Error (Just (0,21)) $ WrongTypeParameter (ListT BoolT) (ListT IntT) 1 "%_appended_to_%"),
+                (Error (Just (0,21)) $ WrongTypeArgument (ListT BoolT) (ListT IntT) 1 "%_appended_to_%"),
 
         testCase "Wrong type arguments" $
             expectedError
                 (getValueType $ OperatorCall (0,0) "%_plus_%" [IntV (0,0) 1, BoolV (0,3) True])
-                (Error (Just (0,3)) $ WrongTypeParameter FloatT BoolT 1 "%_plus_%"),
+                (Error (Just (0,3)) $ WrongTypeArgument FloatT BoolT 1 "%_plus_%"),
 
         testCase "Wrong type lists" $
             expectedError
                 (getValueType $ OperatorCall (0,0) "%_appended_to_%" [ListV (0,0) BoolT [BoolV (0,1) True, BoolV (0,6) False], ListV (0,20) IntT [IntV (0,21) 3, IntV (0,23) 4]])
-                (Error (Just (0,20)) $ WrongTypeParameter (ListT BoolT) (ListT IntT) 1 "%_appended_to_%")
+                (Error (Just (0,20)) $ WrongTypeArgument (ListT BoolT) (ListT IntT) 1 "%_appended_to_%")
     ]
 
 setVariableTypeTests :: TestTree
@@ -253,7 +253,7 @@ solveValueTests = testGroup "Solve value"
         testCase "Matchable with wrong type arguments" $
             expectedError
                 (solveValueWithType IntT False $ ValueM (0,0) [WordP (0,0) "true", WordP (0,5) "plus", WordP (0,10) "false"])
-                (Error (Just (0,0)) (WrongTypeParameter FloatT BoolT 0 "%_plus_%")),
+                (Error (Just (0,0)) (WrongTypeArgument FloatT BoolT 0 "%_plus_%")),
 
         testCase "Ambiguous matchable with wrong type arguments" $
             expectedError

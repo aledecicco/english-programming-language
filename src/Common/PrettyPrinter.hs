@@ -146,7 +146,7 @@ ppSourcePosition lines (lineNum, colNum) =
 
 ppErrorType :: ErrorType -> String
 ppErrorType (WrongTypeValue eT aT) = unwords ["Expected a", ppType eT, "but got a", ppType aT, "instead"]
-ppErrorType (WrongTypeParameter eT aT n fid) = unwords [ppOrdinal n, "parameter of", snippet $ ppFunctionId fid, "expected a", ppType eT, "but got a", ppType aT, "instead"]
+ppErrorType (WrongTypeArgument eT aT n fid) = unwords [ppOrdinal n, "parameter of", snippet $ ppFunctionId fid, "expected a", ppType eT, "but got a", ppType aT, "instead"]
 ppErrorType (UnmatchableValue ps) = unwords ["Could not understand", snippet $ ppMatchable ps, "as a value"]
 ppErrorType (UnmatchableValueTypes ps) = unwords ["Could not understand", snippet $ ppMatchable ps, "as a value because of type errors"]
 ppErrorType (UnmatchableSentence ps) = unwords ["Could not understand", snippet $ ppMatchable ps, "as a procedure call"]
