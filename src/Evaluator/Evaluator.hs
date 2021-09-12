@@ -121,18 +121,6 @@ evaluateValue (IterV {}) = error "Shouldn't happen: values with iterators must b
 evaluateValue (ValueM _ _) = error "Shouldn't happen: values must be solved before evaluating them"
 evaluateValue val = evaluateUpToReference val >>= evaluateReferences
 
--- | Evaluates a list of sentences in a new block scope, discarding it afterwards.
-evaluateSentences :: ReadWrite m => [Annotated Sentence] -> EvaluatorEnv m (Maybe (Bare Value))
-evaluateSentences [] = return Nothing
-evaluateSentences ss = inBlockScope $ firstNotNull evaluateSentenceWithLocation ss
-    where
-        evaluateSentenceWithLocation :: ReadWrite m => Annotated Sentence -> EvaluatorEnv m (Maybe (Bare Value))
-        evaluateSentenceWithLocation s = do
-            let ann = getLocation s
-            result <- withLocation s evaluateSentence
-            setCurrentLocation ann
-            return result
-
 -- | Evaluates a sentence, with the possible side effect of triggering the garbage collector.
 evaluateSentence :: ReadWrite m => Annotated Sentence -> EvaluatorEnv m (Maybe (Bare Value))
 evaluateSentence s = tick >> evaluateSentence' s
@@ -150,6 +138,7 @@ evaluateSentence s = tick >> evaluateSentence' s
             -- Declare the rest of the variables as copies of the original value so that they don't reference the same addresses.
             mapM_ (\name' -> copyValue val' >>= setVariableValue name') names
             return Nothing
+
         evaluateSentence' (If _ boolVal ss) = do
             ~(BoolV _ cond) <- withLocation boolVal evaluateValue
             if cond
@@ -160,8 +149,10 @@ evaluateSentence s = tick >> evaluateSentence' s
             if cond
                 then evaluateSentences ssTrue
                 else evaluateSentences ssFalse
+
         evaluateSentence' (ForEach _ iterName _ listval ss) = do
             -- Set an auxiliary variable containing the values being iterated so that the garbage collector doesn't free them.
+            -- ToDo: decouple notion of GC-roots from variable names.
             let auxName = "_" : iterName
             listVal' <- withLocation listval evaluateUpToReference
             elems <- case listVal' of
@@ -180,6 +171,7 @@ evaluateSentence s = tick >> evaluateSentence' s
             removeVariable auxName
             removeVariable iterName
             return result
+
         evaluateSentence' sUntil@(Until _ boolVal ss) = do
             ~(BoolV _ cond) <- withLocation boolVal evaluateValue
             if cond
@@ -198,9 +190,11 @@ evaluateSentence s = tick >> evaluateSentence' s
                         (Just val) -> return $ Just val
                         Nothing -> evaluateSentence s
                 else return Nothing
+
         evaluateSentence' (Return _ val) = do
             val' <- withLocation val evaluateValue
             return $ Just val'
+
         evaluateSentence' (ProcedureCall _ fid args) = do
             ann <- getCurrentLocation
             -- The arguments of procedure calls can be iterators. Each list contains the values to iterate for a function parameter.
@@ -208,10 +202,24 @@ evaluateSentence s = tick >> evaluateSentence' s
             setCurrentLocation ann
             mapM_ (evaluateProcedure fid) $ sequence valsLists
             return Nothing
+
         evaluateSentence' (Try _ ss) = evaluateSentences ss `catchCodeError` \_ -> return Nothing
         evaluateSentence' (TryCatch _ ssTry ssCatch) = evaluateSentences ssTry `catchCodeError` \_ -> evaluateSentences ssCatch
         evaluateSentence' (Throw _ msg) = throwHere $ CodeError msg
+
         evaluateSentence' (SentenceM _ _) = error "Shouldn't happen: sentences must be solved before evaluating them"
+
+-- | Evaluates a list of sentences in a new block scope, discarding it afterwards.
+evaluateSentences :: ReadWrite m => [Annotated Sentence] -> EvaluatorEnv m (Maybe (Bare Value))
+evaluateSentences [] = return Nothing
+evaluateSentences ss = inBlockScope $ firstNotNull evaluateSentenceWithLocation ss
+    where
+        evaluateSentenceWithLocation :: ReadWrite m => Annotated Sentence -> EvaluatorEnv m (Maybe (Bare Value))
+        evaluateSentenceWithLocation s = do
+            let ann = getLocation s
+            result <- withLocation s evaluateSentence
+            setCurrentLocation ann
+            return result
 
 -- | Returns the value resulting from evaluating an operator with the given arguments.
 evaluateOperator :: ReadWrite m => FunId -> [Bare Value] -> EvaluatorEnv m (Bare Value)

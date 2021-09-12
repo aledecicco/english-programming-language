@@ -454,7 +454,7 @@ tryBlock = do
 throw :: FuzzyParser (Annotated Sentence)
 throw = do
     ann <- getCurrentLocation
-    try $ firstWord "there" >> word "is" >> word "an" >> word "error"
+    try $ firstWord "throw" >> word "an" >> word "error"
     word "because"
     Throw ann <$> some anyWord
 

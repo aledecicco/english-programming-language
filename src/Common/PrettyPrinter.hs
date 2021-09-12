@@ -114,8 +114,8 @@ ppMatchable ps = unwords $ map ppMatchablePart ps
 --
 -- @
 --    |
--- 17 | Divide 5 by 0.
---    | ^
+-- 17 | Let x be 5 divided by 0.
+--    |          ^
 -- @
 ppSourcePosition :: [String] -> Location -> String
 ppSourcePosition lines (lineNum, colNum) =

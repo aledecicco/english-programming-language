@@ -194,7 +194,7 @@ getArgumentTypesWithCheck (fid, args) = do
             unless (argType `satisfiesType` paramType) $ throwHere (WrongTypeArgument paramType argType paramNum fid)
             -- Shift the argument's type to the reference level expected by the parameter.
             let argType' = solveTypeReferences paramType argType
-            argTypes <- case getTypeBinding paramType argType' of
+            argsTypes <- case getTypeBinding paramType argType' of
                 Just ((typeId, boundType), typeFun) ->
                     case M.lookup typeId bindings of
                         -- If the type being bound was already bound by a previous parameter, check that both types match.
@@ -205,11 +205,15 @@ getArgumentTypesWithCheck (fid, args) = do
                         Nothing -> getArgumentTypesWithCheck' (M.insert typeId boundType bindings) titleParts args (paramNum+1)
                 Nothing -> getArgumentTypesWithCheck' bindings titleParts args (paramNum+1)
             setCurrentLocation ann
-            return (argType':argTypes)
+            return (argType':argsTypes)
         getArgumentTypesWithCheck' _ [] (_:_) _ = error "Shouldn't happen: can't run out of title parts before running out of values in a function call"
 
-        -- Returns the type bound by the given parameter and argument, and a function to build the whole type when given the bound type.
-        getTypeBinding :: Type -> Type -> Maybe ((String, Type), Type -> Type)
+        -- Returns the type bound by an argument in a parameter, and a function to build the whole type when given the bound type.
+        -- This works because a parameter's type can contain only one type binding.
+        getTypeBinding ::
+            Type -- The type of the parameter, which may contain a bindable type.
+            -> Type -- The type of the argument, which may assign a specific type to a bindable type.
+            -> Maybe ((String, Type), Type -> Type)
         getTypeBinding (ListT paramElemsType) (ListT argElemsType) = do
             -- Find bindings in the types of the elements of the lists.
             (typeBinding, typeFun) <- getTypeBinding paramElemsType argElemsType
@@ -219,13 +223,13 @@ getArgumentTypesWithCheck (fid, args) = do
             (typeBinding, typeFun) <- getTypeBinding paramRefType argRefType
             return (typeBinding, RefT . typeFun)
         getTypeBinding (AnyT typeId) argType = Just ((typeId, argType), id) -- Type binding found.
-        getTypeBinding _ _ = Nothing
+        getTypeBinding _ _ = Nothing -- The type contains no bindable types.
 
         -- Takes the type of an argument and the type of a parameter, and returns the argument's type in the appropriate reference level.
         -- This works properly only if the argument's type satisfies the parameter's type.
         solveTypeReferences ::
-            Type -- ^ The parameter's type.
-            -> Type -- ^ The argument's type
+            Type -- The parameter's type.
+            -> Type -- The argument's type
             -> Type
         solveTypeReferences (RefT paramRefType) (RefT argRefType) = RefT $ solveTypeReferences paramRefType argRefType
         solveTypeReferences paramType (RefT argRefType) = solveTypeReferences paramType argRefType
@@ -287,8 +291,8 @@ solveValue validate (ValueM _ parts) = do
                     return $ head validVals
 solveValue validate val@((ListV ann elemsType elems)) = do
     validate val
-    solvedElems <- mapM (`withLocation` solveValueWithType elemsType True) elems
-    return $ ListV ann elemsType solvedElems
+    elems' <- mapM (`withLocation` solveValueWithType elemsType True) elems
+    return $ ListV ann elemsType elems'
 solveValue validate val = validate val >> return val
 
 -- | Solves a value and validates that it satisfies a type.
@@ -299,105 +303,116 @@ solveValueWithType ::
     -> Annotated Value -- ^ The value to solve and validate.
     -> SolverEnv (Annotated Value)
 solveValueWithType expType allowIters val = do
-    solvedVal <- solveValue (`checkValueType` expType) val
-    unless allowIters $ withLocation solvedVal checkNoIterators
-    return solvedVal
+    val' <- solveValue (`checkValueType` expType) val
+    unless allowIters $ withLocation val' checkNoIterators
+    return val'
 
--- Solves a value and validates that it contains no iterators.
+-- | Solves a value and validates that it contains no iterators.
 solveValueWithAnyType :: Annotated Value -> SolverEnv (Annotated Value)
 solveValueWithAnyType val = do
     ann <- getCurrentLocation
-    solvedVal <- solveValue (void . getValueType) val
+    val' <- solveValue (void . getValueType) val
     setCurrentLocation ann
-    checkNoIterators solvedVal
-    return solvedVal
+    checkNoIterators val'
+    return val'
 
 -- | Chooses a way to understand a possibly ambiguous sentence.
 solveSentence :: Maybe Type -> Annotated Sentence -> SolverEnv (Annotated Sentence)
 solveSentence _ (VarDef ann names (Just expType) val) = do
-    solvedVal <- case val of
+    val' <- case val of
         (ListV {}) -> withLocation val (solveValueWithType expType True)
         _ -> withLocation val (solveValueWithType expType False)
     mapM_ (`setNewVariableType` expType) names
-    return $ VarDef ann names (Just expType) solvedVal
+    return $ VarDef ann names (Just expType) val'
 solveSentence _ (VarDef ann names Nothing val) = do
-    solvedVal <- withLocation val solveValueWithAnyType
-    valType <- getValueType solvedVal
+    val' <- withLocation val solveValueWithAnyType
+    valType <- getValueType val'
     mapM_ (`setNewVariableType` valType) names
-    return $ VarDef ann names Nothing solvedVal
-solveSentence retType (If ann v ls) = do
-    v' <- withLocation v $ solveValueWithType BoolT False
-    ls' <- solveSentences ls retType
-    return $ If ann v' ls'
-solveSentence retType (IfElse ann v lsT lsF) = do
-    v' <- withLocation v $ solveValueWithType BoolT False
-    lsT' <- solveSentences lsT retType
-    lsF' <- solveSentences lsF retType
-    return $ IfElse ann v' lsT' lsF'
-solveSentence retType (ForEach ann iN iT v ls) = do
-    v' <- withLocation v $ solveValueWithType (ListT iT) False
-    setNewVariableType iN (RefT iT)
-    ls' <- solveSentences ls retType
-    removeVariableType iN
-    return $ ForEach ann iN iT v' ls'
-solveSentence retType (Until ann v ls) = do
-    v' <- withLocation v $ solveValueWithType BoolT False
-    ls' <- solveSentences ls retType
-    return $ Until ann v' ls'
-solveSentence retType (While ann v ls) = do
-    v' <- withLocation v $ solveValueWithType BoolT False
-    ls' <- solveSentences ls retType
-    return $ While ann v' ls'
-solveSentence retType (Return ann v) =
+    return $ VarDef ann names Nothing val'
+
+solveSentence retType (If ann cond ss) = do
+    cond' <- withLocation cond $ solveValueWithType BoolT False
+    ss' <- solveSentences ss retType
+    return $ If ann cond' ss'
+solveSentence retType (IfElse ann cond ssTrue ssFalse) = do
+    cond' <- withLocation cond $ solveValueWithType BoolT False
+    ssTrue' <- solveSentences ssTrue retType
+    ssFalse' <- solveSentences ssFalse retType
+    return $ IfElse ann cond' ssTrue' ssFalse'
+
+solveSentence retType (ForEach ann iterName iterType listVal ss) = do
+    listVal' <- withLocation listVal $ solveValueWithType (ListT iterType) False
+    setNewVariableType iterName (RefT iterType)
+    ss' <- solveSentences ss retType
+    removeVariableType iterName
+    return $ ForEach ann iterName iterType listVal' ss'
+
+solveSentence retType (Until ann cond ss) = do
+    cond' <- withLocation cond $ solveValueWithType BoolT False
+    ss' <- solveSentences ss retType
+    return $ Until ann cond' ss'
+solveSentence retType (While ann cond ss) = do
+    cond' <- withLocation cond $ solveValueWithType BoolT False
+    ss' <- solveSentences ss retType
+    return $ While ann cond' ss'
+
+solveSentence retType (Return ann val) =
     case retType of
-        Just t -> do
-            v' <- withLocation v $ solveValueWithType t False
-            return $ Return ann v'
+        Just expType -> do
+            val' <- withLocation val $ solveValueWithType expType False
+            return $ Return ann val'
         Nothing -> throwHere ResultInProcedure
-solveSentence retType (Try ann ss) = Try ann <$> mapM (`withLocation` solveSentence retType) ss
-solveSentence retType (TryCatch ann ts cs) = do
-    ts' <- mapM (`withLocation` solveSentence retType) ts
-    cs' <- mapM (`withLocation` solveSentence retType) cs
-    return $ TryCatch ann ts' cs'
+
+solveSentence retType (Try ann ss) = Try ann <$> solveSentences ss retType
+solveSentence retType (TryCatch ann ssTry ssCatch) = do
+    ssTry' <- solveSentences ssTry retType
+    ssCatch' <- solveSentences ssCatch retType
+    return $ TryCatch ann ssTry' ssCatch'
 solveSentence retType (Throw ann msg) = return $ Throw ann msg
-solveSentence _ (SentenceM ann ps) = do
-    r <- matchAsSentence ps
-    case r of
-        [] -> throwHere $ UnmatchableSentence ps
+
+solveSentence _ (SentenceM ann parts) = do
+    res <- matchAsSentence parts
+    case res of
+        [] -> throwHere $ UnmatchableSentence parts
         [s] -> checkProcedureCallType s >> return s
-        vs -> do
-            let trySentence = (\s -> (checkProcedureCallType s >> return (Just s)) `catchError` (\_ -> return Nothing))
-            r <- catMaybes <$> mapM trySentence vs
-            case r of
+        ss -> do
+            let trySentence s = (checkProcedureCallType s >> return (Just s)) `catchError` (\_ -> return Nothing)
+            validSs <- catMaybes <$> mapM trySentence ss
+            case validSs of
                 [s] -> return s
-                [] -> throwHere $ UnmatchableSentenceTypes ps
-                ss -> do
-                    warnHere $ AmbiguousSentence (length ss) ps
-                    return $ head ss
+                [] -> throwHere $ UnmatchableSentenceTypes parts
+                _ -> do
+                    -- If there are many valid ways to understand a sentence, return the first one and issue a warning.
+                    warnHere $ AmbiguousSentence (length validSs) parts
+                    return $ head validSs
 solveSentence _ (ProcedureCall {}) = error "Shouldn't happen: procedure calls can only be created by solving a matchable"
 
+-- | Solves a list of sentences in a new block scope, discarding it afterwards.
 solveSentences :: [Annotated Sentence] -> Maybe Type -> SolverEnv [Annotated Sentence]
 solveSentences ss retType = restoringVariables $ mapM (`withLocation` solveSentence retType) ss
 
 solveBlock :: Annotated Block -> SolverEnv (Annotated Block)
-solveBlock (FunDef ann t retType ss) = do
-    withLocation t registerParameters
-    FunDef ann t retType <$> solveSentences ss retType
+solveBlock (FunDef ann funTitle retType ss) = do
+    -- Register the parameters in the title of the function and solve the sentences in its body.
+    withLocation funTitle registerParameters
+    FunDef ann funTitle retType <$> solveSentences ss retType
 
---
 
+-- -----------------
+-- * Main
 
--- Main
-
+-- | Returns the result of solving a whole program, making all integrity validations.
 solveProgram :: Program -> (Either Error ((Program, Location), SolverData), [Warning])
-solveProgram p = runSolverEnv (solveProgram' p) [] initialLocation initialState
+solveProgram prog = runSolverEnv (solveProgram' prog) [] initialLocation initialState
     where
         solveProgram' :: Program -> SolverEnv Program
-        solveProgram' p = do
-            p' <- registerAliases p
-            registerFunctions p'
+        solveProgram' prog = do
+            -- Add aliases to the parameters of user-defined functions.
+            prog' <- registerAliases prog
+            -- Register user-defined functions in the state.
+            registerFunctions prog'
+            -- Check that the "main" function is defined.
             mainIsDef <- functionIsDefined "run"
             unless mainIsDef $ throwNowhere (UndefinedFunction "run")
-            mapM (restoringVariables . solveBlock) p'
-
---
+            -- Solve user-defined functions, cleaning the variables from the state after each one.
+            mapM (restoringVariables . solveBlock) prog'
