@@ -120,6 +120,7 @@ ppMatchable ps = unwords $ map ppMatchablePart ps
 ppSourcePosition :: [String] -> Location -> String
 ppSourcePosition lines (lineNum, colNum) =
     let
+        -- Generate the prefix for each line depending on the line number.
         strLineNum = show lineNum
         prefix = replicate (length strLineNum) ' ' ++ " | "
         numPrefix = strLineNum ++ " | "
@@ -128,12 +129,15 @@ ppSourcePosition lines (lineNum, colNum) =
         line = lines !! (lineNum - 1)
         len = length line
 
+        -- Calculate the starting position and length of the snippet to be shown.
         spaces = length $ takeWhile isSpace line
         start = max spaces (min (colNum - pad) (len - maxW))
         lineSpan = take maxW $ drop start line
 
+        -- Add ellipses before or after if the line continues beyond the snippet.
         bef = if start == spaces then "" else "..."
         aft = if start + maxW >= len then "" else "..."
+        -- Add an arrow bellow the snippet pointing to the given location.
         pointer = replicate (length bef + colNum - 1 - start) ' ' ++ "^"
     in unlines [prefix, numPrefix ++ surround bef aft lineSpan, prefix ++ pointer]
     where

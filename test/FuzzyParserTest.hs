@@ -23,28 +23,28 @@ import FuzzyParser
 -- | Asserts that a parser yields a specific result when parsing a given string.
 expectedResult :: (HasCallStack, Eq a, Show a) => FuzzyParser a -> String -> a -> Assertion
 expectedResult parser str expRes =
-    case runFuzzyParser parser str of
+    case runFuzzyParser parser False str of
         Left err -> assertFailure $ "Parser failed, the error was:\n" ++ show err
         Right res -> res @?= expRes
 
 -- | Asserts that a parser yields a specific result ignoring annotations when parsing the given strings.
 expectedBareResult :: (HasCallStack, Eq (a ()), Show (a ()), Functor a) => FuzzyParser (a b) -> String -> a () -> Assertion
 expectedBareResult parser str expRes =
-    case runFuzzyParser parser str of
+    case runFuzzyParser parser False str of
         Left err -> assertFailure $ "Parser failed, the error was:\n" ++ show err
         Right res -> void res @?= expRes
 
 -- | Asserts that a parser succeeds when parsing a given string.
 expectedSuccess :: HasCallStack => FuzzyParser a -> String -> Assertion
 expectedSuccess parser str =
-    case runFuzzyParser parser str of
+    case runFuzzyParser parser False str of
         Left err -> assertFailure $ "Parser failed, the error was:\n" ++ show err
         Right _ -> return ()
 
 -- | Asserts that a parser fails to parse a given string.
 expectedFailure :: (HasCallStack, Show a) => FuzzyParser a -> String -> Assertion
 expectedFailure parser str =
-    case runFuzzyParser parser str of
+    case runFuzzyParser parser False str of
         Left _ -> return ()
         Right res -> assertFailure $ "Parser didn't fail, the result was:\n" ++ show res
 

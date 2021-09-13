@@ -1,7 +1,7 @@
 # EPL
 A programming language that resembles English. Write some sentences and watch the interpreter try to understand what you meant.
 
-![Version](https://img.shields.io/badge/version-v3.8.1-blue)
+![Version](https://img.shields.io/badge/version-v3.9.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-brightgreen)
 
 # Syntax
@@ -365,3 +365,4 @@ Modifies the value of the given variable, appending the list to it.
 - Iterators might have the same problem with the garbage collector as the for-each loop had.
 - Choose a different keyword for `If` when there is no `Else` and for `Try` when there is no `Catch`, allowing to parse any sentence inside a simple sentence.
 - Command line arguments for the interpreter.
+- Stack pointer shouldn't be neccessary in EvaluatorEnv
