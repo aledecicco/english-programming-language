@@ -4,10 +4,10 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: d19f714c91ac490a11a3c2952666c0882a1e716df367e38e4ad4f0cbdb6cd45b
+-- hash: d422792a3de4b5ce417713f5116bf969a615ff54cdb01aaa7bca162cf3bb025e
 
 name:           english-programming-language
-version:        3.8.0
+version:        3.8.1
 author:         Alejandro De Cicco
 maintainer:     alejandrodecicco99@gmail.com
 license:        MIT

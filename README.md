@@ -1,7 +1,7 @@
 # EPL
 A programming language that resembles English. Write some sentences and watch the interpreter try to understand what you meant.
 
-![Version](https://img.shields.io/badge/version-v3.8.0-blue)
+![Version](https://img.shields.io/badge/version-v3.8.1-blue)
 ![License](https://img.shields.io/badge/license-MIT-brightgreen)
 
 # Syntax

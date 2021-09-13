@@ -14,6 +14,7 @@ import Control.Monad.Trans.Except (runExceptT, ExceptT)
 import Control.Monad.Trans.State (gets, modify, runStateT, runState, State, StateT)
 import Data.Bifunctor (first, second)
 import Data.Maybe (isJust)
+import qualified Data.Map.Strict as M
 
 import AST
 import BuiltInDefs (builtInFunctions)
@@ -29,7 +30,7 @@ import Location
 type FunData = [(FunId, FunSignature)]
 
 -- | A mapping between variable names and their types.
-type VarData = [(Name, Type)]
+type VarData = M.Map Name Type
 
 -- | The state of the solver.
 type SolverData = (FunData, VarData)
@@ -45,7 +46,7 @@ runSolverEnv action warnings location state = runState (runExceptT $ runStateT (
 
 -- | The default initial state of the solver, including the built-in functions and no variables.
 initialState :: SolverData
-initialState = (builtInFunctions, [])
+initialState = (builtInFunctions, M.empty)
 
 
 -- -----------------
@@ -116,23 +117,17 @@ getVariables = lift $ gets snd
 
 -- | Returns the type of a variable, assuming it is defined.
 getVariableType :: Name -> SolverEnv Type
-getVariableType name = do
-    res <- lookup name <$> getVariables
-    case res of
-        Just varType -> return varType
-        Nothing -> error $ "Variable " ++ show name ++ " is not defined"
+getVariableType name = (M.! name) <$> getVariables
 
 -- | Sets the type of a variable, assuming it is not defined.
 setVariableType :: Name -> Type -> SolverEnv ()
-setVariableType name varType = lift $ modify (second ((name, varType):))
+setVariableType name varType = modifyVariables (M.insert name varType)
 
 removeVariableType :: Name -> SolverEnv ()
-removeVariableType name =
-    let removeVar = filter (\(name', _) -> name' /= name)
-    in modifyVariables removeVar
+removeVariableType name = modifyVariables (M.delete name)
 
 variableIsDefined :: Name -> SolverEnv Bool
-variableIsDefined name = isJust . lookup name <$> getVariables
+variableIsDefined name = M.member name <$> getVariables
 
 -- | Run a computation and reset the variables to how they where before running it.
 restoringVariables :: SolverEnv a -> SolverEnv a
