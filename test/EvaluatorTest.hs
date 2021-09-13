@@ -129,7 +129,7 @@ sentenceTests = testGroup "sentence"
                     evaluateSentences $
                         mockLocations [
                             VarDef () [["x"]] (Just IntT) (IntV () 2),
-                            Try () [ProcedureCall () "divide_%_by_%" [VarV () ["x"], FloatV () 0.0]],
+                            Attempt () [ProcedureCall () "divide_%_by_%" [VarV () ["x"], FloatV () 0.0]],
                             Return () (VarV () ["x"])
                         ]
                 )
@@ -154,7 +154,7 @@ sentenceTests = testGroup "sentence"
                     evaluateSentences $
                         mockLocations [
                             VarDef () [["x"]] (Just IntT) (IntV () 6),
-                            Try ()
+                            Attempt ()
                                 [
                                     ProcedureCall () "add_%_to_%" [IntV () 1, VarV () ["x"]],
                                     TryCatch ()
@@ -162,16 +162,17 @@ sentenceTests = testGroup "sentence"
                                             ProcedureCall () "multiply_%_by_%" [VarV () ["x"], IntV () 2],
                                             ProcedureCall () "divide_%_by_%" [VarV () ["x"], IntV () 0]
                                         ]
-                                        [ProcedureCall () "add_%_to_%" [IntV () 1, VarV () ["x"]]]
+                                        [ProcedureCall () "add_%_to_%" [IntV () 1, VarV () ["x"]]],
+                                    ProcedureCall () "add_%_to_%" [IntV () 1, VarV () ["x"]]
                                 ],
                             Return () (VarV () ["x"])
                         ]
                 )
-                (IntV () 8),
+                (IntV () 9),
 
         testCase "Caught throw" $
             expectedSuccess
-                (evaluateSentences $ mockLocations [Try () [Throw () ["test", "error"]]]),
+                (evaluateSentences $ mockLocations [Attempt () [Throw () ["test", "error"]]]),
 
         testCase "Uncaught throw" $
             expectedError
@@ -190,12 +191,12 @@ sentenceTests = testGroup "sentence"
                 )
                 (Error (Just (3,18)) $ UndefinedVariable ["x"]),
 
-        testCase "Variable not in scope after true if" $
+        testCase "Variable not in scope after true when" $
             expectedError
                 (
                     evaluateSentences
                         [
-                            If (0,0)
+                            When (0,0)
                                 (BoolV (0,3) True)
                                 [VarDef (1,0) [["x"]] (Just IntT) (IntV (1,6) 3)],
                             Return (2,0) (VarV (2,14) ["x"])
@@ -203,12 +204,12 @@ sentenceTests = testGroup "sentence"
                 )
                 (Error (Just (2,14)) $ UndefinedVariable ["x"]),
 
-        testCase "Variable not in scope after false if" $
+        testCase "Variable not in scope after false when" $
             expectedError
                 (
                     evaluateSentences
                         [
-                            If (0,0)
+                            When (0,0)
                                 (BoolV (0,3) False)
                                 [VarDef (1,0) [["x"]] (Just IntT) (IntV (1,6) 3)],
                             Return (2,0) (VarV (2,14) ["x"])

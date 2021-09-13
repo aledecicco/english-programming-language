@@ -74,19 +74,17 @@ computeAliases parts =
         (as, _) = runState (mapM (`getParameterAliases` totAs) possAs) M.empty
     in as
     where
-        -- A computation that counts how many times each name in a list appears in it.
+        -- A computation that accumulates how many times each name in a list appears in it.
         countRepetitions :: [Name] -> State (M.Map Name Int) ()
         countRepetitions = mapM_ (\n -> modify $ M.insertWith (+) n 1)
 
-        -- A computation that sets to 0 the counts of the names in a list.
-        -- ToDo: this is not needed if variables cant be named the same as a possible alias.
+        -- A computation that sets to -1 the counts of the names in a list.
         cancelNames :: [Name] -> State (M.Map Name Int) ()
         cancelNames = mapM_ $ \(w:ws) -> do
-            modify $ M.insert (w:ws) 0
+            modify $ M.insert (w:ws) (-1)
             unless (w == "the") $ modify (M.insert ("the":w:ws) 0)
 
         -- A computation that takes the aliases of a parameter and adds the appropriate ordinals to them, removing from the list the ones that are already in use.
-        -- ToDo: this is not needed if variables cant be named the same as a possible alias.
         getParameterAliases :: [Name] -> M.Map Name Int -> State (M.Map Name Int) [Name]
         getParameterAliases names totAs = do
             countRepetitions names
@@ -252,7 +250,7 @@ registerAliases = return . map (\(FunDef ann (Title ann' titleParts) retType ss)
 registerFunctions :: Program -> SolverEnv ()
 registerFunctions = mapM_ (`withLocation` registerFunction)
     where
-        registerFunction :: Annotated Block -> SolverEnv ()
+        registerFunction :: Annotated Definition -> SolverEnv ()
         registerFunction (FunDef _ funTitle@(Title _ parts) retType _) = do
             let fid = getFunId parts
             isDef <- functionIsDefined fid
@@ -330,10 +328,14 @@ solveSentence _ (VarDef ann names Nothing val) = do
     mapM_ (`setNewVariableType` valType) names
     return $ VarDef ann names Nothing val'
 
-solveSentence retType (If ann cond ss) = do
+solveSentence retType (When ann cond ss) = do
     cond' <- withLocation cond $ solveValueWithType BoolT False
     ss' <- solveSentences ss retType
-    return $ If ann cond' ss'
+    return $ When ann cond' ss'
+solveSentence retType (Unless ann cond ss) = do
+    cond' <- withLocation cond $ solveValueWithType BoolT False
+    ss' <- solveSentences ss retType
+    return $ Unless ann cond' ss'
 solveSentence retType (IfElse ann cond ssTrue ssFalse) = do
     cond' <- withLocation cond $ solveValueWithType BoolT False
     ssTrue' <- solveSentences ssTrue retType
@@ -363,7 +365,7 @@ solveSentence retType (Return ann val) =
             return $ Return ann val'
         Nothing -> throwHere ResultInProcedure
 
-solveSentence retType (Try ann ss) = Try ann <$> solveSentences ss retType
+solveSentence retType (Attempt ann ss) = Attempt ann <$> solveSentences ss retType
 solveSentence retType (TryCatch ann ssTry ssCatch) = do
     ssTry' <- solveSentences ssTry retType
     ssCatch' <- solveSentences ssCatch retType
@@ -391,8 +393,8 @@ solveSentence _ (ProcedureCall {}) = error "Shouldn't happen: procedure calls ca
 solveSentences :: [Annotated Sentence] -> Maybe Type -> SolverEnv [Annotated Sentence]
 solveSentences ss retType = restoringVariables $ mapM (`withLocation` solveSentence retType) ss
 
-solveBlock :: Annotated Block -> SolverEnv (Annotated Block)
-solveBlock (FunDef ann funTitle retType ss) = do
+solveDefinition :: Annotated Definition -> SolverEnv (Annotated Definition)
+solveDefinition (FunDef ann funTitle retType ss) = do
     -- Register the parameters in the title of the function and solve the sentences in its body.
     withLocation funTitle registerParameters
     FunDef ann funTitle retType <$> solveSentences ss retType
@@ -415,4 +417,4 @@ solveProgram prog = runSolverEnv (solveProgram' prog) [] initialLocation initial
             mainIsDef <- functionIsDefined "run"
             unless mainIsDef $ throwNowhere (UndefinedFunction "run")
             -- Solve user-defined functions, cleaning the variables from the state after each one.
-            mapM (restoringVariables . solveBlock) prog'
+            mapM (restoringVariables . solveDefinition) prog'

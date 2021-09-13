@@ -11,7 +11,7 @@ Functions used by the "Solver" to turn MatchableParts into Values and Sentences.
 module Matchers where
 
 import Control.Monad (filterM, void)
-import Data.Char (isUpper, toLower)
+import Data.Char (toLower)
 
 import AST
 import SolverEnv
@@ -175,21 +175,12 @@ matchAsValue parts = do
 -- * Sentence matchers
 
 matchAsProcedureCall :: [Annotated MatchablePart] -> SolverEnv [Annotated Sentence]
-matchAsProcedureCall parts = do
-    let ann = getFirstLocation parts
+matchAsProcedureCall (WordP fAnn (c:cs) : rest) = do
+    let lowerCaseTitle = WordP fAnn (toLower c : cs) : rest
     procedures <- getProcedureSignatures
-    res <- matchAsFunctionCall parts procedures
-    toLowerRes <- case parts of
-        (WordP fAnn (c:cs) : rest) ->
-            if isUpper c
-                -- Try matching lower-casing the first letter.
-                -- ToDo: this is not neccessary if the first letter of the verb in procedure titles is constrained to lower-case.
-                then do
-                    let lowerCaseTitle = WordP fAnn (toLower c : cs) : rest
-                    matchAsFunctionCall lowerCaseTitle procedures
-                else return []
-        _ -> return []
-    return $ map (uncurry  $ ProcedureCall ann) (res ++ toLowerRes)
+    res <-matchAsFunctionCall lowerCaseTitle procedures
+    return $ map (uncurry  $ ProcedureCall fAnn) res
+matchAsProcedureCall _ = return []
 
 matchAsSentence :: [Annotated MatchablePart] -> SolverEnv [Annotated Sentence]
 matchAsSentence [ParensP parts] = matchAsSentence parts

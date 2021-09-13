@@ -31,6 +31,15 @@ binaryOperation op (FloatV _ f1) (FloatV _ f2) = FloatV () $ f1 `op` f2
 binaryOperation op (IntV _ n1) (IntV _ n2) = IntV () $ n1 `op` n2
 binaryOperation _ a b = error "Shouldn't happen: wrong types provided"
 
+-- | Applies an operation to two int values and produces an int value.
+intOperation ::
+    (Int -> Int -> Int) -- ^ The operator to use between the numbers contained in the received values.
+    -> Bare Value -- ^ The value containing the left operand.
+    -> Bare Value -- ^ The value containing the right operand.
+    -> Bare Value -- ^ The resulting value containing an int.
+intOperation op (IntV _ n1) (IntV _ n2) = IntV () $  n1 `op` n2
+intOperation _ _ _ = error "Shouldn't happen: wrong types provided"
+
 -- | Applies an operation to two numeric values and produces a float value.
 floatOperation ::
     (Float -> Float -> Float) -- ^ The operator to use between the numbers contained in the received values.
@@ -114,6 +123,7 @@ evaluateBuiltInOperator "%_plus_%" [v1, v2] = evaluatePlus v1 v2
 evaluateBuiltInOperator "%_times_%" [v1, v2] = evaluateTimes v1 v2
 evaluateBuiltInOperator "%_minus_%" [v1, v2] = evaluateMinus v1 v2
 evaluateBuiltInOperator "%_divided_by_%" [v1, v2] = evaluateDividedBy v1 v2
+evaluateBuiltInOperator "the_quotient_of_%_and_%" [v1, v2] = evaluateTheQuotientOf v1 v2
 evaluateBuiltInOperator "%_is_equal_to_%" [v1, v2] = evaluateIsEqualTo v1 v2
 evaluateBuiltInOperator "%_is_not_equal_to_%" [v1, v2] = evaluateIsNotEqualTo v1 v2
 evaluateBuiltInOperator "%_is_less_than_%" [v1, v2] = evaluateIsLessThan v1 v2
@@ -144,6 +154,11 @@ evaluateDividedBy :: Monad m => Bare Value -> Bare Value -> EvaluatorEnv m (Bare
 evaluateDividedBy _ (IntV _ 0) = throwHere $ CodeError ["Division by zero"]
 evaluateDividedBy _ (FloatV _ 0) = throwHere $ CodeError ["Division by zero"]
 evaluateDividedBy v1 v2 = return $ floatOperation (/) v1 v2
+
+-- | Returns the quotient of two int values.
+evaluateTheQuotientOf :: Monad m => Bare Value -> Bare Value -> EvaluatorEnv m (Bare Value)
+evaluateTheQuotientOf _ (IntV _ 0) = throwHere $ CodeError ["Division by zero"]
+evaluateTheQuotientOf v1 v2 = return $ intOperation div v1 v2
 
 -- | Returns whether two values are equal.
 evaluateIsEqualTo :: Monad m => Bare Value -> Bare Value -> EvaluatorEnv m (Bare Value)

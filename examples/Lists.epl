@@ -1,11 +1,13 @@
 To shuffle a reference to a string:
-    Swap the element of the string at 1 with the element of the string at 3.
-    Swap the element of the string at 0 with the element of the string at 2.
-    Swap the element of the string at 1 with the element of the string at 2.
+    Attempt to swap the element of the string at 1 with the element of the string at 3.
+    Attempt to swap the element of the string at 0 with the element of the string at 2.
+    Attempt to swap the element of the string at 1 with the element of the string at 2.
 
-A string equal to the first half of a string (L):
-    Let K be a string containing the element of L at 0, and the element of L at 1.
-    Return K.
+A string equal to the first half of a string:
+    Let the length of the first half be the quotient of the length of the string and 2.
+    Let the list of indexes be the list from 0 to the length of the first half minus 1.
+    Let the first half be a list of characters containing the element of the string at each number in the list of indexes.
+    Return the first half.
 
 To run:
     Let L be "1234".
@@ -15,10 +17,3 @@ To run:
     Let K be a string equal to the first half of L.
     Print "\nThe first half of the list is ".
     Print K.
-    Print "\n".
-    For each character (C) in "5678":
-        Print C.
-        Print " -> ".
-        Set C to '9'.
-        Print C.
-        Print "\n".

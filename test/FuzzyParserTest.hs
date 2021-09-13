@@ -562,58 +562,46 @@ titleParamTests = testGroup "Title parameter"
                 "a number"
                 (TitleParam () [] FloatT),
 
-        testCase "Missing article uppercase" $
-            expectedFailure titleParam "number (m)",
-
-        testCase "Missing article lowercase" $
+        testCase "Missing article" $
             expectedFailure titleParam "number (m)"
     ]
 
-listWithHeaderTests :: TestTree
-listWithHeaderTests = testGroup "ListWithHeader"
+sentenceBlockTests :: TestTree
+sentenceBlockTests = testGroup "Sentence block"
     [
          testCase "One element" $
             expectedResult
-                integerItems
+                (sentenceBlock $ word "Integers")
                 "Integers:\n  11."
-                ("Integers", [11]),
+                ("Integers", [SentenceM (2,3) [IntP (2,3) 11]]),
 
         testCase "Many elements" $
             expectedResult
-                integerItems
+                (sentenceBlock $ word "Integers")
                 "Integers:\n  11.\n  12."
-                ("Integers", [11, 12]),
+                ("Integers",  [SentenceM (2,3) [IntP (2,3) 11], SentenceM (3,3) [IntP (3,3) 12]]),
 
         testCase "Second element not indented" $
             expectedResult
-                integerItems
+                (sentenceBlock $ word "Integers")
                 "Integers:\n  11.\n12."
-                ("Integers", [11]),
-
-        testCase "Nested lists" $
-            expectedResult
-                (listWithHeader anyWord integerItems)
-                "Lists:\n  First:\n    11.\n    12.\n  Second:\n    13.\n    14."
-                ("Lists", [("First", [11, 12]), ("Second", [13, 14])]),
+                ("Integers", [SentenceM (2,3) [IntP (2,3) 11]]),
 
         testCase "No elements" $
-            expectedFailure integerItems "Integers:\n",
+            expectedFailure (sentenceBlock $ word "Integers") "Integers:\n",
 
         testCase "Incorrect header" $
-            expectedFailure integerItems "Integers11:\n  11.",
+            expectedFailure (sentenceBlock $ word "Integers") "Integers11:\n  11.",
 
         testCase "First element not indented" $
-            expectedFailure integerItems "Integers:\n11.",
+            expectedFailure (sentenceBlock $ word "Integers") "Integers:\n11.",
 
         testCase "First element without dot" $
-            expectedFailure integerItems "Integers:\n  11",
+            expectedFailure (sentenceBlock $ word "Integers") "Integers:\n  11",
 
         testCase "Second element without dot" $
-            expectedFailure integerItems "Integers:\n  11.\n  12"
+            expectedFailure (sentenceBlock $ word "Integers") "Integers:\n  11.\n  12"
     ]
-    where
-        integerItems :: FuzzyParser (String, [Int])
-        integerItems = listWithHeader anyWord (integer <* dot)
 
 valueTests :: TestTree
 valueTests = testGroup "Value"
@@ -648,6 +636,6 @@ tests = testGroup "Parser"
         titleTests,
         titleWordsTests,
         titleParamTests,
-        listWithHeaderTests,
+        sentenceBlockTests,
         valueTests
     ]

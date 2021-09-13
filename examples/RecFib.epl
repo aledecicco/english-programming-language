@@ -1,10 +1,9 @@
 A whole number equal to the fibonacci sequence at a whole number (position):
-    If the position is less than or equal to 2:
-        Return 1.
-    Otherwise:
-        Let X be the fibonacci sequence at the position minus 1.
-        Let Y be the fibonacci sequence at the position minus 2.
-        Return X plus Y.
+    When the position is less than or equal to 2, return 1.
+
+    Let X be the fibonacci sequence at the position minus 1.
+    Let Y be the fibonacci sequence at the position minus 2.
+    Return X plus Y.
 
 To run:
     Let n be 20.

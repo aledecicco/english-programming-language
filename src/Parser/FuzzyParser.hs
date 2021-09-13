@@ -9,8 +9,6 @@ The language's first phase of parsing.
 Builds an AST that may have unparsed Values ('ValueM') or Sentences ('SentenceM'), which are then transformed into concrete Values or Sentences by the "Solver".
 -}
 
--- ToDo: refactor sentence parsing
-
 module FuzzyParser where
 
 import Control.Monad (void)
@@ -66,30 +64,30 @@ reservedWords = ["be", "in"]
 word :: String -> FuzzyParser String
 word w = lexeme $ string w <* notFollowedBy alphaNumChar
 
--- | If the parser is at the beggining of a sentence, parses the word with its first letter in upper-case.
+-- | If the parser is at the beggining of a sentence, parses the word with its first letter in upper case.
 -- Otherwise, parses the word as is.
 firstWord :: String -> FuzzyParser String
 firstWord w@(x:xs) = do
     isFirst <- get
     if isFirst
-        then word (toUpper x : xs)
+        then word (toUpper x : xs) <* put False
         else word w
 firstWord "" = error "Can't parse an empty string"
 
+ordinal :: FuzzyParser String
+ordinal = do
+    num <- some digitChar
+    suffix <-
+        case last num of
+            '1' -> word "st"
+            '2' -> word "nd"
+            '3' -> word "rd"
+            _ -> word "th"
+    return $ num ++ suffix
+
 -- | Parses any valid word in the language, including ordinals.
 anyWord :: FuzzyParser String
-anyWord = lexeme (some letterChar <* notFollowedBy alphaNumChar) <|> ordinal <?> "word"
-    where
-        ordinal :: FuzzyParser String
-        ordinal = do
-            num <- some digitChar
-            suffix <-
-                case last num of
-                    '1' -> word "st"
-                    '2' -> word "nd"
-                    '3' -> word "rd"
-                    _ -> word "th"
-            return $ num ++ suffix
+anyWord = lexeme (some letterChar <* notFollowedBy alphaNumChar) <|> try ordinal <?> "word"
 
 -- | Parses any word and checks that it's not reserved.
 identifier :: FuzzyParser String
@@ -215,14 +213,12 @@ intercalated pA pB = do
     return $ a:rest
 
 -- | Parses a header ending in a colon followed by a block of indented elements.
--- ToDo: refactor.
-listWithHeader :: FuzzyParser a -> FuzzyParser b -> FuzzyParser (a, [b])
-listWithHeader pHeader pBody = L.indentBlock consumeWhitespace listWithHeader'
+sentenceBlock :: FuzzyParser a -> FuzzyParser (a, [Annotated Sentence])
+sentenceBlock pHeader = L.indentBlock consumeWhitespace sentenceBlock'
     where
-        listWithHeader' = do
-            header <- pHeader
-            colon
-            return $ L.IndentSome Nothing (return . (header, )) pBody
+        sentenceBlock' = do
+            header <- try $ pHeader <* colon
+            return $ L.IndentSome Nothing (return . (header, )) sentence
 
 
 -- -----------------
@@ -266,11 +262,118 @@ matchablePart = do
 -- -----------------
 -- * Sentences
 
--- | Parses the header and body of a sentence in block format.
-blockSentence :: FuzzyParser a -> FuzzyParser (a, [Annotated Sentence])
-blockSentence pHeader = do
-    (header, ss) <- listWithHeader pHeader sentence
-    return (header, ss)
+-- | Parses a simple conditional sentence identified by the given word.
+-- Returns the condition after the identifier and the simple sentence inside the conditional.
+simpleConditional :: String -> FuzzyParser (Annotated Value, [Annotated Sentence])
+simpleConditional idWord = do
+    firstWord idWord
+    cond <- valueMatchable
+    comma
+    s <- simpleSentence
+    return (cond, [s])
+
+-- | Parses a simple `when` statement, which works as an `if` without an `else` clause.
+simpleWhen :: FuzzyParser (Annotated Sentence)
+simpleWhen = do
+    ann <- getCurrentLocation
+    uncurry (When ann) <$> simpleConditional "when"
+
+-- | Parses a simple `unless`, which works as a `when` with its condition negated.
+simpleUnless :: FuzzyParser (Annotated Sentence)
+simpleUnless = do
+    ann <- getCurrentLocation
+    uncurry (Unless ann) <$> simpleConditional "unless"
+
+-- | Parses a simple `if-else` statement.
+simpleIfElse :: FuzzyParser (Annotated Sentence)
+simpleIfElse = do
+    ann <- getCurrentLocation
+    (cond, ssIf) <- simpleConditional "if"
+    comma
+    word "otherwise"
+    sElse <- simpleSentence
+    return $ IfElse ann cond ssIf [sElse]
+
+-- | Parses a simple `while` loop.
+simpleWhile :: FuzzyParser (Annotated Sentence)
+simpleWhile = do
+    ann <- getCurrentLocation
+    uncurry (While ann) <$> simpleConditional "while"
+
+-- | Parses a simple `until` loop, which works as a `while` with its condition negated.
+simpleUntil :: FuzzyParser (Annotated Sentence)
+simpleUntil = do
+    ann <- getCurrentLocation
+    uncurry (Until ann) <$> simpleConditional "until"
+
+-- | The header of a `for-each` loop, which includes the name and type of the iterator, and the value to be iterated.
+forEachHeader :: FuzzyParser (Name, Type, Annotated Value)
+forEachHeader = do
+    try $ firstWord "for" >> word "each"
+    iterType <- typeName False
+    iterName <- parens name
+    word "in"
+    listVal <- valueMatchable
+    return (iterName, iterType, listVal)
+
+-- | Parses a simple `for-each` loop.
+simpleForEach :: FuzzyParser (Annotated Sentence)
+simpleForEach = do
+    ann <- getCurrentLocation
+    (iterName, iterType, listVal) <- try $ forEachHeader <* comma
+    s <- simpleSentence
+    return $ ForEach ann iterName iterType listVal [s]
+
+-- | Parses a simple `attempt` statement, which works as a `try` without a `catch` clause.
+simpleAttempt :: FuzzyParser (Annotated Sentence)
+simpleAttempt = do
+    ann <- getCurrentLocation
+    firstWord "attempt" >> word "to"
+    s <- simpleSentence
+    return $ Attempt ann [s]
+
+-- | Parses a simple `try-catch` statement.
+simpleTryCatch :: FuzzyParser (Annotated Sentence)
+simpleTryCatch = do
+    ann <- getCurrentLocation
+    try $ firstWord "try" >> word "to"
+    sTry <- simpleSentence
+    comma
+    mapM_ word ["and", "in", "case", "of", "error"]
+    sCatch <- simpleSentence
+    return $ TryCatch ann [sTry] [sCatch]
+
+-- | Parses a return statement.
+result :: FuzzyParser (Annotated Sentence)
+result = do
+    ann <- getCurrentLocation
+    firstWord "return"
+    Return ann <$> valueMatchable
+
+-- | Parses a throw statement.
+throw :: FuzzyParser (Annotated Sentence)
+throw = do
+    ann <- getCurrentLocation
+    try $ firstWord "throw" >> word "an" >> word "error"
+    word "because"
+    Throw ann <$> some anyWord
+
+-- | Parses a simple sentence, which can be any sentence in its simple form (except for `let` statements) or a sentence matchable.
+-- Simple sentences can only contain other simple sentences.
+simpleSentence :: FuzzyParser (Annotated Sentence)
+simpleSentence =
+    simpleWhen
+    <|> simpleUnless
+    <|> simpleIfElse
+    <|> simpleUntil
+    <|> simpleWhile
+    <|> simpleForEach
+    <|> simpleAttempt
+    <|> simpleTryCatch
+    <|> result
+    <|> throw
+    <|> sentenceMatchable
+    <?> "simple sentence"
 
 -- | Parses the definition of one or more variables with the same value.
 variablesDefinition :: FuzzyParser (Annotated Sentence)
@@ -284,17 +387,17 @@ variablesDefinition = do
         (case names of
             -- If there is only one variable, ask for its type in singular.
             [_] -> try (word "a" >> Just <$> typeName False)
-            -- If there are more than one, ask for their type in plural.
+            -- If there are more, ask for their type in plural.
             _ -> try (Just <$> typeName True))
         <|> return Nothing
     val <- case varType of
         Just (ListT elemsType) ->
-            -- List with elements.
+            -- List by extension.
             (do
                word "containing"
                elems <- series valueMatchable
                return $ ListV valAnn elemsType elems)
-            -- List from value.
+            -- List value.
             <|> (word "equal" >> word "to" >> valueMatchable)
             -- Empty list.
             <|> return (ListV valAnn elemsType [])
@@ -304,181 +407,95 @@ variablesDefinition = do
         Nothing -> valueMatchable
     return $ VarDef defAnn names varType val
 
--- | The header of a conditional control statement.
-conditionalHeader :: String -> FuzzyParser (Annotated Value)
-conditionalHeader w = firstWord w >> condition
-
-simpleIf :: FuzzyParser (Annotated Sentence)
-simpleIf = do
+-- | Parses a block `when` statement, which works as an `if` without an `else` clause.
+blockWhen :: FuzzyParser (Annotated Sentence)
+blockWhen = do
     ann <- getCurrentLocation
-    cond <- try $ conditionalHeader "if" <* comma
-    s <- simpleSentence
-    (IfElse ann cond [s] <$> simpleElse) <|> return (If ann cond [s])
-    where
-        simpleElse :: FuzzyParser [Annotated Sentence]
-        simpleElse = do
-            comma
-            word "otherwise"
-            s <- simpleSentence
-            return [s]
+    (cond, ss) <- sentenceBlock $ firstWord "when" >> valueMatchable
+    return $ When ann cond ss
 
-ifBlock :: FuzzyParser (Annotated Sentence)
-ifBlock = do
+-- | Parses a block `unless` statement, which works as a `when` with its condition negated.
+blockUnless :: FuzzyParser (Annotated Sentence)
+blockUnless = do
     ann <- getCurrentLocation
-    (cond, ss) <- blockSentence $ conditionalHeader "if"
-    (IfElse ann cond ss <$> elseBlock) <|> return (If ann cond ss)
-    where
-        elseBlock :: FuzzyParser [Annotated Sentence]
-        elseBlock = snd <$> listWithHeader (word "Otherwise") sentence
+    (cond, ss) <- sentenceBlock $ firstWord "unless" >> valueMatchable
+    return $ Unless ann cond ss
 
-simpleUntil :: FuzzyParser (Annotated Sentence)
-simpleUntil = do
+-- | Parses a block `if-else` statement.
+blockIfElse :: FuzzyParser (Annotated Sentence)
+blockIfElse = do
     ann <- getCurrentLocation
-    cond <- try $ conditionalHeader "until" <* comma
-    s <- simpleSentence
-    return $ Until ann cond [s]
+    (cond, ssTrue) <- sentenceBlock $ firstWord "if" >> valueMatchable
+    put True
+    (_, ssFalse) <- sentenceBlock $ firstWord "otherwise"
+    return $ IfElse ann cond ssTrue ssFalse
 
-untilBlock :: FuzzyParser (Annotated Sentence)
-untilBlock = do
+-- | Parses a block `while` loop.
+blockUntil :: FuzzyParser (Annotated Sentence)
+blockUntil = do
     ann <- getCurrentLocation
-    (cond, ss) <- blockSentence $ conditionalHeader "until"
+    (cond, ss) <- sentenceBlock $ firstWord "until" >> valueMatchable
     return $ Until ann cond ss
 
-simpleWhile :: FuzzyParser (Annotated Sentence)
-simpleWhile = do
+-- | Parses a block `until` loop, which works as a `while` with its condition negated.
+blockWhile :: FuzzyParser (Annotated Sentence)
+blockWhile = do
     ann <- getCurrentLocation
-    cond <- try $ conditionalHeader "while" <* comma
-    s <- simpleSentence
-    return $ While ann cond [s]
-
-whileBlock :: FuzzyParser (Annotated Sentence)
-whileBlock = do
-    ann <- getCurrentLocation
-    (cond, ss) <- blockSentence $ conditionalHeader "while"
+    (cond, ss) <- sentenceBlock $ firstWord "while" >> valueMatchable
     return $ While ann cond ss
 
-forEachHeader :: FuzzyParser (Name, Type, Annotated Value)
-forEachHeader = do
-    firstWord "for"
-    word "each"
-    iterType <- typeName False
-    iterName <- parens name
-    word "in"
-    listVal <- valueMatchable
-    return (iterName, iterType, listVal)
-
-simpleForEach :: FuzzyParser (Annotated Sentence)
-simpleForEach = do
+-- | Parses a block `for-each` loop.
+blockForEach :: FuzzyParser (Annotated Sentence)
+blockForEach = do
     ann <- getCurrentLocation
-    (iterName, iterType, listVal) <- try $ forEachHeader <* comma
-    s <- simpleSentence
-    return $ ForEach ann iterName iterType listVal [s]
-
-forEachBlock :: FuzzyParser (Annotated Sentence)
-forEachBlock = do
-    ann <- getCurrentLocation
-    ((iterName, iterType, listVal), ss) <- blockSentence forEachHeader
+    ((iterName, iterType, listVal), ss) <- sentenceBlock forEachHeader
     return $ ForEach ann iterName iterType listVal ss
 
--- | Parses a return statement.
-result :: FuzzyParser (Annotated Sentence)
-result = do
+-- | Parses a block `attempt` statement, which works as a `try` without a `catch` clause.
+blockAttempt :: FuzzyParser (Annotated Sentence)
+blockAttempt = do
     ann <- getCurrentLocation
-    firstWord "return"
-    Return ann <$> value
+    (_, ss) <- sentenceBlock $ firstWord "attempt" >> word "to"
+    return $ Attempt ann ss
 
-tryHeader :: FuzzyParser ()
-tryHeader = void $ firstWord "try" >> word "to"
-
-simpleTry :: FuzzyParser (Annotated Sentence)
-simpleTry = do
+-- | Parses a block `try-catch` statement.
+blockTryCatch :: FuzzyParser (Annotated Sentence)
+blockTryCatch = do
     ann <- getCurrentLocation
-    s <- try $ tryHeader >> simpleSentence
-    (TryCatch ann [s] <$> simpleCatch) <|> return (Try ann [s])
-    where
-        simpleCatch :: FuzzyParser [Annotated Sentence]
-        simpleCatch = do
-            comma
-            word "and"
-            word "in"
-            word "case"
-            word "of"
-            word "error"
-            s <- simpleSentence
-            return [s]
+    (_, ssTry) <- sentenceBlock $ firstWord "try" >> word "to"
+    put True
+    (_, ssCatch) <- sentenceBlock $ firstWord "in" >> mapM word ["case", "of", "error"]
+    return $ TryCatch ann ssTry ssCatch
 
-tryBlock :: FuzzyParser (Annotated Sentence)
-tryBlock = do
-    ann <- getCurrentLocation
-    (_, ss) <- blockSentence tryHeader
-    (TryCatch ann ss <$> catchBlock) <|> return (Try ann ss)
-    where
-        catchBlock :: FuzzyParser [Annotated Sentence]
-        catchBlock = snd <$> listWithHeader (word "In" >> word "case" >> word "of" >> word "error") sentence
+-- | Parses a block sentence.
+blockSentence :: FuzzyParser (Annotated Sentence)
+blockSentence =
+    (variablesDefinition <* dot)
+    <|> blockWhen
+    <|> blockUnless
+    <|> blockIfElse
+    <|> blockUntil
+    <|> blockWhile
+    <|> blockForEach
+    <|> blockAttempt
+    <|> blockTryCatch
+    <?> "block sentence"
 
-throw :: FuzzyParser (Annotated Sentence)
-throw = do
-    ann <- getCurrentLocation
-    try $ firstWord "throw" >> word "an" >> word "error"
-    word "because"
-    Throw ann <$> some anyWord
-
+-- | Parses a sentence that must be understood by the "Solver".
 sentenceMatchable :: FuzzyParser (Annotated Sentence)
 sentenceMatchable = do
     ann <- getCurrentLocation
     parts <- some matchablePart
     return $ SentenceM ann parts
 
--- | Parses a top-level sentence, starting with an uppercase letter and ending in a stop.
+-- | Parses a top-level sentence, starting with an upper case letter and ending in a stop.
+-- Can be any simple or block sentence.
 sentence :: FuzzyParser (Annotated Sentence)
-sentence = do
-    put True
-    lookAhead upperChar
-    (variablesDefinition <* dot)
-        <|> (simpleIf <* dot)
-        <|> ifBlock
-        <|> (simpleForEach <* dot)
-        <|> forEachBlock
-        <|> (simpleUntil <* dot)
-        <|> untilBlock
-        <|> (simpleWhile <* dot)
-        <|> whileBlock
-        <|> (result <* dot)
-        <|> throw
-        <|> (simpleTry <* dot)
-        <|> tryBlock
-        <|> (sentenceMatchable <* dot)
-        <?> "sentence"
-
--- | Parses a sentence that can be used inside a simple statement.
-simpleSentence :: FuzzyParser (Annotated Sentence)
-simpleSentence = do
-    put False
-    variablesDefinition
-        <|> result
-        <|> throw
-        <|> sentenceMatchable
-        <?> "simple sentence"
+sentence = put True >> (blockSentence <|> (simpleSentence <* dot) <?> "sentence")
 
 
 -- -----------------
--- * Blocks
-
-block :: FuzzyParser (Annotated Block)
-block = functionDefinition
-
-functionDefinition :: FuzzyParser (Annotated Block)
-functionDefinition = do
-    ann <- getCurrentLocation
-    ((funTitle, retType), ss) <- listWithHeader functionHeader sentence
-    return $ FunDef ann funTitle retType ss
-    where
-        functionHeader :: FuzzyParser (Annotated Title, Maybe Type)
-        functionHeader = do
-            lookAhead upperChar
-            retType <- returnType
-            funTitle <- title
-            return (funTitle, retType)
+-- * Definitions
 
 -- | Parses the first part of a function definition, which states the type of function it will be.
 returnType :: FuzzyParser (Maybe Type)
@@ -486,7 +503,7 @@ returnType =
     -- Shorthand for predicates.
     (word "Whether" >> return (Just BoolT))
     -- Procedures
-    <|> (word "To" >> notFollowedBy (word "a") >> return Nothing)
+    <|> (word "To" >> notFollowedBy (word "a") >> lookAhead lowerChar >> return Nothing)
     -- Any kind of operator
     <|> do
         word "A"
@@ -495,15 +512,6 @@ returnType =
         word "to"
         return $ Just retType
     <?> "return type"
-
-title :: FuzzyParser (Annotated Title)
-title = do
-    ann <- getCurrentLocation
-    firstPart <- titleParam <|> titleWords
-    rest <- case firstPart of
-        (TitleWords _ _) -> intercalated titleParam titleWords <|> return []
-        _ -> intercalated titleWords titleParam -- Titles must have at least one occurence of 'titleWords'.
-    return $ Title ann (firstPart:rest)
 
 -- | Parses words for an identifying part of a function's title.
 titleWords :: FuzzyParser (Annotated TitlePart)
@@ -522,6 +530,30 @@ titleParam = do
     pNames <- ((:[]) <$> parens name) <|> return []
     return $ TitleParam ann pNames pType
 
+title :: FuzzyParser (Annotated Title)
+title = do
+    ann <- getCurrentLocation
+    firstPart <- titleParam <|> titleWords
+    rest <- case firstPart of
+        (TitleWords _ _) -> intercalated titleParam titleWords <|> return []
+        _ -> intercalated titleWords titleParam -- Titles must have at least one occurence of 'titleWords'.
+    return $ Title ann (firstPart:rest)
+
+functionDefinition :: FuzzyParser (Annotated Definition)
+functionDefinition = do
+    ann <- getCurrentLocation
+    ((funTitle, retType), ss) <- sentenceBlock functionHeader
+    return $ FunDef ann funTitle retType ss
+    where
+        functionHeader :: FuzzyParser (Annotated Title, Maybe Type)
+        functionHeader = do
+            lookAhead upperChar
+            retType <- returnType
+            funTitle <- title
+            return (funTitle, retType)
+
+definition :: FuzzyParser (Annotated Definition)
+definition = functionDefinition
 
 -- -----------------
 -- * Main
@@ -555,4 +587,4 @@ parseProgram :: String -> Either Error Program
 parseProgram = runFuzzyParser parseProgram' False
     where
         parseProgram' :: FuzzyParser Program
-        parseProgram' = some block <* eof
+        parseProgram' = some definition <* eof

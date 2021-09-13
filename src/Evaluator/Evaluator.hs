@@ -26,7 +26,7 @@ import Utils (firstNotNull, getFunId, hasIterators)
 registerFunctions :: Monad m => Program -> EvaluatorEnv m ()
 registerFunctions = mapM_ registerFunction
     where
-        registerFunction :: Monad m => Annotated Block -> EvaluatorEnv m ()
+        registerFunction :: Monad m => Annotated Definition -> EvaluatorEnv m ()
         registerFunction (FunDef _ title@(Title _ parts) _ sentences) =
             let fid = getFunId parts
                 callable = FunCallable (void title) sentences
@@ -139,11 +139,16 @@ evaluateSentence s = tick >> evaluateSentence' s
             mapM_ (\name' -> copyValue val' >>= setVariableValue name') names
             return Nothing
 
-        evaluateSentence' (If _ boolVal ss) = do
+        evaluateSentence' (When _ boolVal ss) = do
             ~(BoolV _ cond) <- withLocation boolVal evaluateValue
             if cond
                 then evaluateSentences ss
                 else return Nothing
+        evaluateSentence' (Unless _ boolVal ss) = do
+            ~(BoolV _ cond) <- withLocation boolVal evaluateValue
+            if cond
+                then return Nothing
+                else evaluateSentences ss
         evaluateSentence' (IfElse _ boolVal ssTrue ssFalse) = do
             ~(BoolV _ cond) <- withLocation boolVal evaluateValue
             if cond
@@ -203,7 +208,7 @@ evaluateSentence s = tick >> evaluateSentence' s
             mapM_ (evaluateProcedure fid) $ sequence valsLists
             return Nothing
 
-        evaluateSentence' (Try _ ss) = evaluateSentences ss `catchCodeError` \_ -> return Nothing
+        evaluateSentence' (Attempt _ ss) = evaluateSentences ss `catchCodeError` \_ -> return Nothing
         evaluateSentence' (TryCatch _ ssTry ssCatch) = evaluateSentences ssTry `catchCodeError` \_ -> evaluateSentences ssCatch
         evaluateSentence' (Throw _ msg) = throwHere $ CodeError msg
 

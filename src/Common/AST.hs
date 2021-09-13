@@ -68,14 +68,15 @@ data Value a =
 data Sentence a =
     SentenceM a [MatchablePart a] -- ^ A list of matchable parts that are yet to be converted into a concrete sentence.
     | VarDef a [Name] (Maybe Type) (Value a) -- ^ The definition of a new variable.
-    | If a (Value a) [Sentence a]
+    | When a (Value a) [Sentence a]
+    | Unless a (Value a) [Sentence a]
     | IfElse a (Value a) [Sentence a] [Sentence a]
     | ForEach a Name Type (Value a) [Sentence a]
-    | Until a (Value a) [Sentence a]
     | While a (Value a) [Sentence a]
+    | Until a (Value a) [Sentence a]
     | Return a (Value a)
     | ProcedureCall a FunId [Value a]
-    | Try a [Sentence a]
+    | Attempt a [Sentence a]
     | TryCatch a [Sentence a] [Sentence a]
     | Throw a [String]
     deriving (Eq, Show, Functor, Foldable)
@@ -98,10 +99,9 @@ data FunType =
     Operator ([Type] -> Type) -- ^ Each operator has a function that transforms the types of its arguments into the type of its result.
     | Procedure
 
--- | All possible blocks in a program.
-data Block a =
+data Definition a =
     FunDef a (Title a) (Maybe Type) [Sentence a] -- ^ An user defined function that can only have a basic return type.
                                                  -- If the type is Nothing, it represents a procedure.
     deriving (Eq, Show, Functor, Foldable)
 
-type Program = [Annotated Block]
+type Program = [Annotated Definition]

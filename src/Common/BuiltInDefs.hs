@@ -10,6 +10,13 @@ Signatures of functions defined in the language's prelude.
 module BuiltInDefs where
 
 import AST
+    ( FunType(..),
+      FunSignature(..),
+      Title(Title),
+      TitlePart(..),
+      Type(AnyT, BoolT, IntT, FloatT, ListT, RefT),
+      Bare,
+      FunId )
 import Utils (getFunId)
 
 
@@ -51,6 +58,10 @@ builtInOperators =
         (
             [TitleParam () [] FloatT, TitleWords () ["divided", "by"], TitleParam () [] FloatT],
             Operator (\[_, _] -> FloatT)
+        ),
+        (
+            [TitleWords () ["the", "quotient", "of"], TitleParam () [] IntT, TitleWords () ["and"], TitleParam () [] IntT],
+            Operator (\[_, _] -> IntT)
         ),
         (
             [TitleParam () [] (AnyT "a"), TitleWords () ["is", "equal", "to"], TitleParam () [] (AnyT "a")],
