@@ -10,7 +10,7 @@ Functions used by the "Solver" to turn MatchableParts into Values and Sentences.
 
 module Matchers where
 
-import Control.Monad (void, filterM)
+import Control.Monad (filterM, void)
 import Data.Char (isUpper, toLower)
 
 import AST
@@ -183,6 +183,7 @@ matchAsProcedureCall parts = do
         (WordP fAnn (c:cs) : rest) ->
             if isUpper c
                 -- Try matching lower-casing the first letter.
+                -- ToDo: this is not neccessary if the first letter of the verb in procedure titles is constrained to lower-case.
                 then do
                     let lowerCaseTitle = WordP fAnn (toLower c : cs) : rest
                     matchAsFunctionCall lowerCaseTitle procedures

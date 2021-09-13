@@ -10,13 +10,13 @@ The monad on which the "Evaluator" runs, with some useful operations.
 module EvaluatorEnv (module EvaluatorEnv, module Location) where
 
 import Control.Monad (when)
-import Control.Monad.Except (throwError, catchError)
+import Control.Monad.Except (catchError, throwError)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.State.Strict (gets, modify, runStateT, StateT)
 import Control.Monad.Trans.Except (runExceptT, ExceptT)
 
-import qualified Data.IntSet as IS
 import qualified Data.IntMap.Strict as IM
+import qualified Data.IntSet as IS
 import qualified Data.Map.Strict as M
 
 import AST
@@ -48,8 +48,8 @@ type EvaluatorData = (FunData, VarData, RefData, Pointer, Memory)
 
 -- | The evaluator's monad.
 -- It stores the evaluator's state.
--- It has the possibility to throw and catch errors.
--- It stores the current location of the evaluation.
+-- It has the ability to throw and catch errors.
+-- It stores the current location.
 -- It is parametrized over an inner monad m, which is used input and output in a testable way.
 type EvaluatorEnv m a = LocationT (StateT EvaluatorData (ExceptT Error m)) a
 
@@ -89,7 +89,7 @@ catchCodeError action handler =
             (Error _ (CodeError msg)) -> handler err
             _ -> throwError err)
 
--- | Throw an error of the given type in the current location.
+-- | Throw an error of the given type at the current location.
 throwHere :: Monad m => ErrorType -> EvaluatorEnv m a
 throwHere errType = do
     location <- getCurrentLocation
@@ -193,7 +193,7 @@ setVariableValue name val = do
         then getVariableAddress name >>= (`setValueAtAddress` val)
         else addValue val >>= setVariableAddress name
 
--- | Receives a list of new variables to be declared and a list of references to be set and performs an computation with those variables in scope.
+-- | Receives a list of new variables to be declared and a list of references to be set and runs a computation with those variables in scope.
 -- New variables are discarded after the action.
 -- If a value is passed by reference, it can be modified inside the computation.
 inNewScope :: Monad m => EvaluatorEnv m a -> [([Name], Bare Value)] -> [([Name], Int)] -> EvaluatorEnv m a
@@ -209,13 +209,13 @@ inNewScope action newVarVals newVarRefs = do
         ) newVarVals
     -- For each value passed by reference, point the corresponding variables to its address.
     mapM_ (\(names, addr) -> mapM_ (`setVariableAddress` addr) names) newVarRefs
-    -- Perform the computation using only the given variables.
+    -- Runs the computation using only the given variables.
     result <- action
     -- Discard the new scope and return the result.
     modifyVariables tail
     return result
 
--- | Perform a computation in a block scope, discarding variables created inside it after it ends.
+-- | Run a computation in a block scope, discarding variables created inside it after it ends.
 inBlockScope :: Monad m => EvaluatorEnv m a -> EvaluatorEnv m a
 inBlockScope action = do
     varsSet <- M.keysSet . head <$> getVariables

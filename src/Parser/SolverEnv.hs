@@ -1,124 +1,143 @@
-module SolverEnv ( module SolverEnv, module Location, catchError ) where
+{-|
+Module      : SolverEnv
+Copyright   : (c) Alejandro De Cicco, 2021
+License     : MIT
+Maintainer  : alejandrodecicco99@gmail.com
 
-import Data.Bifunctor ( first, second )
-import Control.Monad.Except ( throwError, catchError )
-import Control.Monad.Trans.Class ( lift )
-import Control.Monad.Trans.State ( gets, modify, runStateT, runState, State, StateT )
-import Control.Monad.Trans.Except ( runExceptT, ExceptT )
+The monad on which the "Solver" runs, with some useful operations.
+-}
+module SolverEnv (module SolverEnv, module Location, catchError) where
 
+import Control.Monad.Except (catchError, throwError)
+import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.Except (runExceptT, ExceptT)
+import Control.Monad.Trans.State (gets, modify, runStateT, runState, State, StateT)
+import Data.Bifunctor (first, second)
+import Data.Maybe (isJust)
+
+import AST
 import BuiltInDefs (builtInFunctions)
 import Errors
 import Location
-import AST
-
---
 
 
--- Type definition
+-- -----------------
+-- * Type definitions
 
-type SolverData = ([(FunId, FunSignature)], [(Name, Type)])
+-- | A mapping between function ids and their signatures.
+-- The use of a list instead of a map is intentional, since the order of definition of each function affects its precedence.
+type FunData = [(FunId, FunSignature)]
+
+-- | A mapping between variable names and their types.
+type VarData = [(Name, Type)]
+
+-- | The state of the solver.
+type SolverData = (FunData, VarData)
+
+-- | The solver's monad.
+-- It stores the solver's state.
+-- It has the ability to issue warnings and throw and catch errors.
+-- It stores the current location.
 type SolverEnv a = LocationT (StateT SolverData (ExceptT Error (State [Warning]))) a
 
 runSolverEnv :: SolverEnv a -> [Warning] -> Location -> SolverData -> (Either Error ((a, Location), SolverData), [Warning])
-runSolverEnv f w l d = runState (runExceptT $ runStateT (runLocationT f l) d) w
+runSolverEnv action warnings location state = runState (runExceptT $ runStateT (runLocationT action location) state) warnings
 
+-- | The default initial state of the solver, including the built-in functions and no variables.
 initialState :: SolverData
 initialState = (builtInFunctions, [])
 
---
 
+-- -----------------
+-- * Errors
 
--- Errors
-
+-- | Throw an error of the given type without specifiying a location.
 throwNowhere :: ErrorType -> SolverEnv a
-throwNowhere eT = throwError $ Error Nothing eT
+throwNowhere errType = throwError $ Error Nothing errType
 
+-- | Throw an error of the given type at the current location.
 throwHere :: ErrorType -> SolverEnv a
-throwHere eT = do
-    l <- getCurrentLocation
-    throwError $ Error (Just l) eT
+throwHere errType = do
+    location <- getCurrentLocation
+    throwError $ Error (Just location) errType
 
+-- | Issue a warning of the given type at the current location.
 warnHere :: WarningType -> SolverEnv ()
-warnHere wT = do
-    l <- getCurrentLocation
-    lift .lift . lift $ modify (Warning (Just l) wT :)
-
---
+warnHere warnType = do
+    location <- getCurrentLocation
+    lift .lift . lift $ modify (Warning (Just location) warnType :)
 
 
--- Auxiliary
+-- -----------------
+-- * Operations on functions
 
-changeFunctions :: ([(FunId, FunSignature)] -> [(FunId, FunSignature)]) -> SolverEnv ()
-changeFunctions m = lift $ modify (first m)
+-- | Modifies the state through a 'FunData' modifier.
+modifyFunctions :: (FunData -> FunData) -> SolverEnv ()
+modifyFunctions modF = lift $ modify (first modF)
 
-changeVariables :: ([(Name, Type)] -> [(Name, Type)]) -> SolverEnv ()
-changeVariables m = lift $ modify (second m)
+getFunctions :: SolverEnv FunData
+getFunctions = lift $ gets fst
 
---
+-- | Returns the 'FunSignature' of a function, assuming it is defined.
+getFunctionSignature :: FunId -> SolverEnv FunSignature
+getFunctionSignature fid = do
+    res <- lookup fid <$> getFunctions
+    case res of
+        Just sgn -> return sgn
+        Nothing -> error $ "Function " ++ show fid ++ " is not defined"
 
-
--- Variables
-
-getVariableType :: Name -> SolverEnv (Maybe Type)
-getVariableType vn = lift $ gets (lookup vn . snd)
-
-setVariableType :: Name -> Type -> SolverEnv ()
-setVariableType vn t = do
-    removeVariableType vn
-    lift $ modify (second ((vn, t):))
-
-removeVariableType :: Name -> SolverEnv ()
-removeVariableType vn =
-    let removeVn = filter (\vd -> fst vd /= vn)
-    in changeVariables removeVn
-
-variableIsDefined :: Name -> SolverEnv Bool
-variableIsDefined vn = do
-    r <- getVariableType vn
-    case r of
-        Just _ -> return True
-        _ -> return False
-
-restoringVariables :: SolverEnv a -> SolverEnv a
-restoringVariables action = do
-    vs <- lift $ gets snd
-    r <- action
-    changeVariables $ const vs
-    return r
-
---
-
-
--- Functions
-
-getFunctionSignature :: FunId -> SolverEnv (Maybe FunSignature)
-getFunctionSignature fid = lift $ gets (lookup fid .fst)
-
+-- | Sets the 'FunSignature' of a function, assuming it is not defined.
 setFunctionSignature :: FunId -> FunSignature -> SolverEnv ()
-setFunctionSignature fid s = do
-    removeFunctionSignature fid
-    changeFunctions ((fid, s):)
-
-removeFunctionSignature :: FunId -> SolverEnv ()
-removeFunctionSignature fid =
-    let removeFid = filter (\fd -> fst fd /= fid)
-    in changeFunctions removeFid
+setFunctionSignature fid sgn = modifyFunctions ((fid, sgn):)
 
 functionIsDefined :: FunId -> SolverEnv Bool
-functionIsDefined fid = do
-    r <- getFunctionSignature fid
-    case r of
-        Just _ -> return True
-        _ -> return False
+functionIsDefined fid = isJust . lookup fid <$> getFunctions
 
 getOperatorSignatures :: SolverEnv [FunSignature]
 getOperatorSignatures = do
-    fs <- lift $ gets fst
-    return $ [f | (_, f@(FunSignature _ (Operator _))) <- fs]
+    funs <- getFunctions
+    return [fun | (_, fun@(FunSignature _ (Operator _))) <- funs]
 
 getProcedureSignatures :: SolverEnv [FunSignature]
 getProcedureSignatures = do
-    fs <- lift $ gets fst
-    return $ [f | (_, f@(FunSignature _ Procedure)) <- fs]
+    funs <- getFunctions
+    return [fun | (_, fun@(FunSignature _ Procedure)) <- funs]
 
---
+
+-- -----------------
+-- * Operations on variables
+
+-- | Modifies the state through a 'VarData' modifier.
+modifyVariables :: (VarData -> VarData) -> SolverEnv ()
+modifyVariables modF = lift $ modify (second modF)
+
+getVariables :: SolverEnv VarData
+getVariables = lift $ gets snd
+
+-- | Returns the type of a variable, assuming it is defined.
+getVariableType :: Name -> SolverEnv Type
+getVariableType name = do
+    res <- lookup name <$> getVariables
+    case res of
+        Just varType -> return varType
+        Nothing -> error $ "Variable " ++ show name ++ " is not defined"
+
+-- | Sets the type of a variable, assuming it is not defined.
+setVariableType :: Name -> Type -> SolverEnv ()
+setVariableType name varType = lift $ modify (second ((name, varType):))
+
+removeVariableType :: Name -> SolverEnv ()
+removeVariableType name =
+    let removeVar = filter (\(name', _) -> name' /= name)
+    in modifyVariables removeVar
+
+variableIsDefined :: Name -> SolverEnv Bool
+variableIsDefined name = isJust . lookup name <$> getVariables
+
+-- | Run a computation and reset the variables to how they where before running it.
+restoringVariables :: SolverEnv a -> SolverEnv a
+restoringVariables action = do
+    vars <- getVariables
+    res <- action
+    modifyVariables $ const vars
+    return res

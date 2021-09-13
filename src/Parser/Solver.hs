@@ -10,16 +10,16 @@ Transforms the parts left unparsed by the "FuzzyParser" into concrete Values or 
 
 module Solver where
 
-import Control.Monad (unless, when, void)
+import Control.Monad (unless, void, when)
 import Control.Monad.Trans.State (gets, modify, runState, State)
-import Data.Maybe (fromJust, catMaybes)
+import Data.Maybe (catMaybes)
 import qualified Data.Map.Strict as M
 
 import AST
 import Errors
 import Matchers
 import SolverEnv
-import Utils (hasIterators, typeName, getFunId)
+import Utils (getFunId, hasIterators, typeName)
 
 
 -- -----------------
@@ -136,9 +136,9 @@ getValueType (FloatV _ _) = return FloatT
 getValueType (BoolV _ _) = return BoolT
 getValueType (CharV _ _) = return CharT
 getValueType (ListV _ t _) = return $ ListT t
-getValueType (VarV _ n) = RefT . fromJust <$> getVariableType n
+getValueType (VarV _ n) = RefT <$> getVariableType n
 getValueType (OperatorCall _ fid args) = do
-    ~(FunSignature _ (Operator typeFun)) <- fromJust <$> getFunctionSignature fid
+    ~(FunSignature _ (Operator typeFun)) <- getFunctionSignature fid
     argTypes <- getArgumentTypesWithCheck (fid, args)
     return $ typeFun argTypes
 getValueType (IterV _ iterType listVal) = do
@@ -181,7 +181,7 @@ checkProcedureCallType _ = error "Shouldn't happen: sentence given is not a proc
 -- Validates that their types are correct and transforms them accordingly, taking type bindings into account.
 getArgumentTypesWithCheck :: (FunId, [Annotated Value]) -> SolverEnv [Type]
 getArgumentTypesWithCheck (fid, args) = do
-    ~(FunSignature (Title _ funTitle) _) <- fromJust <$> getFunctionSignature fid
+    ~(FunSignature (Title _ funTitle) _) <- getFunctionSignature fid
     getArgumentTypesWithCheck' M.empty funTitle args 0
     where
         -- Returns the type of all arguments given a mapping of type bindings.

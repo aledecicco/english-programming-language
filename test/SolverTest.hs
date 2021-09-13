@@ -1,45 +1,52 @@
-module SolverTest ( tests ) where
+{-|
+Module      : SolverTest
+Copyright   : (c) Alejandro De Cicco, 2021
+License     : MIT
+Maintainer  : alejandrodecicco99@gmail.com
 
-import Test.Tasty ( testGroup, TestTree )
-import Test.Tasty.HUnit ( HasCallStack, testCase, assertFailure, Assertion, (@?=) )
+The "Solver"'s test suite.
+-}
 
-import BuiltInDefs ( builtInOperators, builtInProcedures )
+module SolverTest (tests) where
+
+import Test.Tasty (testGroup, TestTree)
+import Test.Tasty.HUnit (assertFailure, testCase, (@?=), Assertion, HasCallStack)
+
+import AST
+import BuiltInDefs (builtInOperators, builtInProcedures)
 import Errors
-import SolverEnv
 import Matchers
 import Solver
-import AST
-
---
+import SolverEnv
 
 
--- Auxiliary
+-- -----------------
+-- * Assertions
 
--- Asserts that a parser action yields a specific result with the given environment
+-- | Asserts that an action yields a specific result.
 expectedResult :: (HasCallStack, Eq a, Show a) => SolverEnv a -> a -> Assertion
 expectedResult a r =
     case runSolverEnv a [] initialLocation initialState of
         (Left e, _) -> assertFailure $ "Parser action failed, the error was:\n" ++ show e
         (Right ((r', _), _), _) -> r' @?= r
 
--- Asserts that a parser action succeeds with the given environment
+-- | Asserts that an action succeeds.
 expectedSuccess :: (HasCallStack, Show a) => SolverEnv a -> Assertion
 expectedSuccess a =
     case runSolverEnv a [] initialLocation initialState of
         (Left e, _) -> assertFailure $ "Parser action failed, the error was:\n" ++ show e
         (Right _, _) -> return ()
 
--- Asserts that a parser action yields a specific error with the given environment
+-- | Asserts that an action yields a specific error.
 expectedError :: (HasCallStack, Show a) => SolverEnv a -> Error -> Assertion
 expectedError a e =
     case runSolverEnv a [] initialLocation initialState of
         (Left e', _) -> e' @?= e
         (Right ((res, _), _), _) -> assertFailure $ "Parser action didn't fail, the result was " ++ show res
 
---
 
-
--- Tests
+-- -----------------
+-- * Tests
 
 splitsTests :: TestTree
 splitsTests = testGroup "Splits"
@@ -306,11 +313,6 @@ addAliasesTests = testGroup "Add aliases"
             ]
     ]
 
---
-
-
--- Main
-
 tests :: TestTree
 tests = testGroup "Solver"
     [
@@ -325,5 +327,3 @@ tests = testGroup "Solver"
         solveValueTests,
         addAliasesTests
     ]
-
---

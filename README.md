@@ -358,14 +358,10 @@ Modifies the value of the given variable, appending the list to it.
 # Possible improvements:
 - Find a better syntax for specifying function return types
 - Implement importing other files as libraries (without the `Run` procedure)
-- Prevent the `Run` procedure from being called explicitly
 - Add more built-in functions
-- Clean up code with unused variables
-- Refactor using more meaningful variable names
 - Separate the README into more files
-- Generate an executable
-- Clean test cases and examples
 - Add "breaks" and "break all" for loops, and "returns" for procedures (stop the loop, stop all loops, and exit?)
 - When a matchable value is solved, the order of the generated possible values isn't the same as the order in which matchers are applied.
 - Iterators might have the same problem with the garbage collector as the for-each loop had.
 - Choose a different keyword for `If` when there is no `Else` and for `Try` when there is no `Catch`, allowing to parse any sentence inside a simple sentence.
+- Command line arguments for the interpreter.

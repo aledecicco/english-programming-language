@@ -1,49 +1,56 @@
-module FuzzyParserTest ( tests ) where
+{-|
+Module      : FuzzyParserTest
+Copyright   : (c) Alejandro De Cicco, 2021
+License     : MIT
+Maintainer  : alejandrodecicco99@gmail.com
 
-import Control.Monad ( void )
-import Test.Tasty ( testGroup, TestTree )
-import Test.Tasty.HUnit ( HasCallStack, testCase, assertFailure, Assertion, (@?=) )
+The "FuzzyParser"'s test suite.
+-}
 
-import FuzzyParser
+module FuzzyParserTest (tests) where
+
+import Control.Monad (void)
+import Test.Tasty (testGroup, TestTree)
+import Test.Tasty.HUnit (assertFailure, testCase, (@?=), Assertion, HasCallStack)
+
 import AST
+import FuzzyParser
 
---
 
+-- -----------------
+-- * Assertions
 
--- Assertions
-
--- Asserts that a parser yields a specific result when parsing a given string
+-- | Asserts that a parser yields a specific result when parsing a given string.
 expectedResult :: (HasCallStack, Eq a, Show a) => FuzzyParser a -> String -> a -> Assertion
-expectedResult p s r =
-    case runFuzzyParser p s of
-        Left e -> assertFailure $ "Parser failed, the error was:\n" ++ show e
-        Right r' -> r' @?= r
+expectedResult parser str expRes =
+    case runFuzzyParser parser str of
+        Left err -> assertFailure $ "Parser failed, the error was:\n" ++ show err
+        Right res -> res @?= expRes
 
--- Asserts that a parser action yields a specific result ignoring annotations with the given environment
+-- | Asserts that a parser yields a specific result ignoring annotations when parsing the given strings.
 expectedBareResult :: (HasCallStack, Eq (a ()), Show (a ()), Functor a) => FuzzyParser (a b) -> String -> a () -> Assertion
-expectedBareResult p s r =
-    case runFuzzyParser p s of
-        Left e -> assertFailure $ "Parser failed, the error was:\n" ++ show e
-        Right r' -> void r' @?= r
+expectedBareResult parser str expRes =
+    case runFuzzyParser parser str of
+        Left err -> assertFailure $ "Parser failed, the error was:\n" ++ show err
+        Right res -> void res @?= expRes
 
--- Asserts that a parser succeeds when parsing a given string
+-- | Asserts that a parser succeeds when parsing a given string.
 expectedSuccess :: HasCallStack => FuzzyParser a -> String -> Assertion
-expectedSuccess p s =
-    case runFuzzyParser p s of
-        Left e -> assertFailure $ "Parser failed, the error was:\n" ++ show e
+expectedSuccess parser str =
+    case runFuzzyParser parser str of
+        Left err -> assertFailure $ "Parser failed, the error was:\n" ++ show err
         Right _ -> return ()
 
--- Asserts that a parser fails to parse a given string
+-- | Asserts that a parser fails to parse a given string.
 expectedFailure :: (HasCallStack, Show a) => FuzzyParser a -> String -> Assertion
-expectedFailure p s =
-    case runFuzzyParser p s of
+expectedFailure parser str =
+    case runFuzzyParser parser str of
         Left _ -> return ()
-        Right r -> assertFailure $ "Parser didn't fail, the result was " ++ show r
-
---
+        Right res -> assertFailure $ "Parser didn't fail, the result was:\n" ++ show res
 
 
--- Tests
+-- -----------------
+-- * Tests
 
 anyWordTests :: TestTree
 anyWordTests = testGroup "Any word"
@@ -624,11 +631,6 @@ valueTests = testGroup "Value"
                 (ListV () FloatT [])
     ]
 
---
-
-
--- Main
-
 tests :: TestTree
 tests = testGroup "Parser"
     [
@@ -649,5 +651,3 @@ tests = testGroup "Parser"
         listWithHeaderTests,
         valueTests
     ]
-
---

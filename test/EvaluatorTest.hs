@@ -1,49 +1,56 @@
-module EvaluatorTest ( tests ) where
+{-|
+Module      : EvaluatorTest
+Copyright   : (c) Alejandro De Cicco, 2021
+License     : MIT
+Maintainer  : alejandrodecicco99@gmail.com
 
-import Test.Tasty ( testGroup, TestTree )
-import Test.Tasty.HUnit ( HasCallStack, testCase, assertFailure, Assertion, (@?=) )
+The "Evaluator"'s test suite.
+-}
+
+module EvaluatorTest (tests) where
+
+import Test.Tasty (testGroup, TestTree)
+import Test.Tasty.HUnit (assertFailure, testCase, (@?=), Assertion, HasCallStack)
 import qualified Data.Map.Strict as M
 
-import Errors
-import EvaluatorEnv
-import Evaluator
 import AST
+import Errors
+import Evaluator
+import EvaluatorEnv
 
---
 
+-- -----------------
+-- * Assertions
 
--- Auxiliary
-
--- Asserts that an evaluator action yields a specific result with the given environment
+-- | Asserts that a computation yields a specific value as a result.
 expectedResult :: HasCallStack => EvaluatorEnv IO (Maybe (Bare Value)) -> Bare Value -> Assertion
-expectedResult eval res = do
-    r <- runEvaluatorEnv eval initialLocation initialState
-    case r of
-        Left e -> assertFailure $ "Evaluator action failed, the error was:\n" ++ show e
+expectedResult action expVal = do
+    res <- runEvaluatorEnv action initialLocation initialState
+    case res of
+        Left err -> assertFailure $ "Evaluator action failed, the error was:\n" ++ show err
         Right ((Nothing , _), _) -> assertFailure "Evaluator action didn't yield a result"
-        Right ((Just res', _), _) -> res' @?= res
+        Right ((Just val, _), _) -> val @?= expVal
 
--- Asserts that an evaluator action succeeds with the given environment
+-- | Asserts that a computation succeeds.
 expectedSuccess :: HasCallStack => EvaluatorEnv IO (Maybe (Bare Value)) -> Assertion
-expectedSuccess eval = do
-    r <- runEvaluatorEnv eval initialLocation initialState
-    case r of
-        Left e -> assertFailure $ "Evaluator action failed, the error was:\n" ++ show e
+expectedSuccess action = do
+    res <- runEvaluatorEnv action initialLocation initialState
+    case res of
+        Left err -> assertFailure $ "Evaluator action failed, the error was:\n" ++ show err
         Right _ -> return ()
 
--- Asserts that an evaluator yields a specific error with the given environment
+-- | Asserts that an action yields a specific error.
 expectedError :: HasCallStack => EvaluatorEnv IO (Maybe (Bare Value)) -> Error -> Assertion
-expectedError eval e = do
-    r <- runEvaluatorEnv eval initialLocation initialState
-    case r of
-        Left e' -> e' @?= e
+expectedError action expErr = do
+    res <- runEvaluatorEnv action initialLocation initialState
+    case res of
+        Left err -> err @?= expErr
         Right ((Nothing, _), _) -> assertFailure "Evaluator action didn't fail, and yielded no result"
-        Right ((Just res, _), _) -> assertFailure $ "Evaluator action didn't fail, the result was " ++ show res
-
---
+        Right ((Just val, _), _) -> assertFailure $ "Evaluator action didn't fail, the result was:\n" ++ show val
 
 
--- Tests
+-- -----------------
+-- * Tests
 
 valueTests :: TestTree
 valueTests = testGroup "Value"
@@ -104,14 +111,14 @@ sentenceTests = testGroup "sentence"
         testCase "Append to" $
             expectedResult
                 (do
-                    r <- evaluateSentences $
+                    res <- evaluateSentences $
                         mockLocations [
                             VarDef () [["x"]] (Just $ ListT FloatT) (ListV () FloatT [FloatV () 5.0, FloatV () 4.0]),
                             ProcedureCall () "append_%_to_%" [ListV () IntT [IntV () 3, IntV () 2, IntV () 1], VarV () ["x"]],
                             Return () (VarV () ["x"])
                         ]
-                    case r of
-                        Just v -> Just <$> loadReferences v
+                    case res of
+                        Just val -> Just <$> loadReferences val
                         Nothing -> return Nothing
                 )
                 (ListV () FloatT [FloatV () 5.0, FloatV () 4.0, IntV () 3, IntV () 2, IntV () 1]),
@@ -141,6 +148,27 @@ sentenceTests = testGroup "sentence"
                 )
                 (IntV () 2),
 
+        testCase "Nested tries and catches with rollback" $
+            expectedResult
+                (
+                    evaluateSentences $
+                        mockLocations [
+                            VarDef () [["x"]] (Just IntT) (IntV () 6),
+                            Try ()
+                                [
+                                    ProcedureCall () "add_%_to_%" [IntV () 1, VarV () ["x"]],
+                                    TryCatch ()
+                                        [
+                                            ProcedureCall () "multiply_%_by_%" [VarV () ["x"], IntV () 2],
+                                            ProcedureCall () "divide_%_by_%" [VarV () ["x"], IntV () 0]
+                                        ]
+                                        [ProcedureCall () "add_%_to_%" [IntV () 1, VarV () ["x"]]]
+                                ],
+                            Return () (VarV () ["x"])
+                        ]
+                )
+                (IntV () 8),
+
         testCase "Caught throw" $
             expectedSuccess
                 (evaluateSentences $ mockLocations [Try () [Throw () ["test", "error"]]]),
@@ -150,7 +178,7 @@ sentenceTests = testGroup "sentence"
                 (evaluateSentences [Throw (0,0) ["test", "error"]])
                 (Error (Just (0,0)) $ CodeError ["test", "error"]),
 
-        testCase "Undefined variable after let with throw" $
+        testCase "Undefined variable after try" $
             expectedError
                 (
                     evaluateSentences
@@ -204,16 +232,9 @@ sentenceTests = testGroup "sentence"
         mockLocations :: Functor a => [a ()] -> [Annotated a]
         mockLocations = map . fmap $ const (0,0)
 
---
-
-
--- Main
-
 tests :: TestTree
 tests = testGroup "Evaluator"
     [
         valueTests,
         sentenceTests
     ]
-
---

@@ -4,7 +4,7 @@ Copyright   : (c) Alejandro De Cicco, 2021
 License     : MIT
 Maintainer  : alejandrodecicco99@gmail.com
 
-A monad transformer for keeping track of a 'Location'.
+A monad for keeping track of a 'Location'.
 -}
 
 module Location where
@@ -12,7 +12,7 @@ module Location where
 import AST (Annotated, Location)
 import Control.Monad.Trans.State.Strict
 
-
+-- | A location transformer monad.
 type LocationT = StateT Location
 
 -- | Returns the location of an annotated element.
@@ -32,10 +32,10 @@ getCurrentLocation = get
 setCurrentLocation :: Monad m => Location -> LocationT m ()
 setCurrentLocation = put
 
--- | Performs a computation with the given annotated element as argument.
+-- | Run a computation with the given annotated element as argument.
 -- Sets the current location to the element's.
 withLocation :: (Monad m, Foldable a) => Annotated a -> (Annotated a -> LocationT m b) -> LocationT m b
-withLocation arg f = setCurrentLocation (getLocation arg) >> f arg
+withLocation arg action = setCurrentLocation (getLocation arg) >> action arg
 
 runLocationT :: LocationT m a -> Location -> m (a, Location)
 runLocationT = runStateT

@@ -1,57 +1,83 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-|
+Module      : EvaluatorTest
+Copyright   : (c) Alejandro De Cicco, 2021
+License     : MIT
+Maintainer  : alejandrodecicco99@gmail.com
 
-module ExamplesTest ( tests ) where
+Tests for the "Evaluator" that run the programs in the examples folder.
+-}
 
-import Test.Tasty ( testGroup, TestTree )
-import Test.Tasty.HUnit ( HasCallStack, testCase, assertFailure, Assertion, (@?=) )
-import Control.Monad.Trans.State ( State, modify, gets, runState )
+module ExamplesTest (tests) where
 
-import FuzzyParser ( parseProgram )
-import Solver ( solveProgram )
+import Control.Monad.Trans.State (gets, modify, runState, State)
+import Data.Bifunctor (first, second)
+import System.IO.Error (tryIOError)
+import Test.Tasty (testGroup, TestTree)
+import Test.Tasty.HUnit (assertFailure, testCase, (@?=), Assertion, HasCallStack)
+
 import Evaluator (evaluateProgram)
 import EvaluatorEnv (ReadWrite(..))
+import FuzzyParser (parseProgram)
+import Solver (solveProgram)
 
---
 
+-- -----------------
+-- * Auxiliary
 
---Auxiliary
-
+-- | A testable inner monad for the evaluator, which starts with a list of inputs and stores the generated output.
 type IOStore = State ([String], String)
 
 runIOStore :: IOStore a -> ([String], String) -> (a, ([String], String))
 runIOStore = runState
 
+-- | The IOStore monad is an instance of 'ReadWrite', since it can read from the stored inputs and write to the output storage.
 instance ReadWrite IOStore where
     read = do
-        s <- gets $ head . fst
-        modify $ \(i, o) -> (tail i, o)
-        return s
-    write s = modify $ \(i, o) -> (i, o ++ s)
+        input <- gets $ head . fst
+        modify $ first tail
+        return input
+    write output = modify $ second (++output)
 
-testExample :: FilePath -> [String] -> String -> IO ()
-testExample fn i o = do
-    fc <- readFile fn
-    case parseProgram fc of
-        Left e -> assertFailure $ "Example failed parsing, the error was:\n" ++ show e
-        Right p ->
-            case solveProgram p of
-                (Left e', _) -> assertFailure $ "Example failed solving, the error was:\n" ++ show e'
-                (Right ((p', _), _), _) -> do
-                    let (r, (i', o')) = runIOStore (evaluateProgram p') (i, [])
-                    case r of
-                        Left e'' -> assertFailure $ "Example failed evaluating, the error was:\n" ++ show e''
-                        Right f ->
-                            if null i'
-                                then o' @?= o
-                                else assertFailure $ "Example didn't consume all input:\n" ++ show i'
+-- | An imitation of the main function which makes assertions instead of failing.
+testExample ::
+    FilePath -- ^ The path of the example to run.
+    -> [String] -- ^ The inputs the program has to consume.
+    -> String -- ^ The expected outputs of the program.
+    -> IO ()
+testExample fileName inputs expOutputs = do
+    readRes <- tryIOError $ readFile fileName
+    fc <- case readRes of
+        Left _ -> assertFailure "The input file could not be opened"
+        Right str -> return str
 
-exampleTestCase :: String -> [String] -> String -> TestTree
-exampleTestCase en i o = testCase en $ testExample ("examples/" ++ en ++ ".epl") i o
+    unsolvedProg <- case parseProgram fc of
+        Left err -> assertFailure $ "Example failed parsing, the error was:\n" ++ show err
+        Right prog -> return prog
 
---
+    solvedProg <- case solveProgram unsolvedProg of
+        (Left err, _) -> assertFailure $ "Example failed solving, the error was:\n" ++ show err
+        (Right ((prog, _), _), _) -> return prog
+
+    let (res, (uncInputs, outputs)) = runIOStore (evaluateProgram solvedProg) (inputs, [])
+    case res of
+        Left err -> assertFailure $ "Example failed evaluating, the error was:\n" ++ show err
+        Right _ ->
+            if null uncInputs
+                then outputs @?= expOutputs
+                else assertFailure $ "Example didn't consume all input:\n" ++ show uncInputs
+
+-- | A test case for an example with a list of inputs and the expected output.
+exampleTestCase ::
+    String -- ^ The name of the program to run.
+    -> [String] -- ^ The inputs the program has to consume.
+    -> String -- ^ The expected outputs of the program.
+    -> TestTree
+exampleTestCase progName inputs expOutputs = testCase progName $ testExample ("examples/" ++ progName ++ ".epl") inputs expOutputs
 
 
--- Tests
+-- -----------------
+-- * Tests
 
 exampleTests :: TestTree
 exampleTests = testGroup "example"
@@ -73,15 +99,8 @@ exampleTests = testGroup "example"
         exampleTestCase "Head" [] "The list is empty\nThe head of the list is 1"
     ]
 
---
-
-
--- Main
-
 tests :: TestTree
 tests = testGroup "Evaluator"
     [
         exampleTests
     ]
-
---

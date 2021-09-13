@@ -1,21 +1,21 @@
-import Test.Tasty ( defaultMain, testGroup, TestTree )
-import Test.Tasty.Ingredients.Basic ( listingTests, consoleTestReporter )
-import Test.Tasty.Ingredients.Rerun ( rerunningTests )
+{-
+Copyright   : (c) Alejandro De Cicco, 2021
+License     : MIT
+Maintainer  : alejandrodecicco99@gmail.com
+
+The entry point of the interpreter's test suite.
+-}
+
+import Test.Tasty (defaultMain, testGroup, TestTree)
 
 import qualified FuzzyParserTest
 import qualified SolverTest
 import qualified EvaluatorTest
 import qualified ExamplesTest
 
---
-
-
---
-
-main :: IO ()
-main = defaultMain tests
 
 tests :: TestTree
 tests = testGroup "Tests" [FuzzyParserTest.tests, SolverTest.tests, EvaluatorTest.tests, ExamplesTest.tests]
 
---
+main :: IO ()
+main = defaultMain tests

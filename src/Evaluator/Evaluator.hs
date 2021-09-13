@@ -9,7 +9,7 @@ The language's evaluator.
 
 module Evaluator where
 
-import Control.Monad (void, unless, (>=>))
+import Control.Monad (unless, void, (>=>))
 
 import AST
 import BuiltInDefs
