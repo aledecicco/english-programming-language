@@ -9,8 +9,9 @@ The goal of this project is to make a language that is as similar as possible to
 
 Here are some sentences that the interpreter can understand:
 ```
-Let L be the
-Set
+Let L be the list from 0 to 5.
+Add 1 to each number in L.
+Print each element in L plus 2.
 ```
 
 [Here](docs/syntax.md) is the full documentation for the language's syntax.
