@@ -96,7 +96,9 @@ exampleTests = testGroup "example"
 
         exampleTestCase "Iterators" [] "[1, 1, 2, 1, 2, 3, 1, 2, 3, 4, 1, 2, 3, 4, 5]",
 
-        exampleTestCase "Head" [] "The list is empty\nThe head of the list is 1"
+        exampleTestCase "Head" [] "The list is empty\nThe head of the list is 1",
+
+        exampleTestCase "SafeDiv" [] "Can't divide by 0\nThe result is 5.0"
     ]
 
 tests :: TestTree

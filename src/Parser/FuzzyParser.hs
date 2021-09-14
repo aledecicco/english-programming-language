@@ -153,6 +153,17 @@ charLiteral = lexeme (between (char '\'') (char '\'') L.charLiteral) <?> "char"
 stringLiteral :: FuzzyParser String
 stringLiteral = lexeme (char '"' >> manyTill (notFollowedBy (char '\n' <|> char '\r') >> L.charLiteral) (char '"')) <?> "string"
 
+matchablePart :: FuzzyParser (Annotated MatchablePart)
+matchablePart = do
+    ann <- getCurrentLocation
+    try (FloatP ann <$> float)
+        <|> try (IntP ann <$> integer)
+        <|> CharP ann <$> charLiteral
+        <|> StringP ann <$> stringLiteral
+        <|> WordP ann <$> anyWord
+        <|> ParensP <$> parens (some matchablePart)
+        <?> "valid term"
+
 comma :: FuzzyParser ()
 comma = symbol "," <?> "comma"
 
@@ -246,17 +257,6 @@ valueMatchable = do
 -- | Parses the condition for a control statement.
 condition :: FuzzyParser (Annotated Value)
 condition = valueMatchable
-
-matchablePart :: FuzzyParser (Annotated MatchablePart)
-matchablePart = do
-    ann <- getCurrentLocation
-    try (FloatP ann <$> float)
-        <|> IntP ann <$> integer
-        <|> CharP ann <$> charLiteral
-        <|> StringP ann <$> stringLiteral
-        <|> WordP ann <$> anyWord
-        <|> ParensP <$> parens (some matchablePart)
-        <?> "valid term"
 
 
 -- -----------------

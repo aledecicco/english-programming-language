@@ -1,0 +1,11 @@
+To divide a reference to a number by a number safely:
+    Try to divide the 1st number by the 2nd number, and in case of error print "Can't divide by 0\n".
+
+To run:
+    Let a be 10.
+    Let b be 2.
+    Let c be 0.
+    Divide a by b safely.
+    Divide a by c safely.
+    Print "The result is ".
+    Print a.

@@ -20,18 +20,6 @@ Print each element in L plus 2.
 
 [Here](examples) are some examples of EPL programs.
 
-# Usage
-Requirements: [Stack](https://docs.haskellstack.org/en/stable/README/)
-
-To run a program, for example `program.epl`, simply use:
-```
-stack run -- program.epl
-```
-
-The `-h` or `--help` option displays usage help.
-
-The `-s` or `--silent` option runs the interpreter without printing warnings or success messages.
-
 # Features
 - Spaces are allowed in variable and function names.
 - Arguments can be passed by value or by reference.
@@ -49,4 +37,17 @@ The `-s` or `--silent` option runs the interpreter without printing warnings or 
 - Implementing importing other files as libraries.
 - Adding records to the language.
 - Implementing an interactive environment.
+
+# Usage
+Requirements: [Stack](https://docs.haskellstack.org/en/stable/README/)
+
+To run a program, for example `program.epl`, simply use:
+```
+stack run -- program.epl
+```
+
+The `-h` or `--help` option displays usage help.
+
+The `-s` or `--silent` option runs the interpreter without printing warnings or success messages.
+
 
