@@ -51,6 +51,7 @@ Now, we can use that procedure as a sentence in the body of any other function, 
 Another interesting case is when defining functions that asks questions (which means they return a boolean). A shorthand is available in those cases to avoid writing `a boolean equal to ...`. The shorthand is the word `whether`. Then, we can define functions like the following:
 ```
 Whether a number is greater than another number:
+    ...
 ```
 Now, we can use it in other structures such as conditionals, which we will see up ahead. Let's say we have two lists of numbers `the first list` and `the second list`. We can combine the question we just defined with the operator we defined at the begginning, and do something like this:
 ```
@@ -77,16 +78,16 @@ Let z be a character equal to the first element of y as a string.
 
 In the first case, the string `"hello world"` is assigned to `s`, which is inferred to be a string because of the value it is being assigned.
 
-In the second case case, the value `2 plus 2` is assigned to `a`, `b`, and `c`. The operator `plus` will be called one time, and then the result will be copied and assigned to each variable. Note that there is a comma after each variable name, including the one before the last one. This is called [serial comma](https://en.wikipedia.org/wiki/Serial_comma) and it helps a lot with parsing.
+In the second case, the value `2 plus 2` is assigned to `a`, `b`, and `c`. The operator `plus` will be called one time, and then the result will be copied and assigned to each variable. Note that there is a comma after each variable name, including the one before the last one. This is called [serial comma](https://en.wikipedia.org/wiki/Serial_comma) and it helps a lot with parsing.
 
 The third case declares `x` as an empty list of numbers.
 
-In the fourth case, we declare `y` as a list of whole  numbers and specify by extension the elements it contains. `Let` sentences are the only place where lists can be declared in this way. Not that the serial comma is also necessary here for the values.
+In the fourth case, we declare `y` as a list of whole  numbers and specify by extension the elements it contains. `Let` sentences are the only place where lists can be declared in this way. Note that the serial comma is also necessary here for the values.
 
 The fifth case explicitly states the type of the variable `z`. It is useful in some border cases where the value is ambiguous, such as this one. The value can be understood as `the first element of (y as a string)`, which is the character `'1'`, or `(the first element of y) as a string`, which is the string `"1"`. However, since we are specifying that we want a character, only the first interpretation is valid.
 
 ### If-else
-This sentence, among with other flow control sentences, contains other sentences. It has two forms: a simple one and a block one. Here are some examples:
+This sentence, among with other flow control sentences, contains other sentences and has two forms: a simple one and a block one. Here are some examples:
 ```
 If a is greather than or equal to b, print a, otherwise print b.
 
@@ -100,7 +101,7 @@ Otherwise:
 ```
 Here, both `if-else` clauses do the same thing, printing `a` if it is greather than or equal to `b`, and `b` otherwise. However, the simple form has some restrictions. It must be written in a single line, and it can only contain one sentence in its simple form. The `let` expression is excluded from this, and can only be used at the top level of a function definition. Also note that the placement of commas is very important.
 
-The block form doesn't have those restrictions, and can contain as many sentences as necessary in any form. Note that the header must be followed by a colon. In both froms, the `if` clause must be followed by an `else` clause, and in block form the conditions must be followed by a colon.
+The block form doesn't have those restrictions, and can contain as many sentences as necessary in any form. In both froms, the `if` clause must be followed by an `else` clause, and in block form the conditions must be followed by a colon.
 
 ### When and unless
 The sentence `when` is the same as an `if-else` but without the `else` block. The sentence `unless` is the same as a `when` but with its condition negated. Here are two equivalent examples:
@@ -134,7 +135,7 @@ For each number (n) in L, print n.
 ```
 
 ### Return
-Tells the function to return a specific value. This allows exiting early from an operator. Keep in mind that this sentence is not allowed in procedures, and reaching the end of an operator without finding this sentence will also cause an error. This sentence is allowed inside simple sentences:
+Tells the function to return a specific value, giving us the ability to exit early from an operator. Keep in mind that this sentence is not allowed in procedures, and reaching the end of an operator without finding one of these will also cause an error.
 ```
 Whether a whole number is even:
     Let c be the quotient of the whole number and 2.
@@ -155,7 +156,7 @@ Try to divide n by 0, and in case of error print "Can't divide by 0!".
 Attempt to divide n by 0.
 ```
 
-In the three cases we are trying to divide a variable `n` by 0. If an error like this one is generated, it will bubble up until it reaches a sentence catching it. If it is not caught, it will be printed to the console and the program with exit.
+In the three cases we are trying to divide a variable `n` by 0. If an error like this one is generated, it will bubble up until it reaches a sentence catching it. If it is not caught, it will be printed to the console and the program will exit.
 
 If it is caught, all changes made to the variables during the `try` (or `attempt`) block will be rolled back, and execution will continue in the `catch` block (or in the next sentence in the case of `attempt`).
 
@@ -167,7 +168,7 @@ In case we reach some undesired condition in our program, we can signal it by ma
 When b is equal to 0, throw an error because division by zero is undefined.
 Divide a by b.
 ```
-Here, if `b` happens to be 0, we will throw a custom error instead the one that `divide by` would generate.
+Here, if `b` happens to be 0, we will throw a custom error instead of the one that `divide by` would eventually generate.
 
 
 ## Values, types, and variables
@@ -182,19 +183,19 @@ Constant boolean values are used with the words `true` and `false`.
 
 Numbers and whole numbers are used witing the numeric values, not the words. Numbers must have a decimal part.
 
-Char literals are written between single quotes, and string literals between double quotes. String literals are the only other way, appart from the `let` sentence, to define lists by extension.
+Char literals are written between single quotes, and string literals between double quotes. String literals are the only other way, appart from the `let` sentence, to define lists by extension and, of course, they only work for lists of chars.
 
 Variable names can be any series of words except for `be` and `in`, which are the only two reserved keywords. They are referenced using their names, which can optionally be preceded by the word `the`. This applies to all variables (declared in `let` expressions, defined as function parameters, or defined as iterators in a `for-each` loop).
 
-Aliases are generated for function parameters without explicit names, according to their types. If two or more parameters have the same type, the generated aliases have ordinals. For example, if a function takes two numbers, their aliases will be `the 1st number` and `the 2nd number`.
+Aliases are generated for function parameters without explicit names, according to their types. If two or more parameters have the same type, the generated aliases have ordinals. For example, if a function takes two numbers, their aliases will be `the 1st number` and `the 2nd number`, and they can be referenced that way in the function's body.
 
-In the case of lists, some extra aliases are generated: if a function takes a string and a list string, the aliases for the second parameter will be `the list of strings`, `the list of lists of characters`, `the list of lists`, and `the 2nd list`. This is because the second parameter is the only list of strings (or list of lists of characters) and the only list of lists, but the first parameter is already a list.
+In the case of lists, some extra aliases are generated: if a function takes a string and a list of strings, one of the aliases for the second parameter will be `the 2nd list`. This is because, even though it is of a different type, the first parameter is already a list. The second parameter will also have the aliases `the list of strings`, `the list of lists of characters`, and `the list of lists`.
 
 
 ## References
 Function parameters can be defined to take references to values by adding `reference to` before their type:
 ```
-To duplicate a reference to a number:
+To double a reference to a number:
     Multiply the whole number by two.
 ```
 Here, we are saying that the function takes a number by reference. The number pointed at by the reference will be multiplied by two, modifying the original number that was passed as argument. References can be variables or list elements.
@@ -218,7 +219,7 @@ For each number (m) in M:
     For each number (n) in N:
         Print m plus n.
 ```
-In this case, we are looping through each element in `N` for each element of `M`, adding them together, and printing the result.
+In both cases, we are looping through each element in `N` for each element in `M`, adding them together, and printing the result.
 
 Another way to use them is to define a list mapping an operator over another list. For that, we use a `let` sentence in its `containing` form:
 ```
@@ -230,12 +231,12 @@ We can also combine two lists together as before:
 ```
 Let L be a list of numbers containing each element in M plus each element in N.
 ```
-In this case, instead of printing what we did in the first example, we store it in a list `L`.
+In this case, instead of printing what we did in the second example, we store it in a list `L`.
 
 Finally, we can use it to concatenate lists and elements:
 ```
-Let L be a list containing each element in M, 2.0 plus 2.0, and each element in N plus 2.
+Let L be a list containing each element in M, 1.0 plus 2.0, and each element in N plus 1.
 ```
-Now, `L` is a list of whole numbers containing each element in `M`, followed by the element `5.0`, followed by the result of adding 2 to each element in `N`.
+Now, `L` is a list of whole numbers containing each element in `M`, followed by the element `3.0`, followed by the result of adding 1 to each element in `N`. So, if `M` was `[1.0, 2.0]` and `N` was `[3.0, 4.0]`, `L` would be `[1.0, 2.0, 3.0, 4.0, 5.0]`.
 
 
