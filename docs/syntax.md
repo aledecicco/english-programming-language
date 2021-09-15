@@ -1,289 +1,241 @@
 # Syntax
-An EPL program is composed of a series of function definitions. Those functions can either be operators, which return a value, or procedures, which don't return anything. The starting point of every program is a function called "Run", which must always be defined.
+An EPL program is composed of a series of function definitions. Those functions can either be operators, which return a value, or procedures, which don't return anything. The starting point of every program is a procedure called `Run`, which must always be defined.
 
-Each function has a title and a list of sentences. Titles are used to specify the name, return type, and arguments of a function. Sentences are expressions as in any other language.
+Each function has a title and a list of sentences. Titles are used to specify the name, return type, and parameters of a function. Sentences are expressions which give instructions to the evaluator. They must start with an upper case letter and end with a full stop.
 
-This language doesn't use braces, and blocks of code are defined through indentation. That's why titles can't be indented, and sentences in the same list must be written one under the other, with the same indentation level, and with at least one level more than the title.
+This language doesn't use braces, and blocks of code are defined through indentation.
 
-Parenthesis are allowed in order to group sequences of words together, solving cases in which there is ambiguity.
 
-Also, titles must end in a semicolon, sentences must end in a stop, and both must begin with an uppercase letter.
+## Defining functions
+The title of a function is composed of a first part indicating its return type, and a second part intercalating parameters and identifiers.
 
-## Titles
-A title is composed of:
-* Some words specifying a return type
-* Words that act as identifiers for the function
-* Words that define the name and type of a function parameter
+### Operators
 
-Syntax:
+Here is an example:
 ```
-%Return type% [%identifier% | %parameter%]:
+A number equal to the sum of a list of numbers
 ```
-There can be many of the last two as long as they are intercalated.
+The first part, `a number equal to` defines this function as an operator which returns a `number` (the equivalent of `float` in other languages).
 
-### Return type
+The second part contains a series of words, `the sum of`, followed by a parameter, `a list of numbers`. This tells the interpreter that the function takes a list of numbers, and that its identifier is `the sum of`. So, if in some expression the parser sees a series of words that contains `the sum of`, it will check if calling that function makes sense in that context, and match those words accordingly. Note that there must be at least one identifier in every function's title.
 
-For procedures:
+Since this function was defined as an operator, it can only be used as a value and not as a sentence. An example of its usage would be the following. Let's say we have a list of numbers called `L`, then we can call the function we defined earlier passing `L` as argument, and store the result in another variable called `x`. That would look something like this:
 ```
-To ...
+Let x be the sum of L.
 ```
-This allows writing function titles such as `To print something` and then call them saying `Print something`.
 
-For operators:
-```
-A %type name% equal to ...
-```
-This way, operators can have titles like `A number equal to some result` and be used in expressions such as `Let x be some result`.
-
-For boolean operators:
-```
-Whether ...
-```
-This shorthand allows defining questions such as `Whether something is true` that can be used like this: `If something is true, do some other thing`.
-
-Note that in all cases the words used in the return type part of the title, as well as the semicolons, are ignored when calling the function.
-
-### Type names
-The possible names of primitive types are `boolean`, `whole number`, `number`, `character`, and `string`. Also, `list of ...` is used for lists, which requires the type inside the list to be specified in plural: `list of booleans` or `list of lists of numbers`. Note that `string` is an alias for `list of chars`.
-
-### Parameters
-```
-a %singular type name% (%variable name%)
-```
-The type name specifies the expected type of the parameter and the variable name specifies the name the parameter will have in the body of the function. For example, if a function takes a number as one of its parameters, it could be specified as `a number (m)`.
-
-The name of the parameter is optional. If no name is specified, some aliases will be generated automatically depending on how many parameters have the same type..
-
-For example:
-- If a function takes two lists of numbers, their aliases will be `the 1st list` and `the 1st list of numbers` for the first one, and `the 2nd list` and `the 2nd list of numbers` for the second one.
-- If a functions takes a string, its aliases will be `the list`, `the list of characters` and `the string`.
-
-Also, parameters can be defined as references:
-```
-a reference to a %singular type% (%variable name%)
-```
-Modifying the parameter inside the body of the function modifies the value of the original variable passed as argument.
-
-### Identifiers
-Identifiers can be made of any sequence of words except for `a`. They are used to understand which function is being called. For example, with the title `A number equal the product of a number (m) and a number (n)`, the identifying parts are `the product of` and `and`. When calling this function, the gaps should be filled in with actual values.
-
-### Examples
-```
-A number equal to the sum of a list of numbers (L):
-```
-This specifies that the function returns a number and takes a list of numbers, which can be referenced as `L` in the function's body.
+After the title of a function comes a colon, and under it an indented block of sentences, with instructions of what the function should do. For implementing the above function's body, we could do something like this:
 
 ```
-Whether a number (x) is between a number (m) and a number (n):"`
+A number equal to the sum of a list of numbers:
+    Let the sum be 0.
+    Add each number in the list to the sum.
+    Return the sum.
 ```
-This specifies that the function returns a boolean and takes two numbers called `m` and `n`.
 
+First, we initialize `the sum` as 0. Then, we go through each element in the argument and add it to `the sum`. Finally, we return that variable as the result. Note that we are referencing the argument as `the list`. We could have also referenced it as `the list of numbers`, or added a name to it in the title and referenced it with that name, like so:
 ```
-To print a number (m):
+A number equal to the sum of a list of numbers (L)
 ```
-This specifies that the function doesn't return anything, making it a procedure, and takes a number called `m`.
 
-## Sentences
+### Procedures
+When defining procedures, the same rules apply. But instead of putting a return type in the first part of the title, we put the word `to`. That way, we can define functions such as this one:
+```
+To print the even elements in a list of whole numbers
+```
+Now, we can use that procedure as a sentence in the body of any other function, allowing us to print the contents of any list of whole numbers (ints).
+
+### Questions
+
+Another interesting case is when defining functions that asks questions (which means they return a boolean). A shorthand is available in those cases to avoid writing `a boolean equal to ...`. The shorthand is the word `whether`. Then, we can define functions like the following:
+```
+Whether a number is greater than another number:
+```
+Now, we can use it in other structures such as conditionals, which we will see up ahead. Let's say we have two lists of numbers `the first list` and `the second list`. We can combine the question we just defined with the operator we defined at the begginning, and do something like this:
+```
+If the sum of the first list is greather than the sum of the second list, ...
+```
+Using the defined functions and variables, and their types, the parser finds a valid way to match those words as specific function calls. In this case, the only way to match those words with the functions we have and without causing a type error is `If (the sum of (the first list)) is greather than (the sum of (the second list))`, so we don't need to write all those parenthesis.
+
+If some expression is ambiguous, the parser will choose one of the ways in which it can be understood. To force that expression to be interpreted as some other option, parenthesis can be used to group words together.
+
+
+## Built-in sentences
+
+We have already seen how to define functions that can be called as sentences (procedures). But the language comes with some sentences to declare variables and control the flow of our programs.
 
 ### Let
+This is perhaps the most complex of them all because of the different variations it can have. Let's see some examples:
 ```
-Let %variable names list% be %singular or plural type% equal to %value%
+Let s be "hello world".
+Let a, b, and c be 2 plus 2.
+Let x be a list of numbers.
+Let y be a list of whole numbers containing 1, 2, and 3.
+Let z be a character equal to the first element of y as a string.
 ```
-This allows declaring the value of one or more variables.
-The syntax for the list is the following:
-```
-([%name%,] and %name%) | %name%
-```
-If there is only one element, the type must have the following syntax:
-```
-a %type%
-```
-If there are more than one element, the type is written in plural without `a`.
 
-Note that if the list has more than one element, there has to be a comma after each element except the last one (including the one right before `and`). This is called [serial comma](https://en.wikipedia.org/wiki/Serial_comma).
+In the first case, the string `"hello world"` is assigned to `s`, which is inferred to be a string because of the value it is being assigned.
+
+In the second case case, the value `2 plus 2` is assigned to `a`, `b`, and `c`. The operator `plus` will be called one time, and then the result will be copied and assigned to each variable. Note that there is a comma after each variable name, including the one before the last one. This is called [serial comma](https://en.wikipedia.org/wiki/Serial_comma) and it helps a lot with parsing.
+
+The third case declares `x` as an empty list of numbers.
+
+In the fourth case, we declare `y` as a list of whole  numbers and specify by extension the elements it contains. `Let` sentences are the only place where lists can be declared in this way. Not that the serial comma is also necessary here for the values.
+
+The fifth case explicitly states the type of the variable `z`. It is useful in some border cases where the value is ambiguous, such as this one. The value can be understood as `the first element of (y as a string)`, which is the character `'1'`, or `(the first element of y) as a string`, which is the string `"1"`. However, since we are specifying that we want a character, only the first interpretation is valid.
+
+### If-else
+This sentence, among with other flow control sentences, contains other sentences. It has two forms: a simple one and a block one. Here are some examples:
+```
+If a is greather than or equal to b, print a, otherwise print b.
+
+If a is greater than b:
+    Print a.
+Otherwise:
+    If a is equal to b:
+        Print a.
+    Otherwise:
+        Print b.
+```
+Here, both `if-else` clauses do the same thing, printing `a` if it is greather than or equal to `b`, and `b` otherwise. However, the simple form has some restrictions. It must be written in a single line, and it can only contain one sentence in its simple form. The `let` expression is excluded from this, and can only be used at the top level of a function definition. Also note that the placement of commas is very important.
+
+The block form doesn't have those restrictions, and can contain as many sentences as necessary in any form. Note that the header must be followed by a colon. In both froms, the `if` clause must be followed by an `else` clause, and in block form the conditions must be followed by a colon.
+
+### When and unless
+The sentence `when` is the same as an `if-else` but without the `else` block. The sentence `unless` is the same as a `when` but with its condition negated. Here are two equivalent examples:
+```
+When a is greater than or equal to b, print a.
+
+Unless a is smaller than b:
+    Print a.
+```
+
+### While and until
+We can repeat some actions while, or until, a condition is true, like so:
+```
+While a is smaller than 5:
+    Print a.
+    Add 1 to a.
+
+Until a is equal to or greater than 5:
+    Print a.
+    Add 1 to a.
+```
+
+### For-each
+With this loop, we can define an iterator that goes through each element in a list, evaluating some sentences at each step. Through the iterator, we can modify the values in the original list. We must specify its name and type, and the list value to be iterated:
+```
+For each number (n) in L:
+    Multiply n by 2.
+    Add 1 to n.
+
+For each number (n) in L, print n.
+```
 
 ### Return
+Tells the function to return a specific value. This allows exiting early from an operator. Keep in mind that this sentence is not allowed in procedures, and reaching the end of an operator without finding this sentence will also cause an error.
 ```
-Return %value%
-```
-Tells the function to return a specific value.
-
-### Procedure call
-Any procedure can be used as a sentence, filling in with values the gaps where function parameters are.
-
-### Control flow
-These sentences all have something in common: they contain other sentences. All of them have a simple form and a block form, both sharing the same header.
-
-Sentences in their simple form can only have one sentence inside them, and it can only be a variable declaration, a return statement or a procedure call. The header must end in a comma, after which comes the contained sentence.
-
-Sentences in their block form contain a list of sentences without any restrictions. The header must end in a semicolon and indentation rules used for function definitions also apply here.
-
-Simple if:
-```
-If %boolean value%, %basic sentence%.
+Whether a whole number is even:
+    Let c be the quotient of the whole number and 2.
+    If c is equal to 0, return true, otherwise return false.
 ```
 
-Block if:
+### Try, catch, and attempt
+We can recover from some errors using `try-catch` clauses. The `attempt` sentence works the same way, but doesn't have a `catch` clause. Here are some example:
 ```
-If %boolean value%:
-    %sentence 1%
-    %sentence 2%
-    ...
+Try to:
+    Multiply n by 2.
+    Divide n by 0.
+In case of error:
+    Print "Can't divide by 0!".
+
+Try to divide n by 0, and in case of error print "Can't divide by 0!".
+
+Attempt to divide n by 0.
 ```
 
-Simple if-else:
-```
-If %boolean value%, %basic sentence%, otherwise %basic sentence%.
-```
+In the three cases we are trying to divide a variable `n` by 0. If an error like this one is generated, it will bubble up until it reaches a sentence catching it. If it is not caught, it will be printed to the console and the program with exit.
 
-Block if-else:
-```
-If %boolean value%:
-    %sentence 1%
-    %sentence 2%
-    ...
-Otherwise:
-    %sentence 3%
-    %sentence 4%
-    ...
-```
-The `else` statement must come after an `if` statement. They must both have the same form, and if they are blocks they have to be defined at the same indentation level
+If it is caught, all changes made to the variables during the `try` (or `attempt`) block will be rolled back, and execution will continue in the `catch` block (or in the next sentence in the case of `attempt`).
 
-Simple for each:
-```
-For each %variable name% in %list value%, %basic sentence%.
-```
+So, in the first example, even though `n` was multiplied by 2 at some point, those changes will be undone after trying to divide it by 0.
 
-Block for each:
+### Throw
+In case we reach some undesired condition in our program, we can signal it by manually triggering an exception. The `throw` sentence needs a reason for the error, which will be displayed in the console if the error is not caught:
 ```
-For each %variable name% in %list value%:
-    %sentence 1%
-    %sentence 2%
-    ...
+When b is equal to 0, throw an error because division by zero is undefined.
+Divide a by b.
 ```
-
-Simple until:
-```
-Until %boolean value%, %basic sentence%.
-```
-
-Block until:
-```
-Until %boolean value%:
-    %sentence 1%
-    %sentence 2%
-    ...
-```
-
-Simple while:
-```
-While %boolean value%, %basic sentence%.
-```
-
-Block while:
-```
-While %boolean value%:
-    %sentence 1%
-    %sentence 2%
-    ...
-```
-
-### Examples
-Assign the value `2` to variables `x`, `y`, and `z`:
-```
-Let x, y, and z be numbers equal to 2.
-```
-
-Make the current function return `6`:
-```
-Return 2 times 3.
-```
-
-Call the procedure `print` with `6` as its argument:
-```
-Print 2 times 3.
-```
-
-Add one to variable `x` until it's larger than `3`:
-```
-Until x is larger than 3, let x be x plus 1.
-```
-
-Print a `1` if `x` is larger than `0`, and a `0` otherwise:
-```
-If x is larger than 0:
-    Print 1.
-Otherwise:
-    Print 0.
-```
-Or, more concisely:
-```
-If x is larger than 0, print 1, otherwise print 0.
-```
-
-## Values
-
-Values can be primitives, lists, variables, and operator calls. Available primitives are booleans, chars, numbers, and whole numbers.
-
-### Booleans
-The two possible values are refered to with the words `true` and `false`.
-
-### Whole numbers
-Whole numbers are used writing the numeric values, not the words.
-
-### Number
-Numbers are written with a dot separating the decimal part. If some expression expects a number and a whole number is given, it is converted to a number implicitly.
-
-### Chars
-Char literals are written between single quotes.
-
-### Strings
-String literals are written between double quotes.
-
-### Lists
-An empty list:
-```
-a list of %plural type name%
-```
-
-A list with elements:
-```
-a list of %plural type name% containing %list of values%
-```
-
-A string literal:
-```
-"[%character%]"
-```
-The only places where lists can be written by extension is inside `Let` expressions, except for string literals which can be used anywhere. Note that all elements must be of the same type as the one declared for the list.
-
-### Variables
-Variable names can be any series of words except for `be` and `in`, which are the only two reserved keywords. They are referenced using their names, which can optionally be preceded by the word `the`. This applies to all variables (declared in `let` expressions, passed as parameters to a function, or defined as iterators in a `for each` loop).
-
-### Examples
-
-Declare variable `L` as the list `[1.1, 2.2, 3.3]`:
-```
-Let L be a list of floats containing 1.1, 2.2, and 3.3
-```
-
-Declare variables `L` and `M` as the list `[1, 2, 3]`:
-```
-Let L, and M be lists of floats containing 1, 2, and 3
-```
+Here, if `b` happens to be 0, we will throw a custom error instead the one that `divide by` would generate.
 
 
-Declare variable `s` as the string `"abc"`:
-```
-Let s be "abc".
-```
-Or, equivalently:
-```
-Let s be a list of chars containing 'a', 'b', and 'c'.
-```
+## Values, types, and variables
 
-Print each element of `L`:
+The following primitive types are available: `boolean`, `whole number` (int), `number` (float), and `character`.
+
+Variables can also be lists of other types, including lists. When specifying the type of a list, the type of its elements must be in plural, like `list of whole numbers` or `list of lists of booleans`.
+
+There is also the alias `string` for `list of characters`.
+
+Constant boolean values are used with the words `true` and `false`.
+
+Numbers and whole numbers are used witing the numeric values, not the words. Numbers must have a decimal part.
+
+Char literals are written between single quotes, and string literals between double quotes. String literals are the only other way, appart from the `let` sentence, to define lists by extension.
+
+Variable names can be any series of words except for `be` and `in`, which are the only two reserved keywords. They are referenced using their names, which can optionally be preceded by the word `the`. This applies to all variables (declared in `let` expressions, defined as function parameters, or defined as iterators in a `for-each` loop).
+
+Aliases are generated for function parameters without explicit names, according to their types. If two or more parameters have the same type, the generated aliases have ordinals. For example, if a function takes two numbers, their aliases will be `the 1st number` and `the 2nd number`.
+
+In the case of lists, some extra aliases are generated: if a function takes a string and a list string, the aliases for the second parameter will be `the list of strings`, `the list of lists of characters`, `the list of lists`, and `the 2nd list`. This is because the second parameter is the only list of strings (or list of lists of characters) and the only list of lists, but the first parameter is already a list.
+
+
+## References
+Function parameters can be defined to take references to values by adding `reference to` before their type:
 ```
-For each element in L, print the element
+To duplicate a reference to a number:
+    Multiply the whole number by two.
 ```
-Note that here the iterator is referenced as `the element`.
+Here, we are saying that the function takes a number by reference. The number pointed at by the reference will be multiplied by two, modifying the original number that was passed as argument. References can be variables or list elements.
+
+It is important to note that when a list is passed by value, a deep copy of it is created. To compensate for this high usage of memory, a garbage collector is implemented.
+
+
+## Iterators
+One special feature of this language are iterators, used with the keyword `each`. They allow going through every element in a list in a natural way. They are useful for mapping over lists, generating new versions of them, or running sentences for each of their elements:
+```
+Divide each number in L by 2.
+Print each number in L.
+```
+Here, we specify the type of the iterator, and the functions `divide by` and `print` are called for each element of the list of numbers `L`. Note that references also work with iterators, passing each element of the list by reference.
+
+We can also combine two lists using two iterators in the same sentence. A similar `for-each` loop is provided for clarity:
+```
+Print each number in M plus each number in N.
+
+For each number (m) in M:
+    For each number (n) in N:
+        Print m plus n.
+
+```
+In this case, we are looping through each element in `N` for each element of `M`, adding them together, and printing the result.
+
+Another way to use them is to define a list mapping an operator over another list. For that, we use a `let` sentence in its `containing` form:
+```
+Let N be a list of numbers containing each number in M plus 2.
+```
+Here, `N` is the result of adding two to each element in `M`, and `M` is unmodified.
+
+We can also combine two lists together as before:
+```
+Let L be a list of numbers containing each element in M plus each element in N.
+```
+In this case, instead of printing what we did in the first example, we store it in a list `L`.
+
+Finally, we can use it to concatenate lists and elements:
+```
+Let L be a list containing each element in M, 2.0 plus 2.0, and each element in N plus 2.
+```
+Now, `L` is a list of whole numbers containing each element in M, followed by the element `5.0`, followed by the result of adding 2 to each element in `N`.
+
+

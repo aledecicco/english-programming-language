@@ -524,7 +524,7 @@ titleWords = do
 titleParam :: FuzzyParser (Annotated TitlePart)
 titleParam = do
     ann <- getCurrentLocation
-    word "a"
+    word "a" <|> word "another"
     pType <- referenceType <|> typeName False
     -- Parameters can optionally be named.
     pNames <- ((:[]) <$> parens name) <|> return []
