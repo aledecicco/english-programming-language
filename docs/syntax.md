@@ -35,13 +35,13 @@ A number equal to the sum of a list of numbers:
 
 First, we initialize `the sum` as 0. Then, we go through each element in the argument and add it to `the sum`. Finally, we return that variable as the result. Note that we are referencing the argument as `the list`. We could have also referenced it as `the list of numbers`, or added a name to it in the title and referenced it with that name, like so:
 ```
-A number equal to the sum of a list of numbers (L)
+A number equal to the sum of a list of numbers (L):
 ```
 
 ### Procedures
 When defining procedures, the same rules apply. But instead of putting a return type in the first part of the title, we put the word `to`. That way, we can define functions such as this one:
 ```
-To print the even elements in a list of whole numbers
+To print the even elements in a list of whole numbers:
 ```
 Now, we can use that procedure as a sentence in the body of any other function, allowing us to print the contents of any list of whole numbers (ints).
 
@@ -133,7 +133,7 @@ For each number (n) in L, print n.
 ```
 
 ### Return
-Tells the function to return a specific value. This allows exiting early from an operator. Keep in mind that this sentence is not allowed in procedures, and reaching the end of an operator without finding this sentence will also cause an error.
+Tells the function to return a specific value. This allows exiting early from an operator. Keep in mind that this sentence is not allowed in procedures, and reaching the end of an operator without finding this sentence will also cause an error. This sentence is allowed inside simple sentences:
 ```
 Whether a whole number is even:
     Let c be the quotient of the whole number and 2.
@@ -216,7 +216,6 @@ Print each number in M plus each number in N.
 For each number (m) in M:
     For each number (n) in N:
         Print m plus n.
-
 ```
 In this case, we are looping through each element in `N` for each element of `M`, adding them together, and printing the result.
 
@@ -236,6 +235,6 @@ Finally, we can use it to concatenate lists and elements:
 ```
 Let L be a list containing each element in M, 2.0 plus 2.0, and each element in N plus 2.
 ```
-Now, `L` is a list of whole numbers containing each element in M, followed by the element `5.0`, followed by the result of adding 2 to each element in `N`.
+Now, `L` is a list of whole numbers containing each element in `M`, followed by the element `5.0`, followed by the result of adding 2 to each element in `N`.
 
 
