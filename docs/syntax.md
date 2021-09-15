@@ -1,21 +1,21 @@
 # Syntax
 An EPL program is composed of a series of function definitions. Those functions can either be operators, which return a value, or procedures, which don't return anything. The starting point of every program is a procedure called `Run`, which must always be defined.
 
-Each function has a title and a list of sentences. Titles are used to specify the name, return type, and parameters of a function. Sentences are expressions which give instructions to the evaluator. They must start with an upper case letter and end with a full stop.
+Each function has a title and a list of sentences. Titles are used to specify the name, return type, and parameters of a function. Sentences are expressions which give instructions to the evaluator.
 
 This language doesn't use braces, and blocks of code are defined through indentation.
 
 
 ## Defining functions
-The title of a function is composed of a first part indicating its return type, and a second part intercalating parameters and identifiers.
+The title of a function is composed of a first part indicating its return type, and a second part intercalating parameters and identifiers. It must start with an upper case letter and end in a colon.
 
 ### Operators
 
-Here is an example:
+Here is an example of a title:
 ```
-A number equal to the sum of a list of numbers
+A number equal to the sum of a list of numbers:
 ```
-The first part, `a number equal to` defines this function as an operator which returns a `number` (the equivalent of `float` in other languages).
+The first part, `a number equal to` defines this function as an operator which returns a `number` (the equivalent of `float` in other languages). The word `number` can be replaced by any other type for operators that return different things.
 
 The second part contains a series of words, `the sum of`, followed by a parameter, `a list of numbers`. This tells the interpreter that the function takes a list of numbers, and that its identifier is `the sum of`. So, if in some expression the parser sees a series of words that contains `the sum of`, it will check if calling that function makes sense in that context, and match those words accordingly. Note that there must be at least one identifier in every function's title.
 
@@ -36,6 +36,7 @@ A number equal to the sum of a list of numbers:
 First, we initialize `the sum` as 0. Then, we go through each element in the argument and add it to `the sum`. Finally, we return that variable as the result. Note that we are referencing the argument as `the list`. We could have also referenced it as `the list of numbers`, or added a name to it in the title and referenced it with that name, like so:
 ```
 A number equal to the sum of a list of numbers (L):
+    ...
 ```
 
 ### Procedures
