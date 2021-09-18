@@ -151,7 +151,7 @@ charLiteral = lexeme (between (char '\'') (char '\'') L.charLiteral) <?> "char"
 
 -- | Parses a string between double quotes.
 stringLiteral :: FuzzyParser String
-stringLiteral = lexeme (char '"' >> manyTill (notFollowedBy (char '\n' <|> char '\r') >> L.charLiteral) (char '"')) <?> "string"
+stringLiteral = lexeme (char '"' >> manyTill L.charLiteral (char '"')) <?> "string"
 
 matchablePart :: FuzzyParser (Annotated MatchablePart)
 matchablePart = do
@@ -173,10 +173,6 @@ dot = symbol "." <?> "dot"
 colon :: FuzzyParser ()
 colon = symbol ":" <?> "colon"
 
--- | Runs the given parser between parenthesis.
-parens :: FuzzyParser a -> FuzzyParser a
-parens = between (symbol "(") (symbol ")")
-
 -- | Returns the current location in the source code.
 getCurrentLocation :: FuzzyParser Location
 getCurrentLocation = do
@@ -186,6 +182,10 @@ getCurrentLocation = do
 
 -- -----------------
 -- * Combinators
+
+-- | Runs the given parser between parenthesis.
+parens :: FuzzyParser a -> FuzzyParser a
+parens = between (symbol "(") (symbol ")")
 
 -- | Parses a series of a given parser.
 -- If there is more than one element, there must be a comma between each one, and the word "and" before the last one.
@@ -553,7 +553,7 @@ functionDefinition = do
             return (funTitle, retType)
 
 definition :: FuzzyParser (Annotated Definition)
-definition = functionDefinition
+definition = L.nonIndented consumeWhitespace functionDefinition
 
 -- -----------------
 -- * Main
