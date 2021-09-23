@@ -179,7 +179,7 @@ checkProcedureCallType _ = error "Shouldn't happen: sentence given is not a proc
 -- Validates that their types are correct and transforms them accordingly, taking type bindings into account.
 getArgumentTypesWithCheck :: (FunId, [Annotated Value]) -> SolverEnv [Type]
 getArgumentTypesWithCheck (fid, args) = do
-    ~(FunSignature (Title _ funTitle) _) <- getFunctionSignature fid
+    (FunSignature (Title _ funTitle) _) <- getFunctionSignature fid
     getArgumentTypesWithCheck' M.empty funTitle args 0
     where
         -- Returns the type of all arguments given a mapping of type bindings.

@@ -9,7 +9,7 @@ The monad on which the "Evaluator" runs, with some useful operations.
 
 module EvaluatorEnv (module EvaluatorEnv, module Location) where
 
-import Control.Monad (when)
+import Control.Monad (foldM, when)
 import Control.Monad.Except (catchError, throwError)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.State.Strict (gets, modify, runStateT, StateT)
@@ -23,6 +23,7 @@ import AST
 import BuiltInDefs (builtInFunctions)
 import Errors
 import Location
+import qualified Control.Monad.RWS.Class as IS
 
 
 -- -----------------
@@ -43,14 +44,17 @@ type VarData = [M.Map Name Int]
 -- | A mapping between addresses and their values.
 type RefData = IM.IntMap (Bare Value)
 
+-- | A set of addresses that is manually kept alive by the evaluator.
+type RootsData = IS.IntSet
+
 -- | The state of the evaluator.
-type EvaluatorData = (FunData, VarData, RefData, Pointer, Memory)
+type EvaluatorData = (FunData, VarData, RefData, Pointer, Memory, RootsData)
 
 -- | The evaluator's monad.
 -- It stores the evaluator's state.
 -- It has the ability to throw and catch errors.
 -- It stores the current location.
--- It is parametrized over an inner monad m, which is used input and output in a testable way.
+-- It is parametrized over an inner monad m, which is used for input and output in a testable way.
 type EvaluatorEnv m a = LocationT (StateT EvaluatorData (ExceptT Error m)) a
 
 runEvaluatorEnv :: EvaluatorEnv m a -> Location -> EvaluatorData -> m (Either Error ((a, Location), EvaluatorData))
@@ -60,7 +64,7 @@ runEvaluatorEnv action location state = runExceptT $ runStateT (runLocationT act
 initialState :: EvaluatorData
 initialState =
     let functions = M.fromList $ map (\(funId, FunSignature title _) -> (funId, FunCallable title [])) builtInFunctions
-    in (functions, [M.empty], IM.empty, 0, initMaxMem)
+    in (functions, [M.empty], IM.empty, 0, initMaxMem, IS.empty)
     where initMaxMem = 4
 
 -- | A class of monad which allows to read from an input and write to an output.
@@ -101,10 +105,10 @@ throwHere errType = do
 
 -- | Modifies the state through a 'FunData' modifier.
 modifyFunctions :: Monad m => (FunData -> FunData) -> EvaluatorEnv m ()
-modifyFunctions modF = lift $ modify (\(funs, vars, refs, ptr, mem) -> (modF funs, vars, refs, ptr, mem))
+modifyFunctions modF = lift $ modify (\(funs, vars, refs, ptr, mem, roots) -> (modF funs, vars, refs, ptr, mem, roots))
 
 getFunctions :: Monad m => EvaluatorEnv m FunData
-getFunctions = lift $ gets (\(funs, vars, refs, ptr, mem) -> funs)
+getFunctions = lift $ gets (\(funs, _, _, _, _, _) -> funs)
 
 -- | Returns the 'FunCallable' of a function, assuming it is defined.
 getFunctionCallable :: Monad m => FunId -> EvaluatorEnv m FunCallable
@@ -119,10 +123,10 @@ setFunctionCallable fid funC = modifyFunctions $ M.insert fid funC
 
 -- | Modifies the state through a 'RefData' modifier.
 modifyReferences :: Monad m => (RefData -> RefData) -> EvaluatorEnv m ()
-modifyReferences modF = lift $ modify (\(funs, vars, refs, ptr, mem) -> (funs, vars, modF refs, ptr, mem))
+modifyReferences modF = lift $ modify (\(funs, vars, refs, ptr, mem, roots) -> (funs, vars, modF refs, ptr, mem, roots))
 
 getReferences :: Monad m => EvaluatorEnv m RefData
-getReferences = lift $ gets (\(funs, vars, refs, ptr, mem) -> refs)
+getReferences = lift $ gets (\(_, _, refs, _, _, _) -> refs)
 
 -- | Returns the value at an address, assuming it is allocated.
 getValueAtAddress :: Monad m => Int -> EvaluatorEnv m (Bare Value)
@@ -160,10 +164,10 @@ copyValue val = return val
 
 -- | Modifies the state through a 'VarData' modifier.
 modifyVariables :: Monad m => (VarData -> VarData) -> EvaluatorEnv m ()
-modifyVariables modF = lift $ modify (\(funs, vars, refs, ptr, mem) -> (funs, modF vars, refs, ptr, mem))
+modifyVariables modF = lift $ modify (\(funs, vars, refs, ptr, mem, roots) -> (funs, modF vars, refs, ptr, mem, roots))
 
 getVariables :: Monad m => EvaluatorEnv m VarData
-getVariables = lift $ gets (\(funs, vars, refs, ptr, mem) -> vars)
+getVariables = lift $ gets (\(_, vars, _, _, _, _) -> vars)
 
 -- | Whether a variable is defined in the current scope.
 variableIsDefined :: Monad m => Name -> EvaluatorEnv m Bool
@@ -171,7 +175,7 @@ variableIsDefined name = M.member name . head <$> getVariables
 
 -- | Returns the address of a variable, assuming it is defined.
 getVariableAddress :: Monad m => Name -> EvaluatorEnv m Int
-getVariableAddress name = lift $ gets (\(_, vs:_, _, _, _) -> vs M.! name)
+getVariableAddress name = lift $ gets (\(_, vs:_, _, _, _, _) -> vs M.! name)
 
 setVariableAddress :: Monad m => Name -> Int -> EvaluatorEnv m ()
 setVariableAddress name addr = modifyVariables (\(scope:scopes) -> M.insert name addr scope : scopes)
@@ -194,7 +198,7 @@ setVariableValue name val = do
         else addValue val >>= setVariableAddress name
 
 -- | Receives a list of new variables to be declared and a list of references to be set and runs a computation with those variables in scope.
--- New variables are discarded after the action.
+-- New variables are discarded after the computation.
 -- If a value is passed by reference, it can be modified inside the computation.
 inNewScope :: Monad m => EvaluatorEnv m a -> [([Name], Bare Value)] -> [([Name], Int)] -> EvaluatorEnv m a
 inNewScope action newVarVals newVarRefs = do
@@ -229,10 +233,10 @@ inBlockScope action = do
 
 -- | Modifies the state through a 'Pointer' modifier.
 modifyPointer :: Monad m => (Pointer -> Pointer) -> EvaluatorEnv m ()
-modifyPointer modF = lift $ modify (\(funs, vars, refs, ptr, mem) -> (funs, vars, refs, modF ptr, mem))
+modifyPointer modF = lift $ modify (\(funs, vars, refs, ptr, mem, roots) -> (funs, vars, refs, modF ptr, mem, roots))
 
 getPointer :: Monad m => EvaluatorEnv m Pointer
-getPointer = lift $ gets (\(funs, vars, refs, ptr, mem) -> ptr)
+getPointer = lift $ gets (\(_, _, _, ptr, _, _) -> ptr)
 
 
 -- -----------------
@@ -240,13 +244,31 @@ getPointer = lift $ gets (\(funs, vars, refs, ptr, mem) -> ptr)
 
 -- | Modifies the state through a 'Memory' modifier.
 modifyMaxMemory :: Monad m => (Memory -> Memory) -> EvaluatorEnv m ()
-modifyMaxMemory modF = lift $ modify (\(funs, vars, refs, ptr, mem) -> (funs, vars, refs, ptr, modF mem))
+modifyMaxMemory modF = lift $ modify (\(funs, vars, refs, ptr, mem, roots) -> (funs, vars, refs, ptr, modF mem, roots))
 
 getMaxMemory :: Monad m => EvaluatorEnv m Memory
-getMaxMemory = lift $ gets (\(funs, vars, refs, ptr, mem) -> mem)
+getMaxMemory = lift $ gets (\(_, _, _, _, mem, _) -> mem)
 
 getUsedMemory :: Monad m => EvaluatorEnv m Int
-getUsedMemory = lift $ gets (\(_, _, rs, _, _) -> IM.size rs)
+getUsedMemory = lift $ gets (\(_, _, rs, _, _, _) -> IM.size rs)
+
+
+-- -----------------
+-- * Operations on roots
+
+-- | Modifies the state through a 'RootsData' modifier.
+modifyRoots :: Monad m => (RootsData -> RootsData) -> EvaluatorEnv m ()
+modifyRoots modF = lift $ modify (\(funs, vars, refs, ptr, mem, roots) -> (funs, vars, refs, ptr, mem, modF roots))
+
+getRoots :: Monad m => EvaluatorEnv m RootsData
+getRoots = lift $ gets (\(_, _, _, _, _, roots) -> roots)
+
+addRoot :: Monad m => Int -> EvaluatorEnv m ()
+addRoot = modifyRoots . IS.insert
+
+removeRoot :: Monad m => Int -> EvaluatorEnv m ()
+removeRoot = modifyRoots . IS.delete
+
 
 
 -- -----------------
@@ -263,23 +285,24 @@ tick = do
 collectGarbage :: Monad m => EvaluatorEnv m ()
 collectGarbage = do
     rAddrs <- getReachableAddresses
-    let keysSet = IS.fromList rAddrs
-    modifyReferences (`IM.restrictKeys` keysSet)
+    modifyReferences (`IM.restrictKeys` rAddrs)
     usedMem <- getUsedMemory
     modifyMaxMemory $ const (usedMem * 2)
 
--- | Returns the addresses that are reachable from the variable definitions in any of the scopes.
-getReachableAddresses :: Monad m => EvaluatorEnv m [Int]
+-- | Returns the addresses that are alive, which means that they are reachable from some root.
+getReachableAddresses :: Monad m => EvaluatorEnv m IS.IntSet
 getReachableAddresses = do
-    scopes <- getVariables
-    let varAddrs = concatMap M.elems scopes
+    varAddrs <- concatMap M.elems <$> getVariables
     varVals <- mapM getValueAtAddress varAddrs
-    valsAddrs <- concat <$> mapM getReachableFromValue varVals
-    return (varAddrs ++ valsAddrs)
+    roots <- IS.union (IS.fromList varAddrs) <$> getRoots
+    foldM getReachableFromValue roots varVals
     where
-        getReachableFromValue :: Monad m => Bare Value -> EvaluatorEnv m [Int]
-        getReachableFromValue (RefV _ addr) = do
-            val <- getValueAtAddress addr
-            (addr:) <$> getReachableFromValue val
-        getReachableFromValue (ListV _ _ refVals) = concat <$> mapM getReachableFromValue refVals
-        getReachableFromValue _ = return []
+        getReachableFromValue :: Monad m => IS.IntSet -> Bare Value -> EvaluatorEnv m IS.IntSet
+        getReachableFromValue alive (RefV _ addr) =
+            if addr `IS.member` alive
+                then return alive
+                else do
+                    val <- getValueAtAddress addr
+                    getReachableFromValue (IS.insert addr alive) val
+        getReachableFromValue alive (ListV _ _ refVals) = foldM getReachableFromValue alive refVals
+        getReachableFromValue alive _ = return alive
