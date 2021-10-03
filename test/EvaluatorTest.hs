@@ -74,7 +74,7 @@ sentenceTests = testGroup "sentence"
             expectedResult
                 (
                     evaluateSentences $
-                        mockLocations [
+                        map mockLocations [
                             VarDef () [["x"]] (Just IntT) (IntV () 0),
                             While ()
                                 (OperatorCall () "%_is_less_than_%" [VarV () ["x"], IntV () 3])
@@ -88,7 +88,7 @@ sentenceTests = testGroup "sentence"
             expectedResult
                 (
                     evaluateSentences $
-                        mockLocations [
+                        map mockLocations [
                             VarDef () [["x"]] (Just IntT) (IntV () 2),
                             ProcedureCall () "add_%_to_%" [IntV () 3, VarV () ["x"]],
                             Return () (VarV () ["x"])
@@ -100,7 +100,7 @@ sentenceTests = testGroup "sentence"
             expectedResult
                 (
                     evaluateSentences $
-                        mockLocations [
+                        map mockLocations [
                             VarDef () [["x"]] (Just IntT) (IntV () 2),
                             ProcedureCall () "divide_%_by_%" [VarV () ["x"], IntV () 2],
                             Return () (VarV () ["x"])
@@ -112,7 +112,7 @@ sentenceTests = testGroup "sentence"
             expectedResult
                 (do
                     res <- evaluateSentences $
-                        mockLocations [
+                        map mockLocations [
                             VarDef () [["x"]] (Just $ ListT FloatT) (ListV () FloatT [FloatV () 5.0, FloatV () 4.0]),
                             ProcedureCall () "append_%_to_%" [ListV () IntT [IntV () 3, IntV () 2, IntV () 1], VarV () ["x"]],
                             Return () (VarV () ["x"])
@@ -127,7 +127,7 @@ sentenceTests = testGroup "sentence"
             expectedResult
                 (
                     evaluateSentences $
-                        mockLocations [
+                        map mockLocations [
                             VarDef () [["x"]] (Just IntT) (IntV () 2),
                             Attempt () [ProcedureCall () "divide_%_by_%" [VarV () ["x"], FloatV () 0.0]],
                             Return () (VarV () ["x"])
@@ -139,7 +139,7 @@ sentenceTests = testGroup "sentence"
             expectedResult
                 (
                     evaluateSentences $
-                        mockLocations [
+                        map mockLocations [
                             VarDef () [["x"]] (Just IntT) (IntV () 2),
                             TryCatch ()
                                 [ProcedureCall () "divide_%_by_%" [VarV () ["x"], FloatV () 0.0]]
@@ -152,7 +152,7 @@ sentenceTests = testGroup "sentence"
             expectedResult
                 (
                     evaluateSentences $
-                        mockLocations [
+                        map mockLocations [
                             VarDef () [["x"]] (Just IntT) (IntV () 6),
                             Attempt ()
                                 [
@@ -172,7 +172,23 @@ sentenceTests = testGroup "sentence"
 
         testCase "Caught throw" $
             expectedSuccess
-                (evaluateSentences $ mockLocations [Attempt () [Throw () ["test", "error"]]]),
+                (evaluateSentences $ map mockLocations [Attempt () [Throw () ["test", "error"]]]),
+
+        testCase "Garbage collector" $
+            expectedSuccess
+                (do
+                    setFunctionCallable
+                        "test_%"
+                        (FunCallable
+                            (Title () [TitleWords () ["test"], TitleParam () [["p"]] CharT ])
+                            [mockLocations $ VarDef () [["M"]] Nothing (ListV () CharT [CharV () '1', CharV () '2', CharV () '3'])]
+                        )
+                    evaluateSentence $ mockLocations
+                        (ProcedureCall ()
+                            "test_%"
+                            [IterV () CharT (ListV () CharT [CharV () 'a', CharV () 'b', CharV () 'c'])]
+                        )
+                ),
 
         testCase "Uncaught throw" $
             expectedError
@@ -230,8 +246,8 @@ sentenceTests = testGroup "sentence"
                 (Error (Just (1,0)) (CodeError ["Division by zero"]))
     ]
     where
-        mockLocations :: Functor a => [a ()] -> [Annotated a]
-        mockLocations = map . fmap $ const (0,0)
+        mockLocations :: Functor a => Bare a -> Annotated a
+        mockLocations = fmap $ const (0,0)
 
 tests :: TestTree
 tests = testGroup "Evaluator"
