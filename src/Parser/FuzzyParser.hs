@@ -14,7 +14,7 @@ module FuzzyParser where
 import Control.Monad (void)
 import Control.Monad.Trans.State.Strict (get, put, runStateT, StateT)
 import Data.Char (toUpper)
-import Data.List (intercalate)
+import Data.List (intercalate, singleton)
 import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.Void (Void)
 
@@ -41,7 +41,7 @@ consumeWhitespace = L.space space1 empty empty
 
 -- | Consumes whitespace not including newlines.
 consumeLineWhitespace :: FuzzyParser ()
-consumeLineWhitespace = L.space (void $ some (char ' ' <|> char '\t')) empty empty
+consumeLineWhitespace = L.space hspace1 empty empty
 
 -- | Wrapper for parsing lexemes consuming trailing whitespace.
 lexeme :: FuzzyParser a -> FuzzyParser a
@@ -307,11 +307,11 @@ simpleUntil = do
     uncurry (Until ann) <$> simpleConditional "until"
 
 -- | The header of a `for-each` loop, which includes the name and type of the iterator, and the value to be iterated.
-forEachHeader :: FuzzyParser (Name, Type, Annotated Value)
+forEachHeader :: FuzzyParser ([Name], Type, Annotated Value)
 forEachHeader = do
     try $ firstWord "for" >> word "each"
     iterType <- typeName False
-    iterName <- parens name
+    iterName <- (singleton <$> parens name) <|> return []
     word "in"
     listVal <- valueMatchable
     return (iterName, iterType, listVal)
@@ -513,21 +513,24 @@ returnType =
         return $ Just retType
     <?> "return type"
 
+titleParamIndicator :: FuzzyParser String
+titleParamIndicator = word "another" <|> word "a"
+
 -- | Parses words for an identifying part of a function's title.
 titleWords :: FuzzyParser (Annotated TitlePart)
 titleWords = do
     ann <- getCurrentLocation
-    words <- some (notFollowedBy (word "a") >> anyWord)
+    words <- some (notFollowedBy titleParamIndicator >> anyWord)
     return $ TitleWords ann words
 
 -- | Parses a parameter of a function's title.
 titleParam :: FuzzyParser (Annotated TitlePart)
 titleParam = do
     ann <- getCurrentLocation
-    word "a" <|> word "another"
+    titleParamIndicator
     pType <- referenceType <|> typeName False
     -- Parameters can optionally be named.
-    pNames <- ((:[]) <$> parens name) <|> return []
+    pNames <- (singleton <$> parens name) <|> return []
     return $ TitleParam ann pNames pType
 
 title :: FuzzyParser (Annotated Title)

@@ -15,6 +15,7 @@ import Data.Bifunctor (first, second)
 import System.IO.Error (tryIOError)
 import Test.Tasty (testGroup, TestTree)
 import Test.Tasty.HUnit (assertFailure, testCase, (@?=), Assertion, HasCallStack)
+import qualified Data.IntMap.Strict as IM
 
 import Evaluator (evaluateProgram)
 import EvaluatorEnv (ReadWrite(..))
@@ -62,9 +63,9 @@ testExample fileName inputs expOutputs = do
     let (res, (uncInputs, outputs)) = runIOStore (evaluateProgram solvedProg) (inputs, [])
     case res of
         Left err -> assertFailure $ "Example failed evaluating, the error was:\n" ++ show err
-        Right _ ->
+        Right (_, (_, _, _, _, _, roots)) ->
             if null uncInputs
-                then outputs @?= expOutputs
+                then (outputs @?= expOutputs) >> (roots @?= IM.empty)
                 else assertFailure $ "Example didn't consume all input:\n" ++ show uncInputs
 
 -- | A test case for an example with a list of inputs and the expected output.

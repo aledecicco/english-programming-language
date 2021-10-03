@@ -15,7 +15,7 @@ Here is an example of a title:
 ```
 A number equal to the sum of a list of numbers:
 ```
-The first part, `a number equal to` defines this function as an operator which returns a `number` (the equivalent of `float` in other languages). The word `number` can be replaced by any other type for operators that return different things.
+The first part, `a number equal to` defines this function as an operator which returns a `number` (the equivalent of `float` in other languages). The word `number` can be replaced by any other type for operators that return different things. Also, `a` can be replaced by `another`, which allows defining titles such as `... a number plus another number`.
 
 The second part contains a series of words, `the sum of`, followed by a parameter, `a list of numbers`. This tells the interpreter that the function takes a list of numbers, and that its identifier is `the sum of`. So, if in some expression the parser sees a series of words that contains `the sum of`, it will check if calling that function makes sense in that context, and match those words accordingly. Note that there must be at least one identifier in every function's title.
 

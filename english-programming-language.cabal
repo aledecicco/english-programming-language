@@ -1,13 +1,13 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 22864c01a05a8c9459ef51aa07ac549942e6d8f2603ef17ca98b54ab943c80d2
+-- hash: 50926d3ed8ae6103aba260b2c7bc7e62eb6f794b6da6c66c88c56ff1a1dbde87
 
 name:           english-programming-language
-version:        3.12.0
+version:        3.13.0
 author:         Alejandro De Cicco
 maintainer:     alejandrodecicco99@gmail.com
 license:        MIT
@@ -39,7 +39,7 @@ library
       src/Evaluator
   build-depends:
       ansi-terminal
-    , base >=4.7 && <5
+    , base >=4.15 && <5
     , containers
     , megaparsec >=9.0 && <10
     , mtl
@@ -58,7 +58,7 @@ executable english-programming-language-exe
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       ansi-terminal
-    , base >=4.7 && <5
+    , base >=4.15 && <5
     , containers
     , english-programming-language
     , megaparsec >=9.0 && <10
@@ -83,7 +83,7 @@ test-suite english-programming-language-test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       ansi-terminal
-    , base >=4.7 && <5
+    , base >=4.15 && <5
     , containers
     , english-programming-language
     , megaparsec >=9.0 && <10

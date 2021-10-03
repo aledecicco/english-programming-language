@@ -71,7 +71,7 @@ data Sentence a =
     | When a (Value a) [Sentence a]
     | Unless a (Value a) [Sentence a]
     | IfElse a (Value a) [Sentence a] [Sentence a]
-    | ForEach a Name Type (Value a) [Sentence a]
+    | ForEach a [Name] Type (Value a) [Sentence a]
     | While a (Value a) [Sentence a]
     | Until a (Value a) [Sentence a]
     | Return a (Value a)

@@ -1,7 +1,4 @@
-resolver: lts-16.27
+resolver: nightly-2021-10-02
 
 packages:
 - .
-
-extra-deps:
-- megaparsec-9.0.1

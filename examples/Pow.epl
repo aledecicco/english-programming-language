@@ -1,4 +1,4 @@
-To raise a reference to a number (m) to the power of a number (n):
+To raise a reference to a number (m) to the power of another number (n):
     Let r be 1.
     While n is greater than 0:
         Multiply r by m.

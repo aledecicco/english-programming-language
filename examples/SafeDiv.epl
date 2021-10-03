@@ -1,4 +1,4 @@
-To divide a reference to a number by a number safely:
+To divide a reference to a number by another number safely:
     Try to divide the 1st number by the 2nd number, and in case of error print "Can't divide by 0\n".
 
 To run:

@@ -12,7 +12,7 @@ module Solver where
 
 import Control.Monad (unless, void, when)
 import Control.Monad.Trans.State (gets, modify, runState, State)
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, fromMaybe)
 import qualified Data.Map.Strict as M
 
 import AST
@@ -320,11 +320,13 @@ solveSentence _ (VarDef ann names (Just expType) val) = do
     val' <- case val of
         (ListV {}) -> withLocation val (solveValueWithType expType True)
         _ -> withLocation val (solveValueWithType expType False)
+    setCurrentLocation ann
     mapM_ (`setNewVariableType` expType) names
     return $ VarDef ann names (Just expType) val'
 solveSentence _ (VarDef ann names Nothing val) = do
     val' <- withLocation val solveValueWithAnyType
     valType <- getValueType val'
+    setCurrentLocation ann
     mapM_ (`setNewVariableType` valType) names
     return $ VarDef ann names Nothing val'
 
@@ -342,12 +344,15 @@ solveSentence retType (IfElse ann cond ssTrue ssFalse) = do
     ssFalse' <- solveSentences ssFalse retType
     return $ IfElse ann cond' ssTrue' ssFalse'
 
-solveSentence retType (ForEach ann iterName iterType listVal ss) = do
+solveSentence retType (ForEach ann iterNames iterType listVal ss) = do
     listVal' <- withLocation listVal $ solveValueWithType (ListT iterType) False
-    setNewVariableType iterName (RefT iterType)
+    setCurrentLocation ann
+    -- Use the type as iterator name if no names where provided.
+    let iterNames' = if null iterNames then [typeName iterType False] else iterNames
+    mapM_ (`setNewVariableType` RefT iterType) iterNames'
     ss' <- solveSentences ss retType
-    removeVariableType iterName
-    return $ ForEach ann iterName iterType listVal' ss'
+    mapM_ removeVariableType iterNames'
+    return $ ForEach ann iterNames' iterType listVal' ss'
 
 solveSentence retType (Until ann cond ss) = do
     cond' <- withLocation cond $ solveValueWithType BoolT False

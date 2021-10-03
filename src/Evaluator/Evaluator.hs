@@ -9,7 +9,7 @@ The language's evaluator.
 
 module Evaluator where
 
-import Control.Monad (unless, void, (>=>))
+import Control.Monad (unless, void)
 
 import AST
 import BuiltInDefs
@@ -175,14 +175,14 @@ evaluateSentence s = tick >> evaluateSentence' s
                 then evaluateSentences ssTrue
                 else evaluateSentences ssFalse
 
-        evaluateSentence' (ForEach _ iterName _ listval ss) = do
+        evaluateSentence' (ForEach _ iterNames _ listval ss) = do
             listVal' <- withLocation listval evaluateUpToReference
             -- Set the list being iterated as a root so that the garbage collector doesn't free it.
             root <- addValueRoot listVal'
             elems <- getListElements listVal'
-            let loopIteration = (\(RefV _ addr) -> setVariableAddress iterName addr >> evaluateSentences ss)
+            let loopIteration (RefV _ addr) = mapM_ (`setVariableAddress` addr) iterNames >> evaluateSentences ss
             result <- firstNotNull loopIteration elems
-            removeVariable iterName
+            mapM_ removeVariable iterNames
             -- After the loop, remove the manually created root.
             removeRoot root
             return result
