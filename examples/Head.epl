@@ -6,11 +6,7 @@ To print the head of a list of numbers:
     In case of error:
         Print "The list is empty".
 
-To do something to a character:
-    Let x be "123".
-
 To run:
-    Do something to each character in "abcdef".
     Let L be a list of numbers.
     Let M be a list of numbers containing 1, 2, 3, and 4.
     Print the head of L.

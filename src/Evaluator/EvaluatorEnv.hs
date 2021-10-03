@@ -45,7 +45,7 @@ type VarData = [M.Map Name Int]
 type RefData = IM.IntMap (Bare Value)
 
 -- | A set of addresses that is manually kept alive by the evaluator.
-type RootsData = IS.IntSet
+type RootsData = IM.IntMap Int
 
 -- | The state of the evaluator.
 type EvaluatorData = (FunData, VarData, RefData, Pointer, Memory, RootsData)
@@ -64,7 +64,7 @@ runEvaluatorEnv action location state = runExceptT $ runStateT (runLocationT act
 initialState :: EvaluatorData
 initialState =
     let functions = M.fromList $ map (\(funId, FunSignature title _) -> (funId, FunCallable title [])) builtInFunctions
-    in (functions, [M.empty], IM.empty, 0, initMaxMem, IS.empty)
+    in (functions, [M.empty], IM.empty, 0, initMaxMem, IM.empty)
     where initMaxMem = 4
 
 -- | A class of monad which allows to read from an input and write to an output.
@@ -263,13 +263,27 @@ modifyRoots modF = lift $ modify (\(funs, vars, refs, ptr, mem, roots) -> (funs,
 getRoots :: Monad m => EvaluatorEnv m RootsData
 getRoots = lift $ gets (\(_, _, _, _, _, roots) -> roots)
 
+-- | Adds one to the counter of a manual root, or sets it to 1 if it doesn't exist.
 addRoot :: Monad m => Int -> EvaluatorEnv m ()
-addRoot = modifyRoots . IS.insert
+addRoot addr = modifyRoots $ IM.insertWith (+) addr 1
 
+-- | Subtracts one from the counter of a manual root, removing it if it reaches zero.
 removeRoot :: Monad m => Int -> EvaluatorEnv m ()
-removeRoot = modifyRoots . IS.delete
+removeRoot addr = modifyRoots $ IM.update (\n -> if n == 1 then Nothing else Just (n-1)) addr
 
+-- | Removes a list of roots.
+removeRoots :: Monad m => [Int] -> EvaluatorEnv m ()
+removeRoots = mapM_ removeRoot
 
+-- | Saves a value to memory, adds it as a root, and returns its address.
+addValueRoot :: Monad m => Bare Value -> EvaluatorEnv m Int
+addValueRoot (RefV _ addr) = do
+    addRoot addr
+    return addr
+addValueRoot val = do
+    addr <- addValue val
+    addRoot addr
+    return addr
 
 -- -----------------
 -- * Garbage collector
@@ -293,16 +307,18 @@ collectGarbage = do
 getReachableAddresses :: Monad m => EvaluatorEnv m IS.IntSet
 getReachableAddresses = do
     varAddrs <- concatMap M.elems <$> getVariables
-    varVals <- mapM getValueAtAddress varAddrs
-    roots <- IS.union (IS.fromList varAddrs) <$> getRoots
-    foldM getReachableFromValue roots varVals
+    rootAddrs <- IM.keys <$> getRoots
+    foldM getReachableFromAddress IS.empty (varAddrs ++ rootAddrs)
     where
-        getReachableFromValue :: Monad m => IS.IntSet -> Bare Value -> EvaluatorEnv m IS.IntSet
-        getReachableFromValue alive (RefV _ addr) =
+        getReachableFromAddress :: Monad m => IS.IntSet -> Int -> EvaluatorEnv m IS.IntSet
+        getReachableFromAddress alive addr =
             if addr `IS.member` alive
                 then return alive
                 else do
                     val <- getValueAtAddress addr
                     getReachableFromValue (IS.insert addr alive) val
+
+        getReachableFromValue :: Monad m => IS.IntSet -> Bare Value -> EvaluatorEnv m IS.IntSet
+        getReachableFromValue alive (RefV _ addr) = getReachableFromAddress alive addr
         getReachableFromValue alive (ListV _ _ refVals) = foldM getReachableFromValue alive refVals
-        getReachableFromValue alive _ = return alive
+        getReachableFromValue alive val = return alive
