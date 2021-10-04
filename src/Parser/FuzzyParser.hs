@@ -77,12 +77,11 @@ firstWord "" = error "Can't parse an empty string"
 ordinal :: FuzzyParser String
 ordinal = do
     num <- some digitChar
-    suffix <-
-        case last num of
-            '1' -> word "st"
-            '2' -> word "nd"
-            '3' -> word "rd"
-            _ -> word "th"
+    suffix <- case last num of
+        '1' -> word "st"
+        '2' -> word "nd"
+        '3' -> word "rd"
+        _ -> word "th"
     return $ num ++ suffix
 
 -- | Parses any valid word in the language, including ordinals.
@@ -311,6 +310,7 @@ forEachHeader :: FuzzyParser ([Name], Type, Annotated Value)
 forEachHeader = do
     try $ firstWord "for" >> word "each"
     iterType <- typeName False
+    -- Loop iterators can optionally be named.
     iterName <- (singleton <$> parens name) <|> return []
     word "in"
     listVal <- valueMatchable
@@ -343,14 +343,14 @@ simpleTryCatch = do
     sCatch <- simpleSentence
     return $ TryCatch ann [sTry] [sCatch]
 
--- | Parses a return statement.
+-- | Parses a `return` statement.
 result :: FuzzyParser (Annotated Sentence)
 result = do
     ann <- getCurrentLocation
     firstWord "return"
     Return ann <$> valueMatchable
 
--- | Parses a throw statement.
+-- | Parses a `throw` statement.
 throw :: FuzzyParser (Annotated Sentence)
 throw = do
     ann <- getCurrentLocation
@@ -383,29 +383,31 @@ variablesDefinition = do
     names <- series name
     word "be"
     valAnn <- getCurrentLocation
-    varType <-
-        (case names of
-            -- If there is only one variable, ask for its type in singular.
-            [_] -> try (word "a" >> Just <$> typeName False)
-            -- If there are more, ask for their type in plural.
-            _ -> try (Just <$> typeName True))
-        <|> return Nothing
+    varType <- case names of
+        -- If there is only one variable, ask for its type in singular.
+        [_] -> optional $ word "a" >> typeName False
+        -- If there are more, ask for their type in plural.
+        _ -> optional $ typeName True
     val <- case varType of
-        Just (ListT elemsType) ->
-            -- List by extension.
-            (do
-               word "containing"
-               elems <- series valueMatchable
-               return $ ListV valAnn elemsType elems)
-            -- List value.
-            <|> (word "equal" >> word "to" >> valueMatchable)
-            -- Empty list.
-            <|> return (ListV valAnn elemsType [])
+        -- List value.
+        Just (ListT elemsType) -> listDefinition valAnn elemsType
         -- Typed value.
         Just _ -> word "equal" >> word "to" >> valueMatchable
         -- Untyped value.
         Nothing -> valueMatchable
     return $ VarDef defAnn names varType val
+    where
+        listDefinition :: Location -> Type -> FuzzyParser (Annotated Value)
+        listDefinition ann elemsType =
+            -- Existing list.
+            (word "equal" >> word "to" >> valueMatchable)
+            -- List by extension.
+            <|> (do
+                word "containing"
+                elems <- series valueMatchable
+                return $ ListV ann elemsType elems)
+            -- Empty list.
+            <|> return (ListV ann elemsType [])
 
 -- | Parses a block `when` statement, which works as an `if` without an `else` clause.
 blockWhen :: FuzzyParser (Annotated Sentence)
@@ -491,7 +493,10 @@ sentenceMatchable = do
 -- | Parses a top-level sentence, starting with an upper case letter and ending in a stop.
 -- Can be any simple or block sentence.
 sentence :: FuzzyParser (Annotated Sentence)
-sentence = put True >> (blockSentence <|> (simpleSentence <* dot) <?> "sentence")
+sentence = put True >>
+    (blockSentence
+    <|> (simpleSentence <* dot)
+    <?> "sentence")
 
 
 -- -----------------
@@ -502,15 +507,19 @@ returnType :: FuzzyParser (Maybe Type)
 returnType =
     -- Shorthand for predicates.
     (word "Whether" >> return (Just BoolT))
-    -- Procedures
-    <|> (word "To" >> notFollowedBy (word "a") >> lookAhead lowerChar >> return Nothing)
-    -- Any kind of operator
-    <|> do
+    -- Procedures.
+    <|> (do
+        word "To"
+        notFollowedBy (word "a")
+        lookAhead lowerChar
+        return Nothing)
+    -- Any kind of operator.
+    <|> (do
         word "A"
         retType <- typeName False
         word "equal"
         word "to"
-        return $ Just retType
+        return $ Just retType)
     <?> "return type"
 
 titleParamIndicator :: FuzzyParser String

@@ -88,7 +88,7 @@ builtInOperators =
             relationalType
         ),
         (
-            [TitleWords () ["the", "element", "of"], TitleParam () [] (RefT $ ListT $ AnyT "a"), TitleWords () ["at"], TitleParam () [] IntT],
+            [TitleWords () ["the", "element", "of"], TitleParam () [] (RefT . ListT $ AnyT "a"), TitleWords () ["at"], TitleParam () [] IntT],
             Operator (\[RefT (ListT t), IntT] -> RefT t)
         ),
         (
