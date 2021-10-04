@@ -1,3 +1,4 @@
+{-# LANGUAGE LiberalTypeSynonyms  #-}
 {-|
 Module      : BuiltInDefs
 Copyright   : (c) Alejandro De Cicco, 2021
@@ -10,13 +11,6 @@ Signatures of functions defined in the language's prelude.
 module BuiltInDefs where
 
 import AST
-    ( FunType(..),
-      FunSignature(..),
-      Title(Title),
-      TitlePart(..),
-      Type(AnyT, BoolT, IntT, FloatT, ListT, RefT),
-      Bare,
-      FunId )
 import Utils (getFunId)
 
 
@@ -24,8 +18,8 @@ import Utils (getFunId)
 -- * Auxiliary
 
 -- | Takes a title and a function type, and returns the function's id and its signature.
-functionFromTuple :: ([Bare TitlePart], FunType) -> (FunId, FunSignature)
-functionFromTuple (title, returnType) = (getFunId title, FunSignature (Title () title) returnType)
+functionFromTuple :: (Bare Title, FunType) -> (FunId, FunSignature)
+functionFromTuple (title, returnType) = (getFunId title, FunSignature title returnType)
 
 -- | The type of a function that takes two numeric arguments and returns a float if either of them is a float, and an int otherwise.
 binaryType :: FunType

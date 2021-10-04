@@ -1,3 +1,4 @@
+{-# LANGUAGE LiberalTypeSynonyms #-}
 {-|
 Module      : Evaluator
 Copyright   : (c) Alejandro De Cicco, 2021
@@ -27,14 +28,14 @@ registerFunctions :: Monad m => Program -> EvaluatorEnv m ()
 registerFunctions = mapM_ registerFunction
     where
         registerFunction :: Monad m => Annotated Definition -> EvaluatorEnv m ()
-        registerFunction (FunDef _ title@(Title _ parts) _ sentences) =
-            let fid = getFunId parts
-                callable = FunCallable (void title) sentences
+        registerFunction (FunDef _ title _ sentences) =
+            let fid = getFunId title
+                callable = FunCallable (map void title) sentences
             in setFunctionCallable fid callable
 
 -- | Returns a list of new variables to be declared and a list of references to be set when calling a function according to its signature.
 variablesFromTitle :: ReadWrite m =>
-    [Bare TitlePart] -- ^ The title of the function being called.
+    Bare Title -- ^ The title of the function being called.
     -> [Bare Value] -- ^ The values being passed as arguments.
     -> EvaluatorEnv m ([([Name], Bare Value)], [([Name], Int)]) -- ^ The names in the title that should point to new values and the ones that should point to existing addresses.
 variablesFromTitle _ [] = return ([], [])
@@ -48,7 +49,7 @@ variablesFromTitle (TitleParam _ names _ : rest) (val:vals) = do
 variablesFromTitle [] (_:_) = error "Shouldn't happen: can't run out of title parts before running out of values in a function call"
 
 -- | Finishes evaluating the references in the arguments of a function call if neccessary.
-evaluateArguments :: ReadWrite m => [Bare TitlePart] -> [Bare Value] -> EvaluatorEnv m [Bare Value]
+evaluateArguments :: ReadWrite m => Bare Title -> [Bare Value] -> EvaluatorEnv m [Bare Value]
 evaluateArguments _ [] = return []
 evaluateArguments (TitleWords _ _ : rest) vals = evaluateArguments rest vals
 evaluateArguments (TitleParam _ _ (RefT _) : rest) (val:vals) = (val:) <$> evaluateArguments rest vals
@@ -253,7 +254,7 @@ evaluateProcedure fid args = void $ evaluateFunction fid args
 -- | Evaluates any function with the given arguments, which must be partially evaluated.
 evaluateFunction :: ReadWrite m =>  FunId -> [Bare Value] -> EvaluatorEnv m (Maybe (Bare Value))
 evaluateFunction fid args = do
-    (FunCallable (Title _ title) ss) <- getFunctionCallable fid
+    (FunCallable title ss) <- getFunctionCallable fid
     -- Finish evaluating the arguments that are passed as copies.
     args' <- evaluateArguments title args
     if isBuiltInOperator fid

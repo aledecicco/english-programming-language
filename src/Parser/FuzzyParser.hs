@@ -1,3 +1,4 @@
+{-# LANGUAGE LiberalTypeSynonyms #-}
 {-# LANGUAGE TupleSections #-}
 {-|
 Module      : FuzzyParser
@@ -544,12 +545,11 @@ titleParam = do
 
 title :: FuzzyParser (Annotated Title)
 title = do
-    ann <- getCurrentLocation
     firstPart <- titleParam <|> titleWords
     rest <- case firstPart of
         (TitleWords _ _) -> intercalated titleParam titleWords <|> return []
         _ -> intercalated titleWords titleParam -- Titles must have at least one occurence of 'titleWords'.
-    return $ Title ann (firstPart:rest)
+    return (firstPart:rest)
 
 functionDefinition :: FuzzyParser (Annotated Definition)
 functionDefinition = do

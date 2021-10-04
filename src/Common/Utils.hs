@@ -19,10 +19,10 @@ import AST
 --
 -- >>> getFunId [TitleParam () [] FloatT, TitleWords () ["plus"], TitleParam () [] FloatT]
 -- "%_plus_%"
-getFunId :: [TitlePart a] -> FunId
+getFunId :: Title a -> FunId
 getFunId ts = intercalate "_" (getFunIdParts ts)
     where
-        getFunIdParts :: [TitlePart a] -> [FunId]
+        getFunIdParts :: Title a -> [FunId]
         getFunIdParts [] = []
         getFunIdParts (TitleWords _ w : ts) = w ++ getFunIdParts ts
         getFunIdParts (TitleParam {} : ts) = "%" : getFunIdParts ts

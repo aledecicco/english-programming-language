@@ -180,7 +180,7 @@ sentenceTests = testGroup "sentence"
                     setFunctionCallable
                         "test_%"
                         (FunCallable
-                            (Title () [TitleWords () ["test"], TitleParam () [["p"]] CharT ])
+                            [TitleWords () ["test"], TitleParam () [["p"]] CharT ]
                             [mockLocations $ VarDef () [["M"]] Nothing (ListV () CharT [CharV () '1', CharV () '2', CharV () '3'])]
                         )
                     evaluateSentence $ mockLocations

@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveFunctor  #-}
+{-# LANGUAGE LiberalTypeSynonyms  #-}
 {-|
 Module      : AST
 Copyright   : (c) Alejandro De Cicco, 2021
@@ -87,8 +88,7 @@ data TitlePart a =
     deriving (Eq, Show, Functor, Foldable)
 
 -- | The signature of a function minus the return type.
-data Title a = Title a [TitlePart a]
-    deriving (Eq, Show, Functor, Foldable)
+type Title a = [TitlePart a]
 
 data FunSignature = FunSignature (Bare Title) FunType
 

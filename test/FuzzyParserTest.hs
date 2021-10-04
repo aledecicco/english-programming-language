@@ -425,7 +425,7 @@ functionDefinitionTests = testGroup "Function definition"
                 functionDefinition
                 "A number equal to the double of a number (m):\n  Let r be m times 2.\n  Return r."
                 (FunDef (1,1)
-                    (Title (1,19) [TitleWords (1,19) ["the", "double", "of"], TitleParam (1,33) [["m"]] FloatT])
+                    [TitleWords (1,19) ["the", "double", "of"], TitleParam (1,33) [["m"]] FloatT]
                     (Just FloatT)
                     [
                         VarDef (2,3) [["r"]] Nothing (ValueM (2,12) [WordP (2,12) "m", WordP (2,14) "times", IntP (2,20) 2]),
@@ -438,7 +438,7 @@ functionDefinitionTests = testGroup "Function definition"
                 functionDefinition
                 "To double a number (m):\n  Let r be a number equal to m times 2."
                 (FunDef (1,1)
-                    (Title (1,4) [TitleWords (1,4) ["double"], TitleParam (1,11) [["m"]] FloatT])
+                    [TitleWords (1,4) ["double"], TitleParam (1,11) [["m"]] FloatT]
                     Nothing
                     [
                         VarDef (2,3) [["r"]] (Just FloatT) (ValueM (2,30) [WordP (2,30) "m", WordP (2,32) "times", IntP (2,38) 2])
@@ -450,7 +450,7 @@ functionDefinitionTests = testGroup "Function definition"
                 functionDefinition
                 "Whether a number (m) is whole:\n  Return false."
                 (FunDef (1,1)
-                    (Title (1,9) [TitleParam (1,9) [["m"]] FloatT, TitleWords (1,22) ["is", "whole"]])
+                    [TitleParam (1,9) [["m"]] FloatT, TitleWords (1,22) ["is", "whole"]]
                     (Just BoolT)
                     [
                         Return (2,3) (ValueM (2,10) [WordP (2,10) "false"])
@@ -475,36 +475,36 @@ titleTests = testGroup "Title"
             expectedResult
                 title
                 "Function definition"
-                (Title (1,1) [TitleWords (1,1) ["Function", "definition"]]),
+                [TitleWords (1,1) ["Function", "definition"]],
 
         testCase "Many parts" $
             expectedResult
                 title
                 "Definition with a number (m) and a number (n)"
-                (Title (1,1) [
+                [
                     TitleWords (1,1) ["Definition", "with"],
                     TitleParam (1,17) [["m"]] FloatT,
                     TitleWords (1,30) ["and"],
                     TitleParam (1,34) [["n"]] FloatT
-                ]),
+                ],
 
         testCase "Consecutive arguments" $
             expectedResult
                 title
                 "Definition with a number (m) a number (n)"
-                (Title (1,1) [
+                [
                     TitleWords (1,1) ["Definition", "with"],
                     TitleParam (1,17) [["m"]] FloatT
-                ]),
+                ],
 
         testCase "Missing name" $
             expectedResult
                 title
                 "Definition with a number"
-                (Title (1,1) [
+                [
                     TitleWords (1,1) ["Definition", "with"],
                     TitleParam (1,17) [] FloatT
-                ])
+                ]
     ]
 
 titleWordsTests :: TestTree

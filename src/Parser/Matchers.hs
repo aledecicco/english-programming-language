@@ -43,7 +43,7 @@ isPrefix (w:ws) parts@(WordP _ w' : ws')
 isPrefix _ parts = (False, parts)
 
 -- | Returns all the ways a list of matchables can be used to fill the gaps (parameters) of a title.
-sepByTitle :: [MatchablePart a] -> [TitlePart b] -> [[[MatchablePart a]]]
+sepByTitle :: [MatchablePart a] -> Title b -> [[[MatchablePart a]]]
 sepByTitle [] [] = [[]]
 sepByTitle _ [] = []
 sepByTitle parts (TitleWords _ ws : titleParts) =
@@ -103,9 +103,9 @@ matchAsFunctionCall :: [Annotated MatchablePart] -> [FunSignature] -> SolverEnv 
 matchAsFunctionCall parts funs = concat <$> mapM (matchAsFunctionCall' parts) funs
     where
         matchAsFunctionCall' :: [Annotated MatchablePart] -> FunSignature -> SolverEnv [(FunId, [Annotated Value])]
-        matchAsFunctionCall' parts (FunSignature (Title _ funTitle) _) = do
-            let possParams = sepByTitle parts funTitle
-                fid = getFunId funTitle
+        matchAsFunctionCall' parts (FunSignature title _) = do
+            let possParams = sepByTitle parts title
+                fid = getFunId title
             paramMatches <- allNotNull matchAllParams possParams
             let paramCombs = map sequence paramMatches
             return $ concatMap (map (fid,)) paramCombs
