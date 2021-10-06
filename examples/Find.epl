@@ -1,0 +1,25 @@
+Whether a number (n) is in a list of numbers:
+    Let the answer be false.
+    For each number (m) in the list:
+        When m is equal to n:
+            Set the answer to true.
+            Stop the loop.
+    Return the answer.
+
+To run:
+    Let L be a list of numbers containing 1, 2, 3, 4, and 5.
+    Let m be 3.
+    Let n be 6.
+
+    Print m.
+    Print " is ".
+    Unless m is in L, print "not ".
+    Print "in ".
+    Print L.
+    Print "\n".
+
+    Print n.
+    Print " is ".
+    Unless n is in L, print "not ".
+    Print "in ".
+    Print L.

@@ -178,7 +178,7 @@ matchAsProcedureCall :: [Annotated MatchablePart] -> SolverEnv [Annotated Senten
 matchAsProcedureCall (WordP fAnn (c:cs) : rest) = do
     let lowerCaseTitle = WordP fAnn (toLower c : cs) : rest
     procedures <- getProcedureSignatures
-    res <-matchAsFunctionCall lowerCaseTitle procedures
+    res <- matchAsFunctionCall lowerCaseTitle procedures
     return $ map (uncurry  $ ProcedureCall fAnn) res
 matchAsProcedureCall _ = return []
 

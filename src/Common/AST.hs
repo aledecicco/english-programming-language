@@ -80,6 +80,8 @@ data Sentence a =
     | Attempt a [Sentence a]
     | TryCatch a [Sentence a] [Sentence a]
     | Throw a [String]
+    | Break a
+    | Exit a
     deriving (Eq, Show, Functor, Foldable)
 
 data TitlePart a =

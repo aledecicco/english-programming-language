@@ -23,7 +23,7 @@ import EvaluatorEnv
 -- * Assertions
 
 -- | Asserts that a computation yields a specific value as a result.
-expectedResult :: HasCallStack => EvaluatorEnv IO (Maybe (Bare Value)) -> Bare Value -> Assertion
+expectedResult :: HasCallStack => EvaluatorEnv IO (Maybe EvalRes) -> EvalRes -> Assertion
 expectedResult action expVal = do
     res <- runEvaluatorEnv action initialLocation initialState
     case res of
@@ -32,7 +32,7 @@ expectedResult action expVal = do
         Right ((Just val, _), _) -> val @?= expVal
 
 -- | Asserts that a computation succeeds.
-expectedSuccess :: HasCallStack => EvaluatorEnv IO (Maybe (Bare Value)) -> Assertion
+expectedSuccess :: HasCallStack => EvaluatorEnv IO (Maybe EvalRes) -> Assertion
 expectedSuccess action = do
     res <- runEvaluatorEnv action initialLocation initialState
     case res of
@@ -40,7 +40,7 @@ expectedSuccess action = do
         Right _ -> return ()
 
 -- | Asserts that an action yields a specific error.
-expectedError :: HasCallStack => EvaluatorEnv IO (Maybe (Bare Value)) -> Error -> Assertion
+expectedError :: HasCallStack => EvaluatorEnv IO (Maybe EvalRes) -> Error -> Assertion
 expectedError action expErr = do
     res <- runEvaluatorEnv action initialLocation initialState
     case res of
@@ -57,13 +57,13 @@ valueTests = testGroup "Value"
     [
         testCase "Operator call" $
             expectedResult
-                (Just <$> evaluateValue (OperatorCall (0,0) "%_plus_%" [IntV (0,0) 2, IntV (0,6) 3]))
-                (IntV () 5),
+                (Just . ValRes <$> evaluateValue (OperatorCall (0,0) "%_plus_%" [IntV (0,0) 2, IntV (0,6) 3]))
+                (ValRes $ IntV () 5),
 
         testCase "Variable" $
             expectedResult
-                (setVariableValue ["x"] (IntV () 5) >> Just <$> evaluateValue (VarV (0,0) ["x"]))
-                (IntV () 5)
+                (setVariableValue ["x"] (IntV () 5) >> Just . ValRes <$> evaluateValue (VarV (0,0) ["x"]))
+                (ValRes $ IntV () 5)
 
     ]
 
@@ -82,7 +82,7 @@ sentenceTests = testGroup "sentence"
                             Return () (VarV () ["x"])
                         ]
                 )
-                (IntV () 3),
+                (ValRes $ IntV () 3),
 
         testCase "Add to" $
             expectedResult
@@ -94,7 +94,7 @@ sentenceTests = testGroup "sentence"
                             Return () (VarV () ["x"])
                         ]
                 )
-                (IntV () 5),
+                (ValRes $ IntV () 5),
 
         testCase "Divide by" $
             expectedResult
@@ -106,7 +106,7 @@ sentenceTests = testGroup "sentence"
                             Return () (VarV () ["x"])
                         ]
                 )
-                (FloatV () 1.0),
+                (ValRes $ FloatV () 1.0),
 
         testCase "Append to" $
             expectedResult
@@ -118,10 +118,11 @@ sentenceTests = testGroup "sentence"
                             Return () (VarV () ["x"])
                         ]
                     case res of
-                        Just val -> Just <$> loadReferences val
+                        Just (ValRes val) -> Just . ValRes <$> loadReferences val
+                        Just _ -> return res
                         Nothing -> return Nothing
                 )
-                (ListV () FloatT [FloatV () 5.0, FloatV () 4.0, IntV () 3, IntV () 2, IntV () 1]),
+                (ValRes $ ListV () FloatT [FloatV () 5.0, FloatV () 4.0, IntV () 3, IntV () 2, IntV () 1]),
 
         testCase "Caught division by zero" $
             expectedResult
@@ -133,7 +134,7 @@ sentenceTests = testGroup "sentence"
                             Return () (VarV () ["x"])
                         ]
                 )
-                (IntV () 2),
+                (ValRes $ IntV () 2),
 
         testCase "Variable definition before caught throw" $
             expectedResult
@@ -146,7 +147,7 @@ sentenceTests = testGroup "sentence"
                                 [Return () (VarV () ["x"])]
                         ]
                 )
-                (IntV () 2),
+                (ValRes $ IntV () 2),
 
         testCase "Nested tries and catches with rollback" $
             expectedResult
@@ -168,7 +169,48 @@ sentenceTests = testGroup "sentence"
                             Return () (VarV () ["x"])
                         ]
                 )
-                (IntV () 9),
+                (ValRes $ IntV () 9),
+
+        testCase "Break before error" $
+            expectedResult
+                (
+                    evaluateSentences $
+                        map mockLocations [
+                            VarDef () [["x"]] (Just IntT) (IntV () 1),
+                            While () (BoolV () True)
+                                [
+                                    ProcedureCall () "add_%_to_%" [IntV () 1, VarV () ["x"]],
+                                    Break (),
+                                    ProcedureCall () "divide_%_by_%" [VarV () ["x"], IntV () 0]
+                                ],
+                            Return () (VarV () ["x"])
+                        ]
+                )
+                (ValRes $ IntV () 2),
+
+        testCase "Exit before error" $
+            expectedResult
+                (do
+                    setFunctionCallable
+                        "test_%"
+                        (FunCallable
+                            [TitleWords () ["test"], TitleParam () [["x"]] (RefT IntT)]
+                            (map mockLocations [
+                                ProcedureCall () "add_%_to_%" [IntV () 1, VarV () ["x"]],
+                                Exit (),
+                                ProcedureCall () "divide_%_by_%" [VarV () ["x"], IntV () 0]
+                            ])
+                        )
+                    evaluateSentences $
+                        map mockLocations [
+                            VarDef () [["x"]] (Just IntT) (IntV () 1),
+                            ProcedureCall ()
+                                "test_%"
+                                [VarV () ["x"]],
+                            Return () (VarV () ["x"])
+                        ]
+                )
+                (ValRes $ IntV () 2),
 
         testCase "Caught throw" $
             expectedSuccess

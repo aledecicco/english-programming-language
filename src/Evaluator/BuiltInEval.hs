@@ -132,6 +132,7 @@ evaluateBuiltInOperator "%_is_greater_than_%" [v1, v2] = evaluateIsGreaterThan v
 evaluateBuiltInOperator "%_is_greater_than_or_equal_to_%" [v1, v2] = evaluateIsGreaterThanOrEqualTo v1 v2
 evaluateBuiltInOperator "the_element_of_%_at_%" [v1, v2] = evaluateElementOfListAt v1 v2
 evaluateBuiltInOperator "the_length_of_%" [v] = evaluateLengthOf v
+evaluateBuiltInOperator "%_is_empty" [v] = evaluateIsEmpty v
 evaluateBuiltInOperator "%_appended_to_%" [v1, v2] = evaluateAppendedTo v1 v2
 evaluateBuiltInOperator "the_list_from_%_to_%" [v1, v2] = evaluateTheListFromTo v1 v2
 evaluateBuiltInOperator "" _ = error "Shouldn't happen: an operator can't have the empty string as id"
@@ -204,6 +205,11 @@ evaluateElementOfListAt _ _ = error "Shouldn't happen: wrong types provided"
 evaluateLengthOf :: Monad m => Bare Value -> EvaluatorEnv m (Bare Value)
 evaluateLengthOf (ListV _ _ vs) = return $ IntV () (length vs)
 evaluateLengthOf _ = error "Shouldn't happen: wrong types provided"
+
+-- | Returns whether a list has no elements.
+evaluateIsEmpty :: Monad m => Bare Value -> EvaluatorEnv m (Bare Value)
+evaluateIsEmpty (ListV _ _ vs) = return $ BoolV () (null vs)
+evaluateIsEmpty _ = error "Shouldn't happen: wrong types provided"
 
 -- | Returns the appendment of two list values.
 evaluateAppendedTo :: Monad m => Bare Value -> Bare Value -> EvaluatorEnv m (Bare Value)

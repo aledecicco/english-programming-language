@@ -1,7 +1,7 @@
 # EPL
 A programming language that resembles English. Write some sentences and watch the interpreter try to understand what you meant.
 
-![Version](https://img.shields.io/badge/version-v3.13.0-blue)
+![Version](https://img.shields.io/badge/version-v3.14.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-brightgreen)
 
 # Introduction
@@ -26,12 +26,11 @@ Print each element in L plus 2.
 - Spaces are allowed in variable and function names.
 - Arguments can be passed by value or by reference.
 - Garbage collector.
-- Try-catch, loops and conditionals.
+- Try-catch, loops, and conditionals.
 - Optional function parameter names, with aliases generation.
 
 # Work in progress
 - Adding more built-in functions.
-- Adding "break" for loops and "exit" for procedures ("stop the loop" and "exit"?).
 - Special variable "it" for referencing the result of the previous sentence.
 
 # Possible improvements:

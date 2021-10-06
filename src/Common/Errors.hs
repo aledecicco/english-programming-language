@@ -24,9 +24,11 @@ data ErrorType =
     | VariableAlreadyDefined Name
     | UndefinedVariable Name
     | MismatchingTypeAssigned Type Type Name -- ^ Assigned a value to a variable of a different type.
-    | ResultInProcedure -- ^ Used a return statement in a procedure.
+    | ResultInProcedure -- ^ Used a `return` statement in a procedure.
+    | ExitInOperator -- ^ Used an `exit` statement in an operator.
     | ExpectedResult -- ^ The end of an operator was reached without finding a return statement.
-    | ForbiddenIteratorUsed -- ^ Use an operator out of a list definition or a procedure call.
+    | ForbiddenIteratorUsed -- ^ An iterator was found outside a list definition or a procedure call.
+    | BreakOutsideLoop -- ^ A `break` statement was found outside a loop.
     | CodeError [String] -- ^ An error thrown during the evaluation of a function that can be recovered from.
     | ParseError String
     deriving (Eq, Show)

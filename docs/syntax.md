@@ -134,6 +134,14 @@ For each number (n) in L:
 For each number (n) in L, print n.
 ```
 
+### Break
+This sentence allows us to stop any loop earlier. A simple example to demonstrate how it works:
+```
+While true:
+    Stop the loop.
+```
+
+
 ### Return
 Tells the function to return a specific value, giving us the ability to exit early from an operator. Keep in mind that this sentence is not allowed in procedures, and reaching the end of an operator without finding one of these will also cause an error.
 ```
@@ -142,8 +150,16 @@ Whether a whole number is even:
     If c is equal to 0, return true, otherwise return false.
 ```
 
+### Exit
+Tells the function to return without a result, giving us the ability to exit early from a procedure. Of course, this sentence is not allowed in operators.
+```
+To print the first element in a list of numbers:
+    When the list is empty, exit.
+    Print the element of the list at 0.
+```
+
 ### Try, catch, and attempt
-We can recover from some errors using `try-catch` clauses. The `attempt` sentence works the same way, but doesn't have a `catch` clause. Here are some example:
+We can recover from some errors using `try-catch` clauses. The `attempt` sentence works the same way, but doesn't have a `catch` clause. Here are some examples:
 ```
 Try to:
     Multiply n by 2.
@@ -161,6 +177,7 @@ In the three cases we are trying to divide a variable `n` by 0. If an error like
 If it is caught, all changes made to the variables during the `try` (or `attempt`) block will be rolled back, and execution will continue in the `catch` block (or in the next sentence in the case of `attempt`).
 
 So, in the first example, even though `n` was multiplied by 2 at some point, those changes will be undone after trying to divide it by 0.
+
 
 ### Throw
 In case we reach some undesired condition in our program, we can signal it by manually triggering an exception. The `throw` sentence needs a reason for the error, which will be displayed in the console if the error is not caught:
@@ -201,6 +218,10 @@ To double a reference to a number:
 Here, we are saying that the function takes a number by reference. The number pointed at by the reference will be multiplied by two, modifying the original number that was passed as argument. References can be variables or list elements.
 
 It is important to note that when a list is passed by value, a deep copy of it is created. To compensate for this high usage of memory, a garbage collector is implemented.
+
+Some operators in the prelude also return references, but it's important to know that they are only alive during the call in which they are obtained. After that, a copy of the reference is generated, so storing it will result in a copy of the original value.
+
+For example, we can increase the number in a specific position of a list by saying `Add 1 to the element of L at 5`. However, saying `Let x be the element of L at 5` and then `Add 1 to x` will only increase the value of the variable `x`, but not of the 5th element of the list `L`. In the first case, the reference returned by `the element of ... at ...` is still alive when `add ... to ...` is called on it, so the original element is modified. In the second case, saving the result of `the element of ... at ...` in a variable causes a copy of that element to be stored, so the original element is not modified but instead the variable is.
 
 
 ## Iterators

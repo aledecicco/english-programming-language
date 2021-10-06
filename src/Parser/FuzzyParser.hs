@@ -359,6 +359,21 @@ throw = do
     word "because"
     Throw ann <$> some anyWord
 
+-- | Parses a `break` statement.
+stopLoop :: FuzzyParser (Annotated Sentence)
+stopLoop = do
+    ann <- getCurrentLocation
+    try $ firstWord "stop" >> word "the" >> word "loop"
+    return $ Break ann
+
+-- | Parses an `exit` statement.
+exitFun :: FuzzyParser (Annotated Sentence)
+exitFun = do
+    ann <- getCurrentLocation
+    -- ToDo: find a better word?
+    firstWord "exit"
+    return $ Exit ann
+
 -- | Parses a simple sentence, which can be any sentence in its simple form (except for `let` statements) or a sentence matchable.
 -- Simple sentences can only contain other simple sentences.
 simpleSentence :: FuzzyParser (Annotated Sentence)
@@ -373,6 +388,8 @@ simpleSentence =
     <|> simpleTryCatch
     <|> result
     <|> throw
+    <|> stopLoop
+    <|> exitFun
     <|> sentenceMatchable
     <?> "simple sentence"
 

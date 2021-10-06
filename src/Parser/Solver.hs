@@ -239,6 +239,19 @@ getArgumentTypesWithCheck (fid, args) = do
 checkNoIterators :: Annotated Value -> SolverEnv ()
 checkNoIterators val = when (hasIterators val) $ throwHere ForbiddenIteratorUsed
 
+-- | Searches for `break` statements in the given sentence and fails if it is not inside a loop.
+checkBreaks :: Annotated Sentence -> SolverEnv ()
+checkBreaks (When _ _ ss) = mapM_ (`withLocation` checkBreaks) ss
+checkBreaks (Unless _ _ ss) = mapM_ (`withLocation` checkBreaks) ss
+checkBreaks (IfElse  _ _ ssTrue ssFalse) = mapM_ (`withLocation` checkBreaks) $ ssTrue ++ ssFalse
+checkBreaks (Attempt _ ss) = mapM_ (`withLocation` checkBreaks) ss
+checkBreaks (TryCatch _ ssTry ssCatch) = mapM_ (`withLocation` checkBreaks) $ ssTry ++ ssCatch
+checkBreaks (ForEach {}) = return ()
+checkBreaks (While {}) = return ()
+checkBreaks (Until {}) = return ()
+checkBreaks (Break _) = throwHere BreakOutsideLoop
+checkBreaks _ = return ()
+
 
 -- -----------------
 -- * Registration
@@ -311,8 +324,7 @@ solveValueWithAnyType :: Annotated Value -> SolverEnv (Annotated Value)
 solveValueWithAnyType val = do
     ann <- getCurrentLocation
     val' <- solveValue (void . getValueType) val
-    setCurrentLocation ann
-    checkNoIterators val'
+    withLocation val' checkNoIterators
     return val'
 
 -- | Chooses a way to understand a possibly ambiguous sentence.
@@ -370,6 +382,11 @@ solveSentence retType (Return ann val) =
             val' <- withLocation val $ solveValueWithType expType False
             return $ Return ann val'
         Nothing -> throwHere ResultInProcedure
+solveSentence retType s@(Break _) = return s
+solveSentence retType s@(Exit _) =
+    case retType of
+        Just _ -> throwHere ExitInOperator
+        Nothing -> return s
 
 solveSentence retType (Attempt ann ss) = Attempt ann <$> solveSentences ss retType
 solveSentence retType (TryCatch ann ssTry ssCatch) = do
@@ -404,7 +421,9 @@ solveDefinition (FunDef ann title retType ss) = do
     -- Register the parameters in the title of the function and solve the sentences in its body.
     setCurrentLocation $ getFirstLocation title
     registerParameters title
-    FunDef ann title retType <$> solveSentences ss retType
+    mapM_ (`withLocation` checkBreaks) ss
+    ss' <- solveSentences ss retType
+    return $ FunDef ann title retType ss'
 
 
 -- -----------------

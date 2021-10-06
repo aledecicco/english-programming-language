@@ -23,6 +23,10 @@ import Utils (firstNotNull, getFunId, hasIterators)
 -- -----------------
 -- * Auxiliary
 
+-- | The posible results of evaluating a sentence if it has any.
+data EvalRes = ValRes (Bare Value) | BreakRes | ExitRes
+    deriving (Eq, Show)
+
 -- | Registers the functions in a program so that they can be called from anywhere.
 registerFunctions :: Monad m => Program -> EvaluatorEnv m ()
 registerFunctions = mapM_ registerFunction
@@ -141,10 +145,10 @@ evaluateValue (ValueM _ _) = error "Shouldn't happen: values must be solved befo
 evaluateValue val = evaluateUpToReference val >>= evaluateReferences
 
 -- | Evaluates a sentence, with the possible side effect of triggering the garbage collector.
-evaluateSentence :: ReadWrite m => Annotated Sentence -> EvaluatorEnv m (Maybe (Bare Value))
+evaluateSentence :: ReadWrite m => Annotated Sentence -> EvaluatorEnv m (Maybe EvalRes)
 evaluateSentence s = tick >> evaluateSentence' s
     where
-        evaluateSentence' :: ReadWrite m => Annotated Sentence -> EvaluatorEnv m (Maybe (Bare Value))
+        evaluateSentence' :: ReadWrite m => Annotated Sentence -> EvaluatorEnv m (Maybe EvalRes)
         evaluateSentence' (VarDef _ ~(name:names) _ val) = do
             val' <- case val of
                 -- If the variable is being declared as a list by extension, it can contain iterators.
@@ -186,7 +190,10 @@ evaluateSentence s = tick >> evaluateSentence' s
             mapM_ removeVariable iterNames
             -- After the loop, remove the manually created root.
             removeRoot root
-            return result
+            case result of
+                -- Consume the bubbled `break`.
+                Just BreakRes -> return Nothing
+                _ -> return result
 
         evaluateSentence' sUntil@(Until _ boolVal ss) = do
             ~(BoolV _ cond) <- withLocation boolVal evaluateValue
@@ -195,7 +202,8 @@ evaluateSentence s = tick >> evaluateSentence' s
                 else do
                     result <- evaluateSentences ss
                     case result of
-                        (Just val) -> return $ Just val
+                        (Just BreakRes) -> return Nothing
+                        (Just _) -> return result
                         Nothing -> evaluateSentence sUntil
         evaluateSentence' sWhile@(While _ boolVal ss) = do
             ~(BoolV _ cond) <- withLocation boolVal evaluateValue
@@ -203,13 +211,16 @@ evaluateSentence s = tick >> evaluateSentence' s
                 then do
                     result <- evaluateSentences ss
                     case result of
-                        (Just val) -> return $ Just val
+                        (Just BreakRes) -> return Nothing
+                        (Just _) -> return result
                         Nothing -> evaluateSentence s
                 else return Nothing
 
         evaluateSentence' (Return _ val) = do
             val' <- withLocation val evaluateValue
-            return $ Just val'
+            return $ Just (ValRes val')
+        evaluateSentence' (Break _) = return $ Just BreakRes
+        evaluateSentence' (Exit _) = return $ Just ExitRes
 
         evaluateSentence' (ProcedureCall _ fid args) = do
             ann <- getCurrentLocation
@@ -228,11 +239,11 @@ evaluateSentence s = tick >> evaluateSentence' s
         evaluateSentence' (SentenceM _ _) = error "Shouldn't happen: sentences must be solved before evaluating them"
 
 -- | Evaluates a list of sentences in a new block scope, discarding it afterwards.
-evaluateSentences :: ReadWrite m => [Annotated Sentence] -> EvaluatorEnv m (Maybe (Bare Value))
+evaluateSentences :: ReadWrite m => [Annotated Sentence] -> EvaluatorEnv m (Maybe EvalRes)
 evaluateSentences [] = return Nothing
 evaluateSentences ss = inBlockScope $ firstNotNull evaluateSentenceWithLocation ss
     where
-        evaluateSentenceWithLocation :: ReadWrite m => Annotated Sentence -> EvaluatorEnv m (Maybe (Bare Value))
+        evaluateSentenceWithLocation :: ReadWrite m => Annotated Sentence -> EvaluatorEnv m (Maybe EvalRes)
         evaluateSentenceWithLocation s = do
             let ann = getLocation s
             result <- withLocation s evaluateSentence
@@ -244,7 +255,8 @@ evaluateOperator :: ReadWrite m => FunId -> [Bare Value] -> EvaluatorEnv m (Bare
 evaluateOperator fid args = do
     result <- evaluateFunction fid args
     case result of
-        Just val -> return val
+        Just (ValRes val) -> return val
+        Just _ -> error "Shouldn't happen: evaluating an operator must result in a value"
         Nothing -> throwHere ExpectedResult
 
 -- | Evaluates a procedure with the given arguments.
@@ -252,13 +264,13 @@ evaluateProcedure :: ReadWrite m => FunId -> [Bare Value] -> EvaluatorEnv m ()
 evaluateProcedure fid args = void $ evaluateFunction fid args
 
 -- | Evaluates any function with the given arguments, which must be partially evaluated.
-evaluateFunction :: ReadWrite m =>  FunId -> [Bare Value] -> EvaluatorEnv m (Maybe (Bare Value))
+evaluateFunction :: ReadWrite m =>  FunId -> [Bare Value] -> EvaluatorEnv m (Maybe EvalRes)
 evaluateFunction fid args = do
     (FunCallable title ss) <- getFunctionCallable fid
     -- Finish evaluating the arguments that are passed as copies.
     args' <- evaluateArguments title args
     if isBuiltInOperator fid
-        then Just <$> evaluateBuiltInOperator fid args'
+        then Just . ValRes <$> evaluateBuiltInOperator fid args'
         else if isBuiltInProcedure fid
             then evaluateBuiltInProcedure fid args' >> return Nothing
             -- If the function is user defined, create a new scope.
