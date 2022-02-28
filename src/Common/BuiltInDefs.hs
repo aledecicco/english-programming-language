@@ -34,8 +34,7 @@ relationalType = Operator (\[_, _] -> BoolT)
 -- * Definitions
 
 builtInOperators :: [(FunId, FunSignature)]
-builtInOperators =
-    map functionFromTuple
+builtInOperators = map functionFromTuple
     [
         (
             [TitleParam () [] FloatT, TitleWords () ["plus"], TitleParam () [] FloatT],

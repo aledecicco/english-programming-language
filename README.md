@@ -32,6 +32,8 @@ Print each element in L plus 2.
 # Work in progress
 - Adding more built-in functions.
 - Special variable "it" for referencing the result of the previous sentence.
+- Built-in filtering with callbacks as arguments.
+- Reading from terminal.
 
 # Possible improvements:
 - Finding a better syntax for specifying function return types.
