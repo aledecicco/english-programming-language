@@ -77,6 +77,7 @@ data Sentence a =
     | Until a (Value a) [Sentence a]
     | Return a (Value a)
     | ProcedureCall a FunId [Value a]
+    | Read a Type (Value a)
     | Attempt a [Sentence a]
     | TryCatch a [Sentence a] [Sentence a]
     | Throw a [String]

@@ -243,7 +243,7 @@ evaluateBuiltInProcedure _ _ = error "Shouldn't happen: undefined procedure"
 evaluatePrint :: ReadWrite m => Bare Value -> EvaluatorEnv m ()
 evaluatePrint v = do
     v' <- loadReferences v
-    (liftReadWrite . write . ppValue) v'
+    (liftReadWrite . writeValue . ppValue) v'
 
 -- | Swaps the values pointed at by two references with each other.
 evaluateSwapWith :: Monad m => Bare Value -> Bare Value -> EvaluatorEnv m ()

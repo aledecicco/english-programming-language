@@ -374,6 +374,13 @@ exitFun = do
     firstWord "exit"
     return $ Exit ann
 
+-- | Parses a `read` statement.
+readVal :: FuzzyParser (Annotated Sentence)
+readVal = do
+    ann <- getCurrentLocation
+    expType <- try $ firstWord "read" >> word "a" >> typeName False <* word "into"
+    Read ann expType <$> value
+
 -- | Parses a simple sentence, which can be any sentence in its simple form (except for `let` statements) or a sentence matchable.
 -- Simple sentences can only contain other simple sentences.
 simpleSentence :: FuzzyParser (Annotated Sentence)
@@ -390,6 +397,7 @@ simpleSentence =
     <|> throw
     <|> stopLoop
     <|> exitFun
+    <|> readVal
     <|> sentenceMatchable
     <?> "simple sentence"
 

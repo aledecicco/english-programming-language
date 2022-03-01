@@ -11,6 +11,7 @@ The language's evaluator.
 module Evaluator where
 
 import Control.Monad (unless, void)
+import Text.Read
 
 import AST
 import BuiltInDefs
@@ -106,6 +107,32 @@ getIteratorsValues args = do
         roots = concatMap snd iterRes
     return (valsLists, roots)
 
+-- | Loads a static list into memory.
+initializeList :: ReadWrite m => Type -> [Bare Value] -> EvaluatorEnv m (Bare Value)
+initializeList elemsType vals = do
+    addrs <- mapM addValue vals
+    return $ ListV () elemsType (map (RefV ()) addrs)
+
+-- | Reads a value of the given type from input.
+readValueFromInput :: ReadWrite m => Type -> EvaluatorEnv m (Bare Value)
+readValueFromInput expType = do
+    valStr <- liftReadWrite readValue
+    case expType of
+        IntT -> case readMaybe valStr of
+            Just n -> return $ IntV () n
+            Nothing -> throwNowhere (UnmatchableInput expType valStr)
+        FloatT -> case readMaybe valStr of
+            Just f -> return $ FloatV () f
+            Nothing -> throwNowhere (UnmatchableInput expType valStr)
+        BoolT -> case readMaybe valStr of
+            Just b -> return $ BoolV () b
+            Nothing -> throwNowhere (UnmatchableInput expType valStr)
+        CharT -> case readMaybe valStr of
+            Just c -> return $ CharV () c
+            Nothing -> throwNowhere (UnmatchableInput expType valStr)
+        ListT CharT -> initializeList CharT $ map (CharV ()) valStr
+        _ -> error "Shouldn't happen: expected type is not a primitive"
+
 -- -----------------
 -- * Evaluators
 
@@ -134,8 +161,7 @@ evaluateUpToReference (OperatorCall _ fid args) = do
     evaluateOperator fid args'
 evaluateUpToReference (ListV _ elemsType vals) = do
     vals' <- mapM (`withLocation` evaluateValue) vals
-    addrs <- mapM addValue vals'
-    return $ ListV () elemsType (map (RefV ()) addrs)
+    initializeList elemsType vals'
 evaluateUpToReference val = return $ void val
 
 -- | Evaluates a value until a final value is reached.
@@ -222,6 +248,11 @@ evaluateSentence s = tick >> evaluateSentence' s
         evaluateSentence' (Break _) = return $ Just BreakRes
         evaluateSentence' (Exit _) = return $ Just ExitRes
 
+        evaluateSentence' (Read _ expType refVal) = do
+            val <- readValueFromInput expType
+            ~(RefV _ addr) <- withLocation refVal evaluateUpToReference
+            setValueAtAddress addr val
+            return Nothing
         evaluateSentence' (ProcedureCall _ fid args) = do
             ann <- getCurrentLocation
             -- The arguments of procedure calls can be iterators.

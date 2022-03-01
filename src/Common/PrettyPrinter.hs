@@ -151,18 +151,22 @@ ppSourcePosition lines (lineNum, colNum) =
 ppErrorType :: ErrorType -> String
 ppErrorType (WrongTypeValue eT aT) = unwords ["Expected a", ppType eT, "but got a", ppType aT, "instead"]
 ppErrorType (WrongTypeArgument eT aT n fid) = unwords [ppOrdinal n, "parameter of", snippet $ ppFunctionId fid, "expected a", ppType eT, "but got a", ppType aT, "instead"]
-ppErrorType (UnmatchableValue ps) = unwords ["Could not understand", snippet $ ppMatchable ps, "as a value"]
-ppErrorType (UnmatchableValueTypes ps) = unwords ["Could not understand", snippet $ ppMatchable ps, "as a value because of type errors"]
-ppErrorType (UnmatchableSentence ps) = unwords ["Could not understand", snippet $ ppMatchable ps, "as a procedure call"]
-ppErrorType (UnmatchableSentenceTypes ps) = unwords ["Could not understand", snippet $ ppMatchable ps, "as a procedure call because of type errors"]
+ppErrorType (UnmatchableValue ps) = unwords ["Couldn't understand", snippet $ ppMatchable ps, "as a value"]
+ppErrorType (UnmatchableValueTypes ps) = unwords ["Couldn't understand", snippet $ ppMatchable ps, "as a value because of type errors"]
+ppErrorType (UnmatchableSentence ps) = unwords ["Couldn't understand", snippet $ ppMatchable ps, "as a procedure call"]
+ppErrorType (UnmatchableSentenceTypes ps) = unwords ["Couldn't understand", snippet $ ppMatchable ps, "as a procedure call because of type errors"]
+ppErrorType (UnmatchableInput eT s) = unwords ["Couldn't understand", snippet $ s, "as a", ppType eT]
+ppErrorType (UnreadableType t) = unwords ["The type", ppType t, "is too complex to be directly parsed from input"]
 ppErrorType (FunctionAlreadyDefined fid) = unwords ["Funcion", snippet $ ppFunctionId fid, "is already defined"]
 ppErrorType (UndefinedFunction fid) = unwords ["Function", snippet $ ppFunctionId fid, "is not defined"]
 ppErrorType (VariableAlreadyDefined n) = unwords ["Expected variable", snippet $ ppName n, "to be new but it was already defined"]
 ppErrorType (UndefinedVariable n) = unwords ["Variable", snippet $ ppName n, "is not defined"]
-ppErrorType (MismatchingTypeAssigned eT aT n) = unwords ["Could not assign a", ppType aT, "to variable", snippet $ ppName n, "which is a", ppType eT]
+ppErrorType (MismatchingTypeAssigned eT aT n) = unwords ["Couldn't assign a", ppType aT, "to variable", snippet $ ppName n, "which is a", ppType eT]
 ppErrorType ResultInProcedure = "Found unexpected result statement in procedure"
+ppErrorType ExitInOperator  = "Found unexpected exit statement in operator"
 ppErrorType ExpectedResult = "Expected a result statement before end of operator"
 ppErrorType ForbiddenIteratorUsed = "Can't use iterators here"
+ppErrorType BreakOutsideLoop = "Found enexpected break statement outside of a loop"
 ppErrorType (CodeError s) = unwords s
 ppErrorType (ParseError s) = s
 

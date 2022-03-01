@@ -58,7 +58,6 @@ getOptions = do
         ppFlagError err = "Error: " ++ init err ++ "."
 
 
-
 -- -----------------
 -- * Messages
 

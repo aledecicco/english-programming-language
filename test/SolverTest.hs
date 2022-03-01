@@ -273,6 +273,33 @@ solveValueTests = testGroup "Solve value"
                 (Error (Just (0,1)) $ WrongTypeValue IntT BoolT)
     ]
 
+solveSentenceTests :: TestTree
+solveSentenceTests = testGroup "Solve sentence"
+    [
+        testCase "Read into list position" $
+            expectedSuccess
+                (do
+                    setVariableType ["L"] (ListT IntT)
+                    solveSentence Nothing $ Read (0,0) IntT (OperatorCall (0,25) "the_element_of_%_at_%" [VarV (0,40) ["L"], IntV (0,45) 1])
+                ),
+
+        testCase "Read wrong type" $
+            expectedError
+                (do
+                    setVariableType ["L"] (ListT IntT)
+                    solveSentence Nothing $ Read (0,0) CharT (OperatorCall (0,37) "the_element_of_%_at_%" [VarV (0,52) ["L"], IntV (0,57) 1])
+                )
+                (Error (Just (0,37)) $ WrongTypeValue (RefT CharT) (RefT IntT)),
+
+        testCase "Read complex type" $
+            expectedError
+                (do
+                    setVariableType ["L"] (ListT IntT)
+                    solveSentence Nothing $ Read (0,0) (ListT $ ListT CharT) (OperatorCall (0,40) "the_element_of_%_at_%" [VarV (0,55) ["L"], IntV (0,60) 1])
+                )
+                (Error (Just (0,0)) $ UnreadableType (ListT $ ListT CharT))
+    ]
+
 addAliasesTests :: TestTree
 addAliasesTests = testGroup "Add aliases"
     [
@@ -325,5 +352,6 @@ tests = testGroup "Solver"
         getValueTypeTests,
         setVariableTypeTests,
         solveValueTests,
+        solveSentenceTests,
         addAliasesTests
     ]

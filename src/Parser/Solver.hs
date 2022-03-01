@@ -395,7 +395,17 @@ solveSentence retType (TryCatch ann ssTry ssCatch) = do
     return $ TryCatch ann ssTry' ssCatch'
 solveSentence retType (Throw ann msg) = return $ Throw ann msg
 
-solveSentence _ (SentenceM ann parts) = do
+solveSentence _ (Read ann valType val) = do
+    -- Don't allow complex types.
+    case valType of
+        ListT elemsType ->
+            if elemsType == CharT
+                then return ()
+                else throwHere $ UnreadableType valType
+        _ -> return ()
+    val' <- withLocation val (solveValueWithType (RefT valType) False)
+    return $ Read ann valType val'
+solveSentence _ (SentenceM _ parts) = do
     res <- matchAsSentence parts
     case res of
         [] -> throwHere $ UnmatchableSentence parts

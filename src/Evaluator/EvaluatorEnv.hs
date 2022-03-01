@@ -15,6 +15,7 @@ import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.State.Strict (gets, modify, runStateT, StateT)
 import Control.Monad.Trans.Except (runExceptT, ExceptT)
 
+import qualified Control.Monad.RWS.Class as IS
 import qualified Data.IntMap.Strict as IM
 import qualified Data.IntSet as IS
 import qualified Data.Map.Strict as M
@@ -23,7 +24,6 @@ import AST
 import BuiltInDefs (builtInFunctions)
 import Errors
 import Location
-import qualified Control.Monad.RWS.Class as IS
 
 
 -- -----------------
@@ -69,13 +69,13 @@ initialState =
 
 -- | A class of monad which allows to read from an input and write to an output.
 class Monad m => ReadWrite m where
-    read :: m String
-    write :: String -> m ()
+    readValue :: m String
+    writeValue :: String -> m ()
 
 -- | The IO monad is an instance of 'ReadWrite', since it can read from stdin and write to stdout.
 instance ReadWrite IO where
-    read = getLine
-    write = putStr
+    readValue = getLine
+    writeValue = putStr
 
 -- | Lift a computation in the inner monad.
 liftReadWrite :: ReadWrite m => m a -> EvaluatorEnv m a
@@ -92,6 +92,10 @@ catchCodeError action handler =
         case err of
             (Error _ (CodeError msg)) -> handler err
             _ -> throwError err)
+
+-- | Throw an error of the given type without specifiying a location.
+throwNowhere :: Monad m => ErrorType -> EvaluatorEnv m a
+throwNowhere errType = throwError $ Error Nothing errType
 
 -- | Throw an error of the given type at the current location.
 throwHere :: Monad m => ErrorType -> EvaluatorEnv m a

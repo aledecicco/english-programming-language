@@ -10,7 +10,8 @@ A string equal to the first half of a string:
     Return the first half.
 
 To run:
-    Let L be "1234".
+    Let L be a string.
+    Read a string into L.
     Shuffle L.
     Print "The shuffled list is ".
     Print L.
