@@ -1,13 +1,13 @@
 # EPL
 A programming language that resembles English. Write some sentences and watch the interpreter try to understand what you meant.
 
-![Version](https://img.shields.io/badge/version-v3.15.0-blue)
+![Version](https://img.shields.io/badge/version-v3.15.1-blue)
 ![License](https://img.shields.io/badge/license-MIT-brightgreen)
 
 # Introduction
 The goal of this project is to make a language that is as similar as possible to plain English. Natural language is ambiguous, so we apply a series of rules and constraints to it. With them, we end up with a language that looks like English, but that is stable enough to be understood by a computer.
 
-Of course, nothing can stop you from writing code that is obfuscated or not similar at all to a text in english, but it's up to you to write EPL programs in a readable way,
+Of course, nothing can stop you from writing code that is obfuscated or not similar at all to a text in english, but it's up to you to write EPL programs in a readable way.
 
 Here is a snippet with some sentences that the interpreter can understand:
 ```

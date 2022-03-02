@@ -11,6 +11,7 @@ Evaluators for functions in the language's prelude.
 module BuiltInEval where
 
 import AST
+import Control.Monad (zipWithM)
 import Errors (ErrorType(CodeError))
 import EvaluatorEnv
 import PrettyPrinter (ppValue)
@@ -69,7 +70,7 @@ relationalOperation ::
     -> Bare Value -- ^ The value containing the right operand.
     -> Bare Value -- ^ The resulting value containing a boolean.
 relationalOperation op (IntV _ n) (FloatV _ f) = BoolV () $ fromIntegral n `op` f
-relationalOperation op (FloatV _ f) (IntV _ n) = BoolV () $ fromIntegral n `op` f
+relationalOperation op (FloatV _ f) (IntV _ n) = BoolV () $ f `op` fromIntegral n
 relationalOperation op (FloatV _ f1) (FloatV _ f2) = BoolV () $ f1 `op` f2
 relationalOperation op (IntV _ n1) (IntV _ n2) = BoolV () $ n1 `op` n2
 relationalOperation _ _ _ = error "Shouldn't happen: wrong types provided"
@@ -163,15 +164,27 @@ evaluateTheQuotientOf v1 v2 = return $ intOperation div v1 v2
 
 -- | Returns whether two values are equal.
 evaluateIsEqualTo :: Monad m => Bare Value -> Bare Value -> EvaluatorEnv m (Bare Value)
+evaluateIsEqualTo (RefV _ addr) v2 = do
+    v1 <- getValueAtAddress addr
+    evaluateIsEqualTo v1 v2
+evaluateIsEqualTo v1 (RefV _ addr) = do
+    v2 <- getValueAtAddress addr
+    evaluateIsEqualTo v1 v2
 evaluateIsEqualTo (IntV _ n) (FloatV _ f) = return $ BoolV () (fromIntegral n == f)
 evaluateIsEqualTo (FloatV _ f) (IntV _ n) = return $ BoolV () (fromIntegral n == f)
+evaluateIsEqualTo (ListV _ _ e1) (ListV _ _ e2) =
+    if length e1 /= length e2
+        then return $ BoolV () False
+        else do
+            results <- zipWithM evaluateIsEqualTo e1 e2
+            return $ BoolV () (all (\(BoolV _ result) -> result) results)
 evaluateIsEqualTo v1 v2 = return $ BoolV () (v1 == v2)
 
 -- | Returns whether two values are different.
 evaluateIsNotEqualTo :: Monad m => Bare Value -> Bare Value -> EvaluatorEnv m (Bare Value)
-evaluateIsNotEqualTo (IntV _ n) (FloatV _ f) = return $ BoolV () (fromIntegral n /= f)
-evaluateIsNotEqualTo (FloatV _ f) (IntV _ n) = return $ BoolV () (fromIntegral n /= f)
-evaluateIsNotEqualTo v1 v2 = return $ BoolV () (v1 /= v2)
+evaluateIsNotEqualTo v1 v2 = do
+    ~(BoolV _ areEqual) <- evaluateIsEqualTo v1 v2
+    return $ BoolV () (not areEqual)
 
 -- | Returns whether a numeric value is less than another.
 evaluateIsLessThan :: Monad m => Bare Value -> Bare Value -> EvaluatorEnv m (Bare Value)
