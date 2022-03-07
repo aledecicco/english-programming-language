@@ -129,6 +129,13 @@ satisfiesType (RefT t1) (RefT t2) = t1 `satisfiesType` t2
 satisfiesType (RefT t1) t2 = t1 `satisfiesType` t2
 satisfiesType t1 t2 = t1 == t2
 
+-- | Whether the given type is considered a primitive (including strings).
+isPrimitiveType :: Type -> Bool
+isPrimitiveType (ListT eT) = eT == CharT
+isPrimitiveType (AnyT _) = False
+isPrimitiveType (RefT _) = False
+isPrimitiveType _ = True
+
 getValueType :: Annotated Value -> SolverEnv Type
 getValueType (IntV _ _) = return IntT
 getValueType (FloatV _ _) = return FloatT
@@ -146,6 +153,7 @@ getValueType (IterV _ iterType listVal) = do
     if listType `satisfiesType` expType
         then return $ RefT (getElementsType listType)
         else throwHere $ WrongTypeValue expType listType
+getValueType (InputV _ expType) = return expType
 getValueType (ValueM _ _) = error "Shouldn't happen: values must be solved before getting their types"
 getValueType (RefV _ _) = error "Shouldn't happen: references can't exist before evaluating"
 
@@ -301,10 +309,15 @@ solveValue validate (ValueM _ parts) = do
                     -- If there are many valid ways to understand a value, return the first one and issue a warning.
                     warnHere $ AmbiguousValue (length validVals) parts
                     return $ head validVals
-solveValue validate val@((ListV ann elemsType elems)) = do
+solveValue validate val@(ListV ann elemsType elems) = do
     validate val
     elems' <- mapM (`withLocation` solveValueWithType elemsType True) elems
     return $ ListV ann elemsType elems'
+solveValue validate val@(InputV _ expType) = do
+    validate val
+    -- Don't allow complex types.
+    unless (isPrimitiveType expType) $ throwHere (UnreadableType expType)
+    return val
 solveValue validate val = validate val >> return val
 
 -- | Solves a value and validates that it satisfies a type.
@@ -397,12 +410,7 @@ solveSentence retType (Throw ann msg) = return $ Throw ann msg
 
 solveSentence _ (Read ann valType val) = do
     -- Don't allow complex types.
-    case valType of
-        ListT elemsType ->
-            if elemsType == CharT
-                then return ()
-                else throwHere $ UnreadableType valType
-        _ -> return ()
+    unless (isPrimitiveType valType) $ throwHere (UnreadableType valType)
     val' <- withLocation val (solveValueWithType (RefT valType) False)
     return $ Read ann valType val'
 solveSentence _ (SentenceM _ parts) = do

@@ -54,6 +54,7 @@ hasIterators (IntV _ _) = False
 hasIterators (FloatV _ _) = False
 hasIterators (BoolV _ _) = False
 hasIterators (CharV _ _) = False
+hasIterators (InputV _ _) = False
 hasIterators (ValueM _ _) = error "Shouldn't happen: values must be solved before checking for iterators"
 
 -- | Returns the name of a type in singular or plural.

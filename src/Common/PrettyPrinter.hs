@@ -98,6 +98,7 @@ ppValue (ValueM _ _) = error "Shouldn't happen: can't print an unsolved value"
 ppValue (OperatorCall {}) = error "Shouldn't happen: values must be evaluated before printing them"
 ppValue (RefV _ _) = error "Shouldn't happen: references must be solved before printing them"
 ppValue (IterV {}) = error "Shouldn't happen: values with iterators must be solved before printing them"
+ppValue (InputV {}) = error "Shouldn't happen: input values must be solved before printing them"
 
 ppMatchablePart :: MatchablePart a -> String
 ppMatchablePart (IntP _ n) = show n

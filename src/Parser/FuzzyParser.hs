@@ -63,7 +63,7 @@ reservedWords = ["be", "in"]
 
 -- | Parses a specific case sensitive word.
 word :: String -> FuzzyParser String
-word w = lexeme $ string w <* notFollowedBy alphaNumChar
+word w = lexeme . try $ string w <* notFollowedBy alphaNumChar
 
 -- | If the parser is at the beggining of a sentence, parses the word with its first letter in upper case.
 -- Otherwise, parses the word as is.
@@ -235,9 +235,6 @@ sentenceBlock pHeader = L.indentBlock consumeWhitespace sentenceBlock'
 -- -----------------
 -- * Values
 
-value :: FuzzyParser (Annotated Value)
-value = listValue <|> valueMatchable
-
 -- | Parses a list with matchables as elements.
 listValue :: FuzzyParser (Annotated Value)
 listValue = do
@@ -375,11 +372,11 @@ exitFun = do
     return $ Exit ann
 
 -- | Parses a `read` statement.
-readVal :: FuzzyParser (Annotated Sentence)
-readVal = do
+readInto :: FuzzyParser (Annotated Sentence)
+readInto = do
     ann <- getCurrentLocation
     expType <- try $ firstWord "read" >> word "a" >> typeName False <* word "into"
-    Read ann expType <$> value
+    Read ann expType <$> valueMatchable
 
 -- | Parses a simple sentence, which can be any sentence in its simple form (except for `let` statements) or a sentence matchable.
 -- Simple sentences can only contain other simple sentences.
@@ -397,7 +394,7 @@ simpleSentence =
     <|> throw
     <|> stopLoop
     <|> exitFun
-    <|> readVal
+    <|> readInto
     <|> sentenceMatchable
     <?> "simple sentence"
 
@@ -409,19 +406,19 @@ variablesDefinition = do
     names <- series name
     word "be"
     valAnn <- getCurrentLocation
-    varType <- case names of
+    typeRes <- case names of
         -- If there is only one variable, ask for its type in singular.
         [_] -> optional $ word "a" >> typeName False
         -- If there are more, ask for their type in plural.
         _ -> optional $ typeName True
-    val <- case varType of
+    val <- case typeRes of
         -- List value.
         Just (ListT elemsType) -> listDefinition valAnn elemsType
         -- Typed value.
         Just _ -> word "equal" >> word "to" >> valueMatchable
         -- Untyped value.
         Nothing -> valueMatchable
-    return $ VarDef defAnn names varType val
+    return $ VarDef defAnn names typeRes val
     where
         listDefinition :: Location -> Type -> FuzzyParser (Annotated Value)
         listDefinition ann elemsType =

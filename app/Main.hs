@@ -66,8 +66,8 @@ message :: Color -> String -> IO ()
 message color msg = do
     setSGR [SetColor Foreground Vivid color]
     putStrLn msg
-    putChar '\n'
     setSGR [Reset]
+    putChar '\n'
 
 errorMessage :: String -> IO ()
 errorMessage = message Red

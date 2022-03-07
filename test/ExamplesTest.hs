@@ -101,7 +101,7 @@ exampleTests = testGroup "example"
 
         exampleTestCase "SafeDiv" [] "Can't divide by 0\nThe result is 5.0",
 
-        exampleTestCase "Find" [] "3 is in [1, 2, 3, 4, 5]\n6 is not in [1, 2, 3, 4, 5]"
+        exampleTestCase "Find" ["3", "-6"] "3 is in [1, 2, 3, 4, 5]\n-6 is not in [1, 2, 3, 4, 5]"
     ]
 
 tests :: TestTree

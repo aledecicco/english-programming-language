@@ -603,22 +603,6 @@ sentenceBlockTests = testGroup "Sentence block"
             expectedFailure (sentenceBlock $ word "Integers") "Integers:\n  11.\n  12"
     ]
 
-valueTests :: TestTree
-valueTests = testGroup "Value"
-    [
-        testCase "List" $
-            expectedBareResult
-                value
-                "a list of numbers containing a, b, and c"
-                (ListV () FloatT [ValueM () [WordP () "a"], ValueM () [WordP () "b"], ValueM () [WordP () "c"]]),
-
-        testCase "Empty list" $
-            expectedBareResult
-                value
-                "a list of numbers"
-                (ListV () FloatT [])
-    ]
-
 tests :: TestTree
 tests = testGroup "Parser"
     [
@@ -636,6 +620,5 @@ tests = testGroup "Parser"
         titleTests,
         titleWordsTests,
         titleParamTests,
-        sentenceBlockTests,
-        valueTests
+        sentenceBlockTests
     ]

@@ -145,6 +145,7 @@ evaluateReferences (VarV _ name) = do
     getVariableValue name >>= evaluateReferences
 evaluateReferences (RefV _ addr) = getValueAtAddress addr >>= evaluateReferences
 evaluateReferences listVal@(ListV {}) = copyValue listVal
+evaluateReferences (InputV _ expType) = readValueFromInput expType
 evaluateReferences val = return val
 
 -- | Partially evaluates a value until a reference is reached.

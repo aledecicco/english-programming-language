@@ -8,8 +8,8 @@ Whether a number (n) is in a list of numbers:
 
 To run:
     Let L be a list of numbers containing 1, 2, 3, 4, and 5.
-    Let m be 3.
-    Let n be 6.
+    Let m be an input whole number.
+    Let n be an input whole number.
 
     Print m.
     Print " is ".

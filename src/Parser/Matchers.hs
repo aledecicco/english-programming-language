@@ -153,6 +153,14 @@ matchAsOperatorCall parts = do
     r <- matchAsFunctionCall parts operators
     return $ map (uncurry $ OperatorCall ann) r
 
+matchAsInput :: [Annotated MatchablePart] -> SolverEnv [Annotated Value]
+matchAsInput (WordP ann "an":WordP _ "input":parts) = do
+    typeRes <- matchAsType parts
+    case typeRes of
+        Just expType -> return [InputV ann expType]
+        Nothing -> return []
+matchAsInput _ = return []
+
 matchAsIterator :: [Annotated MatchablePart] -> SolverEnv [Annotated Value]
 matchAsIterator (WordP ann "each":parts) = do
     let (before, after) = splitBy (WordP () "in") parts
@@ -167,7 +175,7 @@ matchAsIterator _ = return []
 matchAsValue :: [Annotated MatchablePart] -> SolverEnv [Annotated Value]
 matchAsValue [ParensP parts] = matchAsValue parts
 matchAsValue parts = do
-    results <- mapM (\matcher -> matcher parts) [matchAsPrimitive, matchAsVariable, matchAsOperatorCall, matchAsIterator]
+    results <- mapM (\matcher -> matcher parts) [matchAsPrimitive, matchAsVariable, matchAsOperatorCall, matchAsInput, matchAsIterator]
     return $ concat results
 
 
