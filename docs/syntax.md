@@ -43,6 +43,7 @@ A number equal to the sum of a list of numbers (L):
 When defining procedures, the same rules apply. But instead of putting a return type in the first part of the title, we put the word `to`. That way, we can define functions such as this one:
 ```
 To print the even elements in a list of whole numbers:
+    ...
 ```
 Now, we can use that procedure as a sentence in the body of any other function, allowing us to print the contents of any list of whole numbers (ints).
 
@@ -53,9 +54,9 @@ Another interesting case is when defining functions that asks questions (which m
 Whether a number is greater than another number:
     ...
 ```
-Now, we can use it in other structures such as conditionals, which we will see up ahead. Let's say we have two lists of numbers `the first list` and `the second list`. We can combine the question we just defined with the operator we defined at the begginning, and do something like this:
+Now, we can use it in other structures such as conditionals, which we will see up ahead. Let's say we have two lists of numbers `L` and `M`. We can combine the question we just defined with the operator we defined at the begginning, and do something like this:
 ```
-If the sum of the first list is greather than the sum of the second list, ...
+If the sum of L is greather than the sum of M, ...
 ```
 Using the defined functions and variables, and their types, the parser finds a valid way to match those words as specific function calls. In this case, the only way to match those words with the functions we have and without causing a type error is `If (the sum of (the first list)) is greather than (the sum of (the second list))`, so we don't need to write all those parenthesis.
 
@@ -87,7 +88,7 @@ In the fourth case, we declare `y` as a list of whole  numbers and specify by ex
 The fifth case explicitly states the type of the variable `z`. It is useful in some border cases where the value is ambiguous, such as this one. The value can be understood as `the first element of (y as a string)`, which is the character `'1'`, or `(the first element of y) as a string`, which is the string `"1"`. However, since we are specifying that we want a character, only the first interpretation is valid.
 
 ### If-else
-This sentence, among with other flow control sentences, contains other sentences and has two forms: a simple one and a block one. Here are some examples:
+This sentence, among with the rest of the flow control sentences, contains other sentences and has two forms: a simple one and a block one. Here are some examples:
 ```
 If a is greather than or equal to b, print a, otherwise print b.
 
@@ -101,7 +102,7 @@ Otherwise:
 ```
 Here, both `if-else` clauses do the same thing, printing `a` if it is greather than or equal to `b`, and `b` otherwise. However, the simple form has some restrictions. It must be written in a single line, and it can only contain one sentence in its simple form. The `let` expression is excluded from this, and can only be used at the top level of a function definition. Also note that the placement of commas is very important.
 
-The block form doesn't have those restrictions, and can contain as many sentences as necessary in any form. In both froms, the `if` clause must be followed by an `else` clause, and in block form the conditions must be followed by a colon.
+The block form doesn't have those restrictions, and can contain as many sentences as necessary in any form. In both forms, the `if` clause must be followed by an `else` clause, and in block form the conditions must be followed by a colon.
 
 ### When and unless
 The sentence `when` is the same as an `if-else` but without the `else` block. The sentence `unless` is the same as a `when` but with its condition negated. Here are two equivalent examples:
@@ -213,7 +214,7 @@ In the case of lists, some extra aliases are generated: if a function takes a st
 Function parameters can be defined to take references to values by adding `reference to` before their type:
 ```
 To double a reference to a number:
-    Multiply the whole number by two.
+    Multiply the number by two.
 ```
 Here, we are saying that the function takes a number by reference. The number pointed at by the reference will be multiplied by two, modifying the original number that was passed as argument. References can be variables or list elements.
 

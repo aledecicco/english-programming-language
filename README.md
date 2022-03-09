@@ -1,7 +1,7 @@
 # EPL
 A programming language that resembles English. Write some sentences and watch the interpreter try to understand what you meant.
 
-![Version](https://img.shields.io/badge/version-v3.16.0-blue)
+![Version](https://img.shields.io/badge/version-v3.16.1-blue)
 ![License](https://img.shields.io/badge/license-MIT-brightgreen)
 
 # Introduction
@@ -31,15 +31,14 @@ Print each element in L plus 2.
 
 # Work in progress
 - Adding more built-in functions.
-- Special variable "it" for referencing the result of the previous sentence.
-- Built-in filtering with callbacks as arguments.
-- Reading from terminal.
+- Finding a better syntax for specifying function return types.
 
 # Possible improvements:
-- Finding a better syntax for specifying function return types.
-- Implementing importing other files as libraries.
-- Adding records to the language.
-- Implementing an interactive environment.
+- Importing other files as libraries.
+- Records.
+- Interactive environment.
+- Special variable "it" for referencing the result of the previous sentence.
+- Built-in filtering with callbacks as arguments.
 
 # Usage
 Requirements: [Stack](https://docs.haskellstack.org/en/stable/README/)

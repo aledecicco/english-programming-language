@@ -533,7 +533,7 @@ returnType =
     -- Procedures.
     <|> (do
         word "To"
-        notFollowedBy (word "a")
+        notFollowedBy titleParamIndicator
         lookAhead lowerChar
         return Nothing)
     -- Any kind of operator.
