@@ -212,7 +212,7 @@ evaluateSentence s = tick >> evaluateSentence' s
             -- Set the list being iterated as a root so that the garbage collector doesn't free it.
             root <- addValueRoot listVal'
             elems <- getListElements listVal'
-            let loopIteration (RefV _ addr) = mapM_ (`setVariableAddress` addr) iterNames >> evaluateSentences ss
+            let loopIteration (~(RefV _ addr)) = mapM_ (`setVariableAddress` addr) iterNames >> evaluateSentences ss
             result <- firstNotNull loopIteration elems
             mapM_ removeVariable iterNames
             -- After the loop, remove the manually created root.
@@ -282,7 +282,7 @@ evaluateSentences ss = inBlockScope $ firstNotNull evaluateSentenceWithLocation 
             setCurrentLocation ann
             return result
 
--- | Returns the value resulting from evaluating an operator with the given arguments.
+-- | Returns the value resulting from evaluating an operator with the given arguments, which must be partially evaluated.
 evaluateOperator :: ReadWrite m => FunId -> [Bare Value] -> EvaluatorEnv m (Bare Value)
 evaluateOperator fid args = do
     result <- evaluateFunction fid args
@@ -291,7 +291,7 @@ evaluateOperator fid args = do
         Just _ -> error "Shouldn't happen: evaluating an operator must result in a value"
         Nothing -> throwHere ExpectedResult
 
--- | Evaluates a procedure with the given arguments.
+-- | Evaluates a procedure with the given arguments, which must be partially evaluated.
 evaluateProcedure :: ReadWrite m => FunId -> [Bare Value] -> EvaluatorEnv m ()
 evaluateProcedure fid args = void $ evaluateFunction fid args
 
