@@ -1,10 +1,18 @@
-# EPL
-A programming language that resembles English. Write some sentences and watch the interpreter try to understand what you meant.
+<div align="center">
 
-![Version](https://img.shields.io/badge/version-v3.16.1-blue)
-![License](https://img.shields.io/badge/license-MIT-brightgreen)
+  <img src="logo.png" alt="Logo" width="150"/>
 
-# Introduction
+
+  ## English Programming Language
+---
+  Write some sentences and watch the interpreter try to understand what you meant.
+
+  ![Version](https://img.shields.io/badge/version-v3.16.1-blue)
+  ![License](https://img.shields.io/badge/license-MIT-brightgreen)
+
+</div>
+
+## Introduction
 The goal of this project is to make a language that is as similar as possible to plain English. Natural language is ambiguous, so we apply a series of rules and constraints to it. With them, we end up with a language that looks like English, but that is stable enough to be understood by a computer.
 
 Of course, nothing can stop you from writing code that is obfuscated or not similar at all to a text in english, but it's up to you to write EPL programs in a readable way.
@@ -22,25 +30,25 @@ Print each element in L plus 2.
 
 [Here](examples) are some examples of EPL programs.
 
-# Features
+## Features
 - Spaces are allowed in variable and function names.
 - Arguments can be passed by value or by reference.
 - Garbage collector.
 - Try-catch, loops, and conditionals.
 - Optional function parameter names, with aliases generation.
 
-# Work in progress
+## Work in progress
 - Adding more built-in functions.
 - Finding a better syntax for specifying function return types.
 
-# Possible improvements:
+## Possible improvements:
 - Importing other files as libraries.
 - Records.
 - Interactive environment.
 - Special variable "it" for referencing the result of the previous sentence.
 - Built-in filtering with callbacks as arguments.
 
-# Usage
+## Usage
 Requirements: [Stack](https://docs.haskellstack.org/en/stable/README/)
 
 To run a program, for example `program.epl`, simply use:
