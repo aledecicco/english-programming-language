@@ -168,8 +168,13 @@ matchAsIterator (WordP ann "each":parts) = do
     case befRes of
         Just iterType -> do
             possAft <- matchAsValue after
-            return $ map (IterV ann iterType) possAft
-        Nothing -> return []
+            return $ map (IterV ann (Just iterType)) possAft
+        Nothing ->
+            case before of
+                [WordP _ "element"] -> do
+                    possAft <- matchAsValue after
+                    return $ map (IterV ann Nothing) possAft
+                _ -> return []
 matchAsIterator _ = return []
 
 matchAsValue :: [Annotated MatchablePart] -> SolverEnv [Annotated Value]

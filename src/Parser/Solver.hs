@@ -149,10 +149,13 @@ getValueType (OperatorCall _ fid args) = do
     return $ typeFun argTypes
 getValueType (IterV _ iterType listVal) = do
     listType <- withLocation listVal getValueType
-    let expType = ListT iterType
-    if listType `satisfiesType` expType
-        then return $ RefT (getElementsType listType)
-        else throwHere $ WrongTypeValue expType listType
+    case iterType of
+        Just elemsType -> do
+            let expType = ListT elemsType
+            if listType `satisfiesType` expType
+                then return $ RefT (getElementsType listType)
+                else throwHere $ WrongTypeValue expType listType
+        Nothing -> return $ RefT (getElementsType listType)
 getValueType (InputV _ expType) = return expType
 getValueType (ValueM _ _) = error "Shouldn't happen: values must be solved before getting their types"
 getValueType (RefV _ _) = error "Shouldn't happen: references can't exist before evaluating"

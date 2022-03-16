@@ -231,7 +231,7 @@ One special feature of this language are iterators, used with the keyword `each`
 Divide each number in L by 2.
 Print each number in L.
 ```
-Here, we specify the type of the iterator, and the functions `divide by` and `print` are called for each element of the list of numbers `L`. Note that references also work with iterators, passing each element of the list by reference.
+Here, we specify the type of the iterator (which can be skipped by using the word `element` instead), and the functions `divide by` and `print` are called for each element of the list of numbers `L`. Note that references also work with iterators, passing each element of the list by reference.
 
 We can also combine two lists using two iterators in the same sentence. A similar `for-each` loop is provided for clarity:
 ```

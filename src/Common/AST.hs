@@ -61,7 +61,7 @@ data Value a =
     | ListV a Type [Value a] -- ^ A list containing values of a given type.
     | VarV a Name
     | RefV a Int -- ^ A reference to a memory address.
-    | IterV a Type (Value a) -- ^ Makes the structure it is contained in to be applied to all the elements in the list value it contains.
+    | IterV a (Maybe Type) (Value a) -- ^ Makes the structure it is contained in to be applied to all the elements in the list value it contains.
     | OperatorCall a FunId [Value a]
     | InputV a Type -- ^ When evaluated, it is replaced by a value of the given type read from input.
     deriving (Eq, Show, Functor, Foldable)

@@ -228,7 +228,7 @@ sentenceTests = testGroup "sentence"
                     evaluateSentence $ mockLocations
                         (ProcedureCall ()
                             "test_%"
-                            [IterV () CharT (ListV () CharT [CharV () 'a', CharV () 'b', CharV () 'c'])]
+                            [IterV () (Just CharT) (ListV () CharT [CharV () 'a', CharV () 'b', CharV () 'c'])]
                         )
                 ),
 
