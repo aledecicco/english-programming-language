@@ -2,9 +2,8 @@
 
   <img src="logo.png" alt="Logo" width="150"/>
 
-
   ## English Programming Language
----
+
   Write some sentences and watch the interpreter try to understand what you meant.
 
   ![Version](https://img.shields.io/badge/version-v3.16.1-blue)
