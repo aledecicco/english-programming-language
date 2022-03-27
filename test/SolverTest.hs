@@ -244,7 +244,7 @@ solveValueTests = testGroup "Solve value"
                         False
                         (ValueM (0,0) [WordP (0,0) "the", WordP (0,4) "element", WordP (0,12) "of", WordP (0,15) "L", WordP (0,17) "at", IntP (0,20) 2, WordP (0,22) "plus", IntP (0,27) 2])
                 )
-                (OperatorCall (0,0) "%_plus_%" [OperatorCall (0,0) "the_element_of_%_at_%" [VarV (0,15) ["L"], IntV (0,20) 2], IntV (0,27) 2]),
+                (OperatorCall (0,0) "the_element_of_%_at_%" [VarV (0,15) ["L"],OperatorCall (0,20) "%_plus_%" [IntV (0,20) 2,IntV (0,27) 2]]),
 
         testCase "Disambiguated value" $
             expectedResult

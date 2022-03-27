@@ -162,10 +162,14 @@ listOperators =
         ),
         (
             [TitleParam () [] (ListT $ AnyT "a"), TitleWords () ["appended", "to"], TitleParam () [] (ListT $ AnyT "a")],
-            Operator (\[ListT t1, ListT t2] -> if t1 == FloatT || t2 == FloatT then ListT FloatT else ListT t1)
+            Operator (\[ListT t1, ListT t2] -> if t1 == FloatT || t2 == FloatT then ListT FloatT else ListT t2)
         ),
         (
             [TitleParam () [] (ListT $ AnyT "a"), TitleWords () ["prepended", "to"], TitleParam () [] (ListT $ AnyT "a")],
+            Operator (\[ListT t1, ListT t2] -> if t1 == FloatT || t2 == FloatT then ListT FloatT else ListT t2)
+        ),
+        (
+            [TitleParam () [] (ListT $ AnyT "a"), TitleWords () ["without", "the", "elements", "in"], TitleParam () [] (ListT $ AnyT "a")],
             Operator (\[ListT t1, ListT t2] -> if t1 == FloatT || t2 == FloatT then ListT FloatT else ListT t1)
         ),
         (
@@ -235,6 +239,10 @@ listProcedures =
         ),
         (
             [TitleWords () ["prepend"], TitleParam () [] (ListT $ AnyT "a"), TitleWords () ["to"], TitleParam () [] (RefT . ListT $ AnyT "a")],
+            Procedure
+        ),
+        (
+            [TitleWords () ["remove", "the", "elements", "in"],  TitleParam () [] (ListT $ AnyT "a"), TitleWords () ["from"], TitleParam () [] (RefT . ListT $ AnyT "a")],
             Procedure
         ),
         (
