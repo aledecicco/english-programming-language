@@ -31,11 +31,249 @@ relationalType = Operator (\[_, _] -> BoolT)
 
 
 -- -----------------
--- * Definitions
+-- * Specific definitions
 
-builtInOperators :: [(FunId, FunSignature)]
-builtInOperators = map functionFromTuple
+charOperators :: [(Bare Title, FunType)]
+charOperators =
     [
+        (
+            [TitleParam () [] CharT, TitleWords () ["in", "uppercase"]],
+            Operator (const CharT)
+        ),
+        (
+            [TitleParam () [] CharT, TitleWords () ["in", "lowercase"]],
+            Operator (const CharT)
+        )
+    ]
+
+charProcedures :: [(Bare Title, FunType)]
+charProcedures =
+    [
+        (
+            [TitleWords () ["transform"], TitleParam () [] (RefT CharT), TitleWords () ["to", "uppercase"]],
+            Procedure
+        ),
+        (
+            [TitleWords () ["transform"], TitleParam () [] (RefT CharT), TitleWords () ["to", "lowercase"]],
+            Procedure
+        )
+    ]
+
+boolOperators :: [(Bare Title, FunType)]
+boolOperators =
+    [
+        (
+            [TitleParam () [] BoolT, TitleWords () ["is", "true"]],
+            Operator (const BoolT)
+        ),
+        (
+            [TitleParam () [] BoolT, TitleWords () ["is", "false"]],
+            Operator (const BoolT)
+        ),
+        (
+            [TitleWords () ["whether"], TitleParam () [] BoolT],
+            Operator (const BoolT)
+        ),
+        (
+            [TitleWords () ["not"], TitleParam () [] BoolT],
+            Operator (const BoolT)
+        ),
+        (
+            [TitleParam () [] BoolT, TitleWords () ["negated"]],
+            Operator (const BoolT)
+        ),
+        (
+            [TitleParam () [] BoolT, TitleWords () ["and"], TitleParam () [] BoolT],
+            relationalType
+        ),
+        (
+            [TitleParam () [] BoolT, TitleWords () ["or"], TitleParam () [] BoolT],
+            relationalType
+        ),
+        (
+            [TitleParam () [] BoolT, TitleWords () ["or"], TitleParam () [] BoolT, TitleWords () ["but", "not", "both"]],
+            relationalType
+        )
+    ]
+
+boolProcedures :: [(Bare Title, FunType)]
+boolProcedures =
+    [
+        (
+            [TitleWords () ["negate"], TitleParam () [] (RefT BoolT)],
+            Procedure
+        )
+    ]
+
+listOperators :: [(Bare Title, FunType)]
+listOperators =
+    [
+        (
+            [TitleWords () ["the", "length", "of"], TitleParam () [] (ListT $ AnyT "a")],
+            Operator (const IntT)
+        ),
+        (
+            [TitleParam () [] (ListT $ AnyT "a"), TitleWords () ["is", "empty"]],
+            Operator (const BoolT)
+        ),
+        (
+            [TitleParam () [] (ListT $ AnyT "a"), TitleWords () ["is", "not", "empty"]],
+            Operator (const BoolT)
+        ),
+        (
+            [TitleParam () [] (ListT $ AnyT "a"), TitleWords () ["contains"], TitleParam () [] (AnyT "a")],
+            Operator (const BoolT)
+        ),
+        (
+            [TitleWords () ["the", "element", "of"], TitleParam () [] (RefT . ListT $ AnyT "a"), TitleWords () ["at"], TitleParam () [] IntT],
+            Operator (\[RefT (ListT t), _] -> RefT t)
+        ),
+        (
+            [TitleParam () [] (ListT $ AnyT "a"), TitleWords () ["without", "the", "element", "at"], TitleParam () [] IntT],
+            Operator (\[ListT t, _] -> ListT t)
+        ),
+        (
+            [TitleParam () [] (ListT $ AnyT "a"), TitleWords () ["without", "the", "first", "apparition", "of"], TitleParam () [] (AnyT "a")],
+            Operator (\[ListT t, _] -> ListT t)
+        ),
+        (
+            [TitleParam () [] (ListT $ AnyT "a"), TitleWords () ["without", "all", "apparitions", "of"], TitleParam () [] (AnyT "a")],
+            Operator (\[ListT t, _] -> ListT t)
+        ),
+        (
+            [TitleParam () [] (ListT $ AnyT "a"), TitleWords () ["without", "its", "first", "element"]],
+            Operator (\[ListT t] -> ListT t)
+        ),
+        (
+            [TitleParam () [] (ListT $ AnyT "a"), TitleWords () ["without", "its", "last", "element"]],
+            Operator (\[ListT t] -> ListT t)
+        ),
+        (
+            [TitleParam () [] (ListT $ AnyT "a"), TitleWords () ["with"], TitleParam () [] (AnyT "a"), TitleWords () ["added", "at", "the", "beggining"]],
+            Operator (\[ListT t, _] -> ListT t)
+        ),
+        (
+            [TitleParam () [] (ListT $ AnyT "a"), TitleWords () ["with"], TitleParam () [] (AnyT "a"), TitleWords () ["added", "at", "the", "end"]],
+            Operator (\[ListT t, _] -> ListT t)
+        ),
+        (
+            [TitleParam () [] (ListT $ AnyT "a"), TitleWords () ["with"], TitleParam () [] (AnyT "a"), TitleWords () ["added", "at"], TitleParam () [] IntT],
+            Operator (\[ListT t, _, _] -> ListT t)
+        ),
+        (
+            [TitleParam () [] (ListT $ AnyT "a"), TitleWords () ["appended", "to"], TitleParam () [] (ListT $ AnyT "a")],
+            Operator (\[ListT t1, ListT t2] -> if t1 == FloatT || t2 == FloatT then ListT FloatT else ListT t1)
+        ),
+        (
+            [TitleParam () [] (ListT $ AnyT "a"), TitleWords () ["prepended", "to"], TitleParam () [] (ListT $ AnyT "a")],
+            Operator (\[ListT t1, ListT t2] -> if t1 == FloatT || t2 == FloatT then ListT FloatT else ListT t1)
+        ),
+        (
+            [TitleWords () ["the", "first"],  TitleParam () [] IntT, TitleWords () ["elements", "of"], TitleParam () [] (ListT $ AnyT "a")],
+            Operator (\[_, ListT t] -> ListT t)
+        ),
+        (
+            [TitleWords () ["the", "last"],  TitleParam () [] IntT, TitleWords () ["elements", "of"], TitleParam () [] (ListT $ AnyT "a")],
+            Operator (\[_, ListT t] -> ListT t)
+        ),
+        (
+            [TitleParam () [] (ListT $ AnyT "a"), TitleWords () ["without", "its", "first"],  TitleParam () [] IntT, TitleWords () ["elements"]],
+            Operator (\[ListT t, _] -> ListT t)
+        ),
+        (
+            [TitleParam () [] (ListT $ AnyT "a"), TitleWords () ["without", "its", "last"],  TitleParam () [] IntT, TitleWords () ["elements"]],
+            Operator (\[ListT t, _] -> ListT t)
+        ),
+        (
+            [TitleWords () ["the", "list", "from"], TitleParam () [] IntT, TitleWords () ["to"], TitleParam () [] IntT],
+            Operator (const $ ListT IntT)
+        )
+    ]
+
+listProcedures :: [(Bare Title, FunType)]
+listProcedures =
+    [
+        (
+            [TitleWords () ["empty", "out"], TitleParam () [] (RefT . ListT $ AnyT "a")],
+            Procedure
+        ),
+        (
+            [TitleWords () ["remove", "the", "element", "at"], TitleParam () [] IntT, TitleWords () ["from"], TitleParam () [] (RefT . ListT $ AnyT "a")],
+            Procedure
+        ),
+        (
+            [TitleWords () ["remove", "the", "first", "apparition", "of"], TitleParam () [] (AnyT "a"), TitleWords () ["from"], TitleParam () [] (RefT . ListT $ AnyT "a")],
+            Procedure
+        ),
+        (
+            [TitleWords () ["remove", "all", "apparitions", "of"], TitleParam () [] (AnyT "a"), TitleWords () ["from"], TitleParam () [] (RefT . ListT $ AnyT "a")],
+            Procedure
+        ),
+        (
+            [TitleWords () ["remove", "the", "first", "element", "from"], TitleParam () [] (RefT . ListT $ AnyT "a")],
+            Procedure
+        ),
+        (
+            [TitleWords () ["remove", "the", "last", "element", "from"], TitleParam () [] (RefT . ListT $ AnyT "a")],
+            Procedure
+        ),
+        (
+            [TitleWords () ["add"],  TitleParam () [] (AnyT "a"), TitleWords () ["at", "the", "beginning", "of"], TitleParam () [] (RefT . ListT $ AnyT "a")],
+            Procedure
+        ),
+        (
+            [TitleWords () ["add"],  TitleParam () [] (AnyT "a"), TitleWords () ["at", "the", "end", "of"], TitleParam () [] (RefT . ListT $ AnyT "a")],
+            Procedure
+        ),
+        (
+            [TitleWords () ["add"],  TitleParam () [] (AnyT "a"), TitleWords () ["to"], TitleParam () [] (RefT . ListT $ AnyT "a"), TitleWords () ["at"], TitleParam () [] IntT],
+            Procedure
+        ),
+        (
+            [TitleWords () ["append"], TitleParam () [] (ListT $ AnyT "a"), TitleWords () ["to"], TitleParam () [] (RefT . ListT $ AnyT "a")],
+            Procedure
+        ),
+        (
+            [TitleWords () ["prepend"], TitleParam () [] (ListT $ AnyT "a"), TitleWords () ["to"], TitleParam () [] (RefT . ListT $ AnyT "a")],
+            Procedure
+        ),
+        (
+            [TitleWords () ["leave", "only", "the", "first"],  TitleParam () [] IntT, TitleWords () ["elements", "in"], TitleParam () [] (RefT . ListT $ AnyT "a")],
+            Procedure
+        ),
+        (
+            [TitleWords () ["leave", "only", "the", "last"],  TitleParam () [] IntT, TitleWords () ["elements", "in"], TitleParam () [] (RefT . ListT $ AnyT "a")],
+            Procedure
+        ),
+        (
+            [TitleWords () ["remove", "the", "first"], TitleParam () [] IntT, TitleWords () ["elements", "from"], TitleParam () [] (RefT . ListT $ AnyT "a")],
+            Procedure
+        ),
+        (
+            [TitleWords () ["remove", "the", "last"], TitleParam () [] IntT, TitleWords () ["elements", "from"], TitleParam () [] (RefT . ListT $ AnyT "a")],
+            Procedure
+        )
+    ]
+
+numberOperators :: [(Bare Title, FunType)]
+numberOperators =
+    [
+        (
+            [TitleParam () [] FloatT, TitleWords () ["raised", "to", "the", "power", "of"], TitleParam () [] FloatT],
+            binaryType
+        ),
+        (
+            [TitleWords () ["the", "quotient", "of"], TitleParam () [] IntT, TitleWords () ["and"], TitleParam () [] IntT],
+            Operator (const IntT)
+        ),
+        (
+            [TitleParam () [] IntT, TitleWords () ["module"], TitleParam () [] IntT],
+            Operator (const IntT)
+        ),
+        (
+            [TitleWords () ["the", "remainder", "of", "dividing"], TitleParam () [] IntT, TitleWords () ["by"], TitleParam () [] IntT],
+            Operator (const IntT)
+        ),
         (
             [TitleParam () [] FloatT, TitleWords () ["plus"], TitleParam () [] FloatT],
             binaryType
@@ -50,11 +288,7 @@ builtInOperators = map functionFromTuple
         ),
         (
             [TitleParam () [] FloatT, TitleWords () ["divided", "by"], TitleParam () [] FloatT],
-            Operator (\[_, _] -> FloatT)
-        ),
-        (
-            [TitleWords () ["the", "quotient", "of"], TitleParam () [] IntT, TitleWords () ["and"], TitleParam () [] IntT],
-            Operator (\[_, _] -> IntT)
+            Operator (const FloatT)
         ),
         (
             [TitleParam () [] (AnyT "a"), TitleWords () ["is", "equal", "to"], TitleParam () [] (AnyT "a")],
@@ -81,38 +315,35 @@ builtInOperators = map functionFromTuple
             relationalType
         ),
         (
-            [TitleWords () ["the", "element", "of"], TitleParam () [] (RefT . ListT $ AnyT "a"), TitleWords () ["at"], TitleParam () [] IntT],
-            Operator (\[RefT (ListT t), IntT] -> RefT t)
+            [TitleWords () ["the", "square", "root", "of"], TitleParam () [] FloatT],
+            Operator (const FloatT)
         ),
         (
-            [TitleWords () ["the", "length", "of"], TitleParam () [] (ListT $ AnyT "a")],
-            Operator (\[ListT t] -> IntT)
+            [TitleWords () ["the", "ceiling", "of"], TitleParam () [] FloatT],
+            Operator (const IntT)
         ),
         (
-            [TitleParam () [] (ListT $ AnyT "a"), TitleWords () ["is", "empty"]],
-            Operator (\[ListT t] -> BoolT)
+            [TitleWords () ["the", "floor", "of"], TitleParam () [] FloatT],
+            Operator (const IntT)
         ),
         (
-            [TitleParam () [] (ListT $ AnyT "a"), TitleWords () ["appended", "to"], TitleParam () [] (ListT $ AnyT "a")],
-            Operator (\[ListT t1, ListT t2] -> if t1 == FloatT || t2 == FloatT then ListT FloatT else ListT t1)
+            [TitleParam () [] FloatT, TitleWords () ["rounded"]],
+            Operator (const IntT)
         ),
         (
-            [TitleWords () ["the", "list", "from"], TitleParam () [] IntT, TitleWords () ["to"], TitleParam () [] IntT],
-            Operator (\[IntT, IntT] -> ListT IntT)
+            [TitleParam () [] FloatT, TitleWords () ["truncated"]],
+            Operator (const IntT)
+        ),
+        (
+            [TitleWords () ["the", "absolute", "value", "of"], TitleParam () [] FloatT],
+            Operator (\[t] -> t)
         )
     ]
 
-builtInProcedures :: [(FunId, FunSignature)]
-builtInProcedures = map functionFromTuple
+numberProcedures :: [(Bare Title, FunType)]
+numberProcedures =
     [
-        (
-            [TitleWords () ["print"], TitleParam () [] $ AnyT "a"],
-            Procedure
-        ),
-        (
-            [TitleWords () ["swap"], TitleParam () [] $ RefT (AnyT "a"), TitleWords () ["with"], TitleParam () [] $ RefT (AnyT "a")],
-            Procedure
-        ),
+
         (
             [TitleWords () ["add"], TitleParam () [] FloatT, TitleWords () ["to"], TitleParam () [] (RefT FloatT)],
             Procedure
@@ -130,7 +361,49 @@ builtInProcedures = map functionFromTuple
             Procedure
         ),
         (
-            [TitleWords () ["append"], TitleParam () [] (ListT $ AnyT "a"), TitleWords () ["to"], TitleParam () [] (RefT . ListT $ AnyT "a")],
+            [TitleWords () ["quotient"], TitleParam () [] (RefT FloatT), TitleWords () ["by"], TitleParam () [] FloatT],
+            Procedure
+        ),
+        (
+            [TitleWords () ["raise"], TitleParam () [] (RefT FloatT), TitleWords () ["to", "the", "power", "of"], TitleParam () [] FloatT],
+            Procedure
+        ),
+        (
+            [TitleWords () ["round"], TitleParam () [] (RefT FloatT)],
+            Operator (\[_] -> IntT)
+        ),
+        (
+            [TitleWords () ["round"], TitleParam () [] (RefT FloatT), TitleWords () ["up"]],
+            Operator (\[_] -> IntT)
+        ),
+        (
+            [TitleWords () ["round"], TitleParam () [] (RefT FloatT), TitleWords () ["down"]],
+            Operator (\[_] -> IntT)
+        ),
+        (
+            [TitleWords () ["truncate"], TitleParam () [] (RefT FloatT)],
+            Operator (\[_] -> IntT)
+        )
+    ]
+
+generalOperators :: [(Bare Title, FunType)]
+generalOperators =
+    [
+        (
+            [TitleParam () [] (AnyT "a"), TitleWords () ["as", "a", "string"]],
+            Procedure
+        )
+    ]
+
+generalProcedures :: [(Bare Title, FunType)]
+generalProcedures =
+    [
+        (
+            [TitleWords () ["print"], TitleParam () [] (AnyT "a")],
+            Procedure
+        ),
+        (
+            [TitleWords () ["swap"], TitleParam () [] (RefT $ AnyT "a"), TitleWords () ["with"], TitleParam () [] (RefT $ AnyT "a")],
             Procedure
         ),
         (
@@ -138,6 +411,16 @@ builtInProcedures = map functionFromTuple
             Procedure
         )
     ]
+
+
+-- -----------------
+-- * Functions
+
+builtInOperators :: [(FunId, FunSignature)]
+builtInOperators = map functionFromTuple $ charOperators ++ boolOperators ++ listOperators ++ numberOperators ++ generalOperators
+
+builtInProcedures :: [(FunId, FunSignature)]
+builtInProcedures = map functionFromTuple $ charProcedures ++ boolProcedures ++ listProcedures ++ numberProcedures ++ generalProcedures
 
 builtInFunctions :: [(FunId, FunSignature)]
 builtInFunctions = builtInOperators ++ builtInProcedures

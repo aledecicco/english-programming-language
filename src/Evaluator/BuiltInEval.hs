@@ -120,6 +120,7 @@ listModification _ _ _ = error "Shouldn't happen: wrong types provided"
 
 -- | A computation that returns the result of evaluating an operator with the given arguments.
 evaluateBuiltInOperator :: Monad m => FunId -> [Bare Value] -> EvaluatorEnv m (Bare Value)
+evaluateBuiltInOperator "%_in_uppercase" [v1] = evaluateInUppercase v1
 evaluateBuiltInOperator "%_plus_%" [v1, v2] = evaluatePlus v1 v2
 evaluateBuiltInOperator "%_times_%" [v1, v2] = evaluateTimes v1 v2
 evaluateBuiltInOperator "%_minus_%" [v1, v2] = evaluateMinus v1 v2

@@ -18,6 +18,7 @@ import BuiltInDefs
 import BuiltInEval
 import Errors
 import EvaluatorEnv
+import PrettyPrinter (ppType, snippet)
 import Utils (firstNotNull, getFunId, hasIterators)
 
 
@@ -120,16 +121,16 @@ readValueFromInput expType = do
     case expType of
         IntT -> case readMaybe valStr of
             Just n -> return $ IntV () n
-            Nothing -> throwNowhere (UnmatchableInput expType valStr)
+            Nothing -> throwNowhere $ CodeError ["Couldn't understand", snippet valStr, "as a", ppType expType]
         FloatT -> case readMaybe valStr of
             Just f -> return $ FloatV () f
-            Nothing -> throwNowhere (UnmatchableInput expType valStr)
+            Nothing -> throwNowhere $ CodeError ["Couldn't understand", snippet valStr, "as a", ppType expType]
         BoolT -> case readMaybe valStr of
             Just b -> return $ BoolV () b
-            Nothing -> throwNowhere (UnmatchableInput expType valStr)
+            Nothing -> throwNowhere $ CodeError ["Couldn't understand", snippet valStr, "as a", ppType expType]
         CharT -> case readMaybe valStr of
             Just c -> return $ CharV () c
-            Nothing -> throwNowhere (UnmatchableInput expType valStr)
+            Nothing -> throwNowhere $ CodeError ["Couldn't understand", snippet valStr, "as a", ppType expType]
         ListT CharT -> initializeList CharT $ map (CharV ()) valStr
         _ -> error "Shouldn't happen: expected type is not a primitive"
 
