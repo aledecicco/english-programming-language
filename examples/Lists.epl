@@ -18,3 +18,8 @@ To run:
     Let K be a string equal to the first half of L.
     Print "\nThe first half of the list is ".
     Print K.
+    Remove all apparitions of the element of L at 0 from K.
+    Print "\nThe list without \"".
+    Print the element of L at 0.
+    Print "\" is ".
+    Print K.

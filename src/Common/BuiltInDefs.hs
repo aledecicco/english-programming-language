@@ -271,8 +271,8 @@ numberOperators =
             binaryType
         ),
         (
-            [TitleWords () ["the", "quotient", "of"], TitleParam () [] IntT, TitleWords () ["and"], TitleParam () [] IntT],
-            Operator (const IntT)
+            [TitleWords () ["the", "logarithm", "of"], TitleParam () [] FloatT, TitleWords () ["to", "base"], TitleParam () [] FloatT],
+            Operator (const FloatT)
         ),
         (
             [TitleParam () [] IntT, TitleWords () ["module"], TitleParam () [] IntT],
@@ -283,6 +283,10 @@ numberOperators =
             Operator (const IntT)
         ),
         (
+            [TitleParam () [] FloatT, TitleWords () ["minus"], TitleParam () [] FloatT],
+            binaryType
+        ),
+        (
             [TitleParam () [] FloatT, TitleWords () ["plus"], TitleParam () [] FloatT],
             binaryType
         ),
@@ -291,20 +295,16 @@ numberOperators =
             binaryType
         ),
         (
-            [TitleParam () [] FloatT, TitleWords () ["minus"], TitleParam () [] FloatT],
-            binaryType
-        ),
-        (
             [TitleParam () [] FloatT, TitleWords () ["divided", "by"], TitleParam () [] FloatT],
             Operator (const FloatT)
         ),
         (
-            [TitleParam () [] (AnyT "a"), TitleWords () ["is", "equal", "to"], TitleParam () [] (AnyT "a")],
-            relationalType
+            [TitleWords () ["the", "quotient", "of"], TitleParam () [] IntT, TitleWords () ["and"], TitleParam () [] IntT],
+            Operator (const IntT)
         ),
         (
-            [TitleParam () [] (AnyT "a"), TitleWords () ["is", "not", "equal", "to"], TitleParam () [] (AnyT "a")],
-            relationalType
+            [TitleParam () [] FloatT, TitleWords () ["multiplied", "by"], TitleParam () [] FloatT],
+            binaryType
         ),
         (
             [TitleParam () [] FloatT, TitleWords () ["is", "less", "than"], TitleParam () [] FloatT],
@@ -351,7 +351,6 @@ numberOperators =
 numberProcedures :: [(Bare Title, FunType)]
 numberProcedures =
     [
-
         (
             [TitleWords () ["add"], TitleParam () [] FloatT, TitleWords () ["to"], TitleParam () [] (RefT FloatT)],
             Procedure
@@ -400,6 +399,14 @@ generalOperators =
         (
             [TitleParam () [] (AnyT "a"), TitleWords () ["as", "a", "string"]],
             Procedure
+        ),
+        (
+            [TitleParam () [] (AnyT "a"), TitleWords () ["is", "equal", "to"], TitleParam () [] (AnyT "a")],
+            relationalType
+        ),
+        (
+            [TitleParam () [] (AnyT "a"), TitleWords () ["is", "not", "equal", "to"], TitleParam () [] (AnyT "a")],
+            relationalType
         )
     ]
 
