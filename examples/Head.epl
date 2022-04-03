@@ -10,5 +10,5 @@ To run:
     Let L be a list of numbers.
     Let M be a list of numbers containing 1, 2, 3, and 4.
     Print the head of L.
-    Print "\n".
+    Print an empty line.
     Print the head of M.

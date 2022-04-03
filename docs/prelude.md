@@ -1,32 +1,56 @@
 # Built-in functions
 
+
 ## Input and output
 
-## Modifications
+### Read a *%type%* into *%reference%*
 
-## Procedures
-"print_%"
-"swap_%_with_%"
-"add_%_to_%"
-"multiply_%_by_%"
-"subtract_%_from_%"
-"divide_%_by_%"
-"append_%_to_%"
-"set_%_to_%"
+Reads a value from standard input and saves it at the given address. The type must be either `string` or a primitive.
 
-## Operators
-"%_plus_%"
-"%_times_%"
-"%_minus_%"
-"%_divided_by_%"
-"the_quotient_of_%_and_%"
-"%_is_equal_to_%"
-"%_is_not_equal_to_%"
-"%_is_less_than_%"
-"%_is_less_than_or_equal_to_%"
-"%_is_greater_than_%"
-"%_is_greater_than_or_equal_to_%"
-"the_element_of_%_at_%"
-"the_length_of_%"
-"%_appended_to_%"
-"the_list_from_%_to_%"
+### A *%type%* read from input
+
+Reads a value from standard input and returns it. The type must be either `string` or a primitive.
+
+### Print *%value%*
+
+Writes the string representation of the given value to standard output.
+
+### Print *%value%* in a line
+
+Like `print` but followed by an end of line.
+
+### Print an empty line
+
+Writes an end of line to standard output.
+
+## Generic
+
+### *%value%* as a string
+
+Returns the string representation of the given value.
+
+### Swap *%reference%* with *%reference%*
+
+Swaps the values at the two given addresses between each other.
+
+### Set *%reference%* to *%value%*
+
+Saves a value at the given address.
+
+## Algebraic operations
+
+## Comparisons
+
+### Equality
+
+> *%value%* is equal to *%value%*
+
+Returns `true` if the given values are equal (performing a deep comparison) and `false` otherwise.
+
+### *%value%* is not equal to *%value%*
+
+Returns `true` if the given values are different (performing a deep comparison) and `false` otherwise.
+
+## Lists
+
+## Chars

@@ -6,7 +6,7 @@
 
   Write some sentences and watch the interpreter try to understand what you meant.
 
-  [![Version](https://img.shields.io/badge/version-v3.17.0-blue)](https://semver.org/)
+  [![Version](https://img.shields.io/badge/version-v3.18.0-blue)](https://semver.org/)
   [![License](https://img.shields.io/badge/license-MIT-brightgreen)](https://opensource.org/licenses/MIT)
 
 </div>

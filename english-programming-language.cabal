@@ -4,10 +4,10 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 950ed55069af9d654bac10e918c34904dec9c9bb8ba8b8d031ee0390df23444c
+-- hash: ced2cfc6be501f78925044d61c91746a6b16a0f4974d6aaeb0e9cecab9e006fa
 
 name:           english-programming-language
-version:        3.17.0
+version:        3.18.0
 author:         Alejandro De Cicco
 maintainer:     alejandrodecicco99@gmail.com
 license:        MIT
@@ -29,7 +29,6 @@ library
       Solver
       SolverEnv
       BuiltInEval
-      BuiltInEval2
       Evaluator
       EvaluatorEnv
   other-modules:

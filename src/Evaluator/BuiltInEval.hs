@@ -459,6 +459,8 @@ evaluateBuiltInProcedure "round_%" [nRef] = evaluateRound nRef
 evaluateBuiltInProcedure "round_%_up" [nRef] = evaluateRoundUp nRef
 evaluateBuiltInProcedure "round_%_down" [nRef] = evaluateRoundDown nRef
 evaluateBuiltInProcedure "truncate_%" [nRef] = evaluateTruncate nRef
+evaluateBuiltInProcedure "print_%_in_a_line" [val] = evaluatePrintInLine val
+evaluateBuiltInProcedure "print_an_empty_line" [] = evaluatePrintEmptyLine
 evaluateBuiltInProcedure "print_%" [val] = evaluatePrint val
 evaluateBuiltInProcedure "swap_%_with_%" [valRef1, valRef2] = evaluateSwapWith valRef1 valRef2
 evaluateBuiltInProcedure "set_%_to_%" [valRef, val] = evaluateSetTo valRef val
@@ -552,10 +554,18 @@ evaluateRoundDown = modifyRef evaluateFloor
 evaluateTruncate :: Monad m => Bare Value -> EvaluatorEnv m ()
 evaluateTruncate = modifyRef evaluateTruncated
 
+evaluatePrintInLine :: ReadWrite m => Bare Value -> EvaluatorEnv m ()
+evaluatePrintInLine val = do
+    evaluatePrint val
+    evaluatePrintEmptyLine
+
+evaluatePrintEmptyLine :: ReadWrite m => EvaluatorEnv m ()
+evaluatePrintEmptyLine = (liftReadWrite . writeValue) "\n"
+
 evaluatePrint :: ReadWrite m => Bare Value -> EvaluatorEnv m ()
 evaluatePrint val = do
     str <- evaluateAsString val
-    liftReadWrite . writeValue $ str
+    (liftReadWrite . writeValue) str
 
 evaluateSwapWith :: Monad m => Bare Value -> Bare Value -> EvaluatorEnv m ()
 evaluateSwapWith (RefV _ addr1) (RefV _ addr2) = do

@@ -414,6 +414,14 @@ generalProcedures :: [(Bare Title, FunType)]
 generalProcedures =
     [
         (
+            [TitleWords () ["print"], TitleParam () [] (AnyT "a"), TitleWords () ["in", "a", "line"]],
+            Procedure
+        ),
+        (
+            [TitleWords () ["print", "an", "empty", "line"]],
+            Procedure
+        ),
+        (
             [TitleWords () ["print"], TitleParam () [] (AnyT "a")],
             Procedure
         ),

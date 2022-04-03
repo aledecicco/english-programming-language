@@ -1,4 +1,0 @@
-To run:
-  Let x be a list of strings containing "0123", "4506", and "0780090".
-  Remove all apparitions of the element of (the element of x at 0) at 0 from each element in x.
-  Print x.
