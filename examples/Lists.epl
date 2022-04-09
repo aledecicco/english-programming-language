@@ -14,7 +14,12 @@ To run:
     Read a string into L.
     Shuffle L.
     Print "The shuffled list is ".
-    Print L.
+    Print L in a line.
     Let K be a string equal to the first half of L.
-    Print "\nThe first half of the list is ".
+    Print "The first half of the list is ".
+    Print K in a line.
+    Remove all apparitions of the element of L at 0 from K.
+    Print "The list without \"".
+    Print the element of L at 0.
+    Print "\" is ".
     Print K.

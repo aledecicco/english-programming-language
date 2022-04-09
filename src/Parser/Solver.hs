@@ -92,7 +92,7 @@ computeAliases parts =
             ordNames <- mapM (`addOrdinal` totAs) names
             return $ filter (\name -> not $ M.member name totAs) ordNames
 
-        -- A computation that adds an ordinal to an alias depending on the number of its current aparition and the number of times it appears in total.
+        -- A computation that adds an ordinal to an alias depending on the number of its current apparition and the number of times it appears in total.
         addOrdinal :: Name -> M.Map Name Int -> State (M.Map Name Int) Name
         addOrdinal name totAs = do
             let totReps = totAs M.! name

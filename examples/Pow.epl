@@ -1,9 +1,5 @@
-To raise a reference to a number (m) to the power of another number (n):
-    Let r be 1.
-    While n is greater than 0:
-        Multiply r by m.
-        Subtract 1 from n.
-    Set m to r.
+A number equal to the exponentiation of a number and another number:
+    Return the 1st number raised to the power of the 2nd number.
 
 To run:
     Let x be 2.
@@ -12,5 +8,4 @@ To run:
     Print " to the power of ".
     Print y.
     Print " is ".
-    Raise x to the power of y.
-    Print x.
+    Print the exponentiation of x and y.

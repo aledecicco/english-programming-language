@@ -19,13 +19,11 @@ data ErrorType =
     | UnmatchableValueTypes [Annotated MatchablePart] -- ^ A list of matchable parts could be understood as many different values but none of them passed the validations.
     | UnmatchableSentence [Annotated MatchablePart] -- ^ Couldn't understand a list of matchable parts as any sentence.
     | UnmatchableSentenceTypes [Annotated MatchablePart] -- ^ A list of matchable parts could be understood as many different sentences but none of them passed the validations.
-    | UnmatchableInput Type String -- ^ The given input couldn't be understood as a value of the expected type.
     | UnreadableType Type -- ^ The given type is too complex to be read from input.
     | FunctionAlreadyDefined FunId
     | UndefinedFunction FunId
     | VariableAlreadyDefined Name
     | UndefinedVariable Name
-    | MismatchingTypeAssigned Type Type Name -- ^ Assigned a value to a variable of a different type.
     | ResultInProcedure -- ^ Used a `return` statement in a procedure.
     | ExitInOperator -- ^ Used an `exit` statement in an operator.
     | ExpectedResult -- ^ The end of an operator was reached without finding a return statement.

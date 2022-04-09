@@ -16,7 +16,7 @@ To run:
     Unless m is in L, print "not ".
     Print "in ".
     Print L.
-    Print "\n".
+    Print an empty line.
 
     Print n.
     Print " is ".

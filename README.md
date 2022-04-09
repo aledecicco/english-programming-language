@@ -6,7 +6,7 @@
 
   Write some sentences and watch the interpreter try to understand what you meant.
 
-  [![Version](https://img.shields.io/badge/version-v3.17.0-blue)](https://semver.org/)
+  [![Version](https://img.shields.io/badge/version-v3.18.0-blue)](https://semver.org/)
   [![License](https://img.shields.io/badge/license-MIT-brightgreen)](https://opensource.org/licenses/MIT)
 
 </div>
@@ -32,20 +32,21 @@ Print each element in L plus 2.
 ## Features
 - Spaces are allowed in variable and function names.
 - Arguments can be passed by value or by reference.
+- A strong type system is used for disambiguation.
 - Garbage collector.
-- Try-catch, loops, and conditionals.
+- Loops, conditionals, and try-catch.
 - Optional function parameter names, with aliases generation.
 
 ## Work in progress
-- Adding more built-in functions.
-- Finding a better syntax for specifying function return types.
+- Finding a more natural syntax for specifying function return types.
 
 ## Possible improvements:
 - Importing other files as libraries.
 - Records.
 - Interactive environment.
-- Special variable "it" for referencing the result of the previous sentence.
+- Special variable `it` for referencing the result of the previous sentence.
 - Built-in filtering with callbacks as arguments.
+- Allowing user-defined generic functions.
 
 ## Usage
 Requirements: [Stack](https://docs.haskellstack.org/en/stable/README/)
