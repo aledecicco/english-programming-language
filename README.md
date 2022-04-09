@@ -44,8 +44,9 @@ Print each element in L plus 2.
 - Importing other files as libraries.
 - Records.
 - Interactive environment.
-- Special variable "it" for referencing the result of the previous sentence.
+- Special variable `it` for referencing the result of the previous sentence.
 - Built-in filtering with callbacks as arguments.
+- Allowing user-defined generic functions.
 
 ## Usage
 Requirements: [Stack](https://docs.haskellstack.org/en/stable/README/)
