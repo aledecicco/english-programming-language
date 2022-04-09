@@ -125,6 +125,10 @@ listOperators =
             Operator (const BoolT)
         ),
         (
+            [TitleWords () ["the", "index", "of"], TitleParam () [] (AnyT "a"), TitleWords () ["in"], TitleParam () [] (ListT $ AnyT "a")],
+            Operator (const IntT)
+        ),
+        (
             [TitleWords () ["the", "element", "of"], TitleParam () [] (RefT . ListT $ AnyT "a"), TitleWords () ["at"], TitleParam () [] IntT],
             Operator (\[RefT (ListT t), _] -> RefT t)
         ),

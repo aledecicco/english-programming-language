@@ -13,6 +13,7 @@ module BuiltInEval where
 import AST
 import Control.Monad (foldM, unless, zipWithM)
 import Data.Char (toUpper, toLower)
+import Data.List (elemIndex)
 import EvaluatorEnv
 import Errors (ErrorType(CodeError))
 import PrettyPrinter (ppValue)
@@ -128,6 +129,7 @@ evaluateBuiltInOperator "the_length_of_%" [listVal] = IntV () <$> evaluateLength
 evaluateBuiltInOperator "%_is_empty" [listVal] = BoolV () <$> evaluateIsEmpty listVal
 evaluateBuiltInOperator "%_is_not_empty" [listVal] = BoolV () <$> evaluateIsNotEmpty listVal
 evaluateBuiltInOperator "%_contains_%" [listVal, elemVal] = BoolV () <$> evaluateContains listVal elemVal
+evaluateBuiltInOperator "the_index_of_%_in_%" [elemVal, listVal] = IntV () <$> evaluateIndexOf elemVal listVal
 evaluateBuiltInOperator "the_element_of_%_at_%" [listRef, nVal] = evaluateNthElement listRef nVal
 evaluateBuiltInOperator "%_without_the_element_at_%" [listVal, nVal] = evaluateWithoutNth listVal nVal
 evaluateBuiltInOperator "%_without_the_first_apparition_of_%" [listVal, elemVal] = evaluateWithoutFirstApparition listVal elemVal
@@ -217,6 +219,13 @@ evaluateContains :: Monad m => Bare Value -> Bare Value -> EvaluatorEnv m Bool
 evaluateContains listVal elemVal = do
     equalities <- infoFromList (mapM $ evaluateIsEqualTo elemVal) listVal
     return $ or equalities
+
+evaluateIndexOf :: Monad m => Bare Value -> Bare Value -> EvaluatorEnv m Int
+evaluateIndexOf listVal elemVal = do
+    equalities <- infoFromList (mapM $ evaluateIsEqualTo elemVal) listVal
+    case elemIndex True equalities of
+        Just index -> return index
+        Nothing -> throwHere $ CodeError ["Element not found in list"]
 
 evaluateNthElement :: Monad m => Bare Value -> Bare Value -> EvaluatorEnv m (Bare Value)
 evaluateNthElement (RefV _ addr) (IntV _ n) = do
