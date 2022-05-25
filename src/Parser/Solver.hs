@@ -19,6 +19,7 @@ import qualified Data.Map.Strict as M
 import AST
 import Errors
 import Matchers
+import PrettyPrinter (ppOrdinal)
 import SolverEnv
 import Utils (getFunId, hasIterators, typeName)
 
@@ -43,15 +44,6 @@ possibleAliases (ListT elemsType) =
             in if elemsType == CharT then ["strings"]:aliases else aliases
         possibleAliases' t  = [typeName t True]
 possibleAliases paramType =  [typeName paramType False]
-
--- | Turns a number into an ordinal.
-intToPosition :: Int -> String
-intToPosition 1 = "1st"
-intToPosition 2 = "2nd"
-intToPosition 3 = "3rd"
-intToPosition n
-    | n < 10 = show n ++ "th"
-    | otherwise = show (div n 10) ++ intToPosition (mod n 10)
 
 -- | Returns a list with the type of each parameter in a title.
 titleTypes :: Title a -> [Type]
@@ -99,7 +91,7 @@ computeAliases parts =
             if totReps > 1
                 then do
                     currRep <- gets (M.! name)
-                    return $ "the" : intToPosition currRep : name
+                    return $ "the" : ppOrdinal (currRep - 1) : name
                 else return $ "the" : name
 
 -- | Adds the possible aliases to each parameter in a title.

@@ -76,6 +76,9 @@ ppOrdinal p = ppOrdinal' $ show (p+1)
         ppOrdinal' "1" = "1st"
         ppOrdinal' "2" = "2nd"
         ppOrdinal' "3" = "3rd"
+        ppOrdinal' "11" = "11th"
+        ppOrdinal' "12" = "12th"
+        ppOrdinal' "13" = "13th"
         ppOrdinal' (n:ns) = n : ppOrdinal' ns
         ppOrdinal' [] = "th"
 

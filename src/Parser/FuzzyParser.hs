@@ -78,12 +78,18 @@ firstWord "" = error "Can't parse an empty string"
 ordinal :: FuzzyParser String
 ordinal = do
     num <- some digitChar
-    suffix <- case last num of
-        '1' -> word "st"
-        '2' -> word "nd"
-        '3' -> word "rd"
-        _ -> word "th"
+    suffix <- ordinalSuffix num
     return $ num ++ suffix
+    where
+        ordinalSuffix :: String -> FuzzyParser String
+        ordinalSuffix "1" = word "st"
+        ordinalSuffix "2" = word "nd"
+        ordinalSuffix "3" = word "rd"
+        ordinalSuffix "11" = word "th"
+        ordinalSuffix "12" = word "th"
+        ordinalSuffix "13" = word "th"
+        ordinalSuffix (n:ns) = ordinalSuffix ns
+        ordinalSuffix [] = word "th"
 
 -- | Parses any valid word in the language, including ordinals.
 anyWord :: FuzzyParser String
