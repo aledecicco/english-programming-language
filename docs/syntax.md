@@ -191,7 +191,7 @@ Here, if `b` happens to be 0, we will throw a custom error instead of the one th
 
 ## Values, types, and variables
 
-The following primitive types are available: `boolean`, `whole number` (int), `number` (float), and `character`.
+The following primitive types are available: `boolean`, `whole number (int)`, `number (float)`, and `character`.
 
 Variables can also be lists of other types, including lists. When specifying the type of a list, the type of its elements must be in plural, like `list of whole numbers` or `list of lists of booleans`.
 
@@ -199,7 +199,7 @@ There is also the alias `string` for `list of characters`.
 
 Constant boolean values are used with the words `true` and `false`.
 
-Numbers and whole numbers are used witing the numeric values, not the words. Numbers must have a decimal part.
+Numbers and whole numbers are used writing the numeric values, not the words. Numbers must have a decimal part.
 
 Char literals are written between single quotes, and string literals between double quotes. String literals are the only other way, appart from the `let` sentence, to define lists by extension and, of course, they only work for lists of chars.
 
@@ -260,5 +260,3 @@ Finally, we can use it to concatenate lists and elements:
 Let L be a list containing each element in M, 1.0 plus 2.0, and each element in N plus 1.
 ```
 Now, `L` is a list of whole numbers containing each element in `M`, followed by the element `3.0`, followed by the result of adding 1 to each element in `N`. So, if `M` was `[1.0, 2.0]` and `N` was `[3.0, 4.0]`, `L` would be `[1.0, 2.0, 3.0, 4.0, 5.0]`.
-
-
