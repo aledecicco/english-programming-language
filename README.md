@@ -6,8 +6,8 @@
 
   Write some sentences and watch the interpreter try to understand what you meant.
 
-  [![Version](https://img.shields.io/badge/version-v3.18.1-blue)](https://semver.org/)
-  [![License](https://img.shields.io/badge/license-MIT-brightgreen)](https://opensource.org/licenses/MIT)
+  [![Version](https://img.shields.io/github/v/tag/aledecicco/english-programming-language)](https://semver.org/)
+  [![License](https://img.shields.io/github/license/aledecicco/english-programming-language)](https://opensource.org/licenses/gpl-3.0)
 
 </div>
 
@@ -59,5 +59,3 @@ stack run -- program.epl
 The `-h` or `--help` option displays usage help.
 
 The `-s` or `--silent` option runs the interpreter without printing warnings or success messages.
-
-
